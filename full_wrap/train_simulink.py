@@ -1,3 +1,5 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from simulink_env import SimulinkEnv
 from stable_baselines3 import PPO, SAC, TD3
 
