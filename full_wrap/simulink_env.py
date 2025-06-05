@@ -130,13 +130,23 @@ class SimulinkEnv(gym.Env):
                       'LoadInitialState',  'off',
                       nargout=0)
         
-        # run zero-length sim to seed the state
+       # run zero-length sim to seed the state and create 'xFinal'
+        # run a very short sim to ensure xFinal is created
         eng.eval(
-            f"out = sim('{self.model_name}',"
-            " 'StopTime','0',"
-            " 'SaveFinalState','off');",
-            nargout=0
+        f"out = sim('{self.model_name}',"
+        " 'StopTime','1e-4',"
+        " 'SaveFinalState','on',"
+        " 'StateSaveName','xFinal');"
+        "xFinal = out.xFinal;",
+        nargout=0
         )
+
+
+
+        print("Workspace variables:", eng.eval("who", nargout=1))
+
+
+
         # --- Re-enable FastRestart for speed on subsequent steps ---
         eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
 
@@ -215,4 +225,3 @@ class SimulinkEnv(gym.Env):
 
     def close(self):
         eng.quit()
-
