@@ -17,8 +17,5 @@ def controller_call(theta, theta_v, t):
     model = _get_model()
     obs = np.array([theta, theta_v], dtype=np.float32)
     action, _ = model.predict(obs, deterministic=True)
-    x = random.uniform(-20.0, 20.0)
-    # print(float(action[0]))
     return float(action[0])
-    # print(x)
-    # return float(x)
+

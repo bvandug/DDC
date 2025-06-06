@@ -5,7 +5,7 @@ from stable_baselines3 import PPO, SAC, TD3
 
 if __name__ == "__main__":
     # Initialize the Simulink environment
-    env = SimulinkEnv(model_name="PendCart", agent_block="PendCart/RL Agent", dt=5)
+    env = SimulinkEnv(model_name="PendCart", agent_block="PendCart/RL Agent", dt=0.001)
     timesteps = 300
 
     for name, Algo in [("td3", TD3), ("ppo", PPO), ("sac", SAC)]:

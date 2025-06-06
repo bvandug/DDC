@@ -183,14 +183,16 @@ class SimulinkEnv(gym.Env):
         # 4. run exactly one step, *loading* the previous xFinal, 
         #    then *saving* the new final state back into xFinal:
         eng.eval(
-            f"out = sim('{self.model_name}',"
-            f" 'LoadInitialState','on',"
-            f" 'InitialState','xFinal',"
-            f" 'StopTime','{stop}',"
-            f" 'SaveFinalState','on',"
-            f" 'StateSaveName','xFinal');",
-            nargout=0
+        f"out = sim('{self.model_name}',"
+        f" 'LoadInitialState','on',"
+        f" 'InitialState','xFinal',"
+        f" 'StopTime','{stop}',"
+        f" 'SaveFinalState','on',"
+        f" 'StateSaveName','xFinal');"  # ✅ correctly ends the sim() call
+        "xFinal = out.xFinal;",
+        nargout=0
         )
+
 
         # 5. immediately re-enable FastRestart for speed
         eng.set_param(self.model_name,
