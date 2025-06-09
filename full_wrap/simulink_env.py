@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 # name `eng`.  Now every function in this file can refer to that same engine.
 # ────────────────────────────────────────────────────────────────────────────────
 
-
-
 class SimulinkEnv(gym.Env):
     """
     A Gym wrapper around your Pendulum-on-Cart Simulink model,
