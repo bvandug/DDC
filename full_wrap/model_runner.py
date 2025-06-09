@@ -17,7 +17,8 @@ class ModelRunner:
         """
         self.model_name = model_name
         self.dt = dt
-        self.max_force = 10.0 # From your SimulinkEnv
+        self.max_force = 10.0
+        self.current_time = 0.0
 
         # --- MATLAB Engine Setup ---
         print("Starting MATLAB engine...")
@@ -27,6 +28,7 @@ class ModelRunner:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.eng.addpath(script_dir, nargout=0)
         self.eng.load_system(self.model_name, nargout=0)
+        self.eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
         print(f"Loaded Simulink model: {self.model_name}")
         
         # --- Model Loading ---
@@ -69,15 +71,30 @@ class ModelRunner:
         self.thetas = []
         self.thetavs = []
         self.actions = []
-        self.current_time = 0.0
 
-    def get_sim_data(self):
+    def get_data(self):
         """Helper function to get data from the MATLAB workspace."""
         raw_ang = self.eng.eval("out.angle", nargout=1)
         raw_time = self.eng.eval("out.tout", nargout=1)
         
-        angle_lst = [item for sublist in raw_ang for item in sublist] if isinstance(raw_ang, list) else [raw_ang]
-        time_lst = [item for sublist in raw_time for item in sublist] if isinstance(raw_time, list) else [raw_time]
+        # Handle single values
+        if isinstance(raw_ang, float):
+            angle_2d = [[raw_ang]]
+        else:
+            angle_2d = raw_ang
+
+        if isinstance(raw_time, float):
+            time_2d = [[raw_time]]
+        else:
+            time_2d = raw_time
+
+        angle_lst = []
+        for angle in angle_2d:
+            angle_lst.append(angle[0])
+
+        time_lst = []
+        for t in time_2d:
+            time_lst.append(t[0])
         
         return angle_lst, time_lst
 
@@ -86,9 +103,17 @@ class ModelRunner:
         print(f"Resetting Simulink model to initial_angle: {initial_angle:.2f}")
         # Stop any previous simulation
         self.eng.set_param(self.model_name, 'SimulationCommand', 'stop', nargout=0)
+        self.current_time = 0.0
         
         # Set the initial angle in the model
         self.eng.set_param(f'{self.model_name}/Pendulum and Cart', 'init', str(initial_angle), nargout=0)
+        
+        # Set random noise seeds/power
+        noise_seed = str(np.random.randint(1, 40000))
+        noise_seed_v = str(np.random.randint(1, 40000))
+        for blk, seed in [('Noise', noise_seed), ('Noise_v', noise_seed_v)]:
+            self.eng.set_param(f'{self.model_name}/{blk}', 'seed', f'[{seed}]', nargout=0)
+            self.eng.set_param(f'{self.model_name}/{blk}', 'Cov', '[0]', nargout=0)
         
         # Configure simulation to save its final state
         self.eng.set_param(self.model_name, 'FastRestart', 'off', 'LoadInitialState', 'off', nargout=0)
@@ -99,13 +124,18 @@ class ModelRunner:
             "xFinal = out.xFinal;",
             nargout=0
         )
+        
         # Re-enable FastRestart for subsequent steps
         self.eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
         
         # Get the initial state from this short run
-        angle_lst, time_lst = self.get_sim_data()
+        angle_lst, time_lst = self.get_data()
         theta0 = angle_lst[-1]
-        vel0 = (angle_lst[-1] - angle_lst[-2]) / (time_lst[-1] - time_lst[-2] or self.dt) if len(angle_lst) >= 2 else 0.0
+        if len(angle_lst) >= 2:
+            dt = time_lst[-1] - time_lst[-2]
+            vel0 = (angle_lst[-1] - angle_lst[-2]) / (dt or self.dt)
+        else:
+            vel0 = 0.0
         
         return np.array([theta0, vel0], dtype=np.float32)
 
@@ -126,25 +156,40 @@ class ModelRunner:
         while self.current_time < max_time:
             # Get action from the stable-baselines3 model
             action_raw, _ = self.model.predict(obs, deterministic=True)
-            u = float(np.clip(action_raw, -self.max_force, self.max_force))
+            u = float(np.clip(action_raw[0], -self.max_force, self.max_force))
             
             # Apply the action to the Simulink model
             self.eng.set_param(f"{self.model_name}/Constant", 'Value', str(u), nargout=0)
             
+            # Turn FastRestart OFF for this one sim
+            self.eng.set_param(self.model_name, 'FastRestart', 'off', nargout=0)
+            
             # Run the simulation for one time step
             stop_time = self.current_time + self.dt
             self.eng.eval(
-                f"out = sim('{self.model_name}', 'LoadInitialState','on', 'InitialState','xFinal', "
-                f"'StopTime','{stop_time}', 'SaveFinalState','on', 'StateSaveName','xFinal');"
+                f"out = sim('{self.model_name}',"
+                f" 'LoadInitialState','on',"
+                f" 'InitialState','xFinal',"
+                f" 'StopTime','{stop_time}',"
+                f" 'SaveFinalState','on',"
+                f" 'StateSaveName','xFinal');"
                 "xFinal = out.xFinal;",
                 nargout=0
             )
             
+            # Re-enable FastRestart for speed
+            self.eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
+            
             # Get the new state from the simulation
-            angle_lst, time_lst = self.get_sim_data()
+            angle_lst, time_lst = self.get_data()
             theta = angle_lst[-1]
             t = time_lst[-1]
-            theta_v = (theta - obs[0]) / (t - self.current_time or self.dt) if t > self.current_time else 0.0
+            
+            if len(angle_lst) >= 2:
+                dt = t - time_lst[-2]
+                theta_v = (theta - angle_lst[-2]) / (dt or self.dt)
+            else:
+                theta_v = 0.0
             
             # Update observation and store data
             obs = np.array([theta, theta_v], dtype=np.float32)
@@ -194,7 +239,7 @@ class ModelRunner:
 if __name__ == "__main__":
     # --- Example Usage ---
     # Make sure 'td3_simulinker.zip' is in the same directory as this script
-    model_file = "td3_simulinker.zip"
+    model_file = "td3_simulinker500.zip"
     if not os.path.exists(model_file):
         print(f"Error: Model file not found at '{model_file}'")
         print("Please ensure the trained model is in the correct location.")

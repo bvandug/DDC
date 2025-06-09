@@ -8,7 +8,7 @@ import numpy as np
 if __name__ == "__main__":
     # Initialize the Simulink environment
     env = SimulinkEnv(model_name="PendCart", agent_block="PendCart/RL Agent", dt=0.01)
-    timesteps = 50000
+    timesteps = 500
     # , ("ppo", PPO), ("sac", SAC)
     for name, Algo in [("td3", TD3)]:
         print(f"Training {name} on Simulink model…")
@@ -26,9 +26,13 @@ if __name__ == "__main__":
         target_noise_clip=0.5
         )
 
-        # Plain learn, no progress bar
-        model.learn(total_timesteps=timesteps)
+        # Add progress tracking
+        print(f"Starting training for {timesteps} timesteps...")
+        model.learn(total_timesteps=timesteps, progress_bar=True)
+        print(f"Training completed. Total timesteps: {timesteps}")
+        
         # Save the trained model
-        model.save(f"{name}_simulinker")
+        model.save(f"{name}_simulinker500")
+        print(f"Model saved to {name}_simulinker500")
 
     env.close()
