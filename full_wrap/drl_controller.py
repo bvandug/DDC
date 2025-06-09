@@ -1,15 +1,13 @@
 import numpy as np
 from stable_baselines3 import PPO, SAC, TD3
-import random
 
 # Don’t load on import
 _model = None
-MODEL_NAME = "td3_simulink"  # base name of your saved model
+MODEL_NAME = "td3_simulinker"  # base name of your saved model
 
 def _get_model():
     global _model
     if _model is None:
-        # this is where the zip must already exist
         _model = TD3.load(MODEL_NAME)
     return _model
 
@@ -19,3 +17,6 @@ def controller_call(theta, theta_v, t):
     action, _ = model.predict(obs, deterministic=True)
     return float(action[0])
 
+print(controller_call(0.1, 0.0, 0))
+print(controller_call(0.5, 0.0, 0))
+print(controller_call(-0.5, 0.0, 0))
