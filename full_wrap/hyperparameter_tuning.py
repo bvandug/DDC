@@ -7,6 +7,7 @@ import json
 import os
 from tqdm import tqdm
 import time
+import sys
 
 def objective(trial, algo_name, env):
     # Define hyperparameter search space
@@ -112,12 +113,20 @@ def tune_hyperparameters(algo_name, n_trials=50):
     # Create a study object
     study = optuna.create_study(direction="maximize")
     
-    # Create a progress bar for trials
-    pbar = tqdm(total=n_trials, desc=f"Tuning {algo_name.upper()}")
+    # Create a progress bar for trials with proper carriage returns
+    pbar = tqdm(
+        total=n_trials,
+        desc=f"Tuning {algo_name.upper()}",
+        file=sys.stdout,             # make sure we write to STDOUT
+        dynamic_ncols=True,          # adapt to changing widths
+        ascii=False,                 # allow unicode bars
+        leave=True
+    )
     
     # Define callback to update progress bar
     def update_progress(study, trial):
         pbar.update(1)
+        pbar.refresh()               # force a redraw in-place
         pbar.set_postfix({"best_value": f"{study.best_value:.2f}"})
     
     # Run the optimization with progress bar
