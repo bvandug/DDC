@@ -4,7 +4,6 @@ import gym
 from gym import spaces
 import numpy as np
 import matlab.engine
-import matplotlib.pyplot as plt
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Start MATLAB engine exactly once, at import time, and bind it to the module
@@ -25,13 +24,17 @@ class SimulinkEnv(gym.Env):
              max_episode_time: float = 5,
              angle_threshold: float = np.pi/2):
         super().__init__()
+        print("\nInitializing Simulink Environment...")
         global eng
+        print("Starting MATLAB engine...")
         eng = matlab.engine.start_matlab()
-        # load your model once, via the global engine
+        print("Loading Simulink model...")
         eng.load_system(model_name, nargout=0)
+        print("Enabling FastRestart for better performance...")
         eng.set_param('PendCart', 'FastRestart', 'on', nargout=0)
-        # eng.set_param(self.model_name, 'SimulationMode', 'Accelerator', nargout=0)
-
+        
+        # Disable warnings about parameter changes
+        eng.eval("warning('off', 'Simulink:Engine:ModelOperatingPointChanged');", nargout=0)
 
         self.model_name       = model_name
         self.agent_block      = agent_block
@@ -41,6 +44,7 @@ class SimulinkEnv(gym.Env):
         self.angle_threshold  = angle_threshold
         self.pendulum_length  = 1.0  # Length of the pendulum for visualization
 
+        print("Setting up action and observation spaces...")
         max_force = 10.0
         self.action_space = spaces.Box(
             low=-max_force, high=+max_force,
@@ -51,6 +55,7 @@ class SimulinkEnv(gym.Env):
             low=-high, high=high, dtype=np.float32
         )
 
+        print("Setting initial conditions...")
         # Set random initial angle
         initial_angle = np.random.uniform(-1, 1)
         while -0.05 <= initial_angle <= 0.05:
@@ -58,6 +63,7 @@ class SimulinkEnv(gym.Env):
         eng.set_param(f'{model_name}/Pendulum and Cart', 'init', str(initial_angle), nargout=0)
 
         # Set random noise
+        print("Configuring noise parameters...")
         noise_seed   = str(np.random.randint(1, high=40000))
         noise_power  = 0
         eng.set_param(f'{model_name}/Noise',   'seed', f'[{noise_seed}]', nargout=0)
@@ -66,36 +72,7 @@ class SimulinkEnv(gym.Env):
         noise_power_v = 0
         eng.set_param(f'{model_name}/Noise_v', 'seed', f'[{noise_seed_v}]', nargout=0)
         eng.set_param(f'{model_name}/Noise_v', 'Cov',  f'[{noise_power_v}]', nargout=0)
-
-        # ─── set up live‐plot ───
-        plt.ion()
-        self.fig, (self.ax_anim, self.ax_theta, self.ax_thetav, self.ax_u) = plt.subplots(4, 1, figsize=(6, 10))
-        
-        # Set up animation axes
-        self.ax_anim.axis('off')
-        L = self.pendulum_length
-        self.ax_anim.set_xlim(-L, L)
-        self.ax_anim.set_ylim(-L, L)
-        self.ax_anim.set_aspect('equal')
-        
-        # Create empty Line2D objects for each signal
-        self.line_rod, = self.ax_anim.plot([], [], lw=3)    # the line from pivot to mass
-        self.point_mass, = self.ax_anim.plot([], [], 'o', ms=8)  # the mass at the end
-        self.line_theta   = self.ax_theta  .plot([], [], label="θ")[0]
-        self.line_thetav  = self.ax_thetav .plot([], [], label="θ̇")[0]
-        self.line_u       = self.ax_u      .plot([], [], label="u")[0]
-        
-        for ax in (self.ax_theta, self.ax_thetav, self.ax_u):
-            ax.set_xlabel("time (s)")
-            ax.legend(loc="upper right")
-
-        # buffers to store data
-        self._times   = []
-        self._thetas  = []
-        self._thetavs = []
-        self._us      = []
-
-
+        print("Environment initialization complete!\n")
 
     def get_data(self):
         """
@@ -130,38 +107,38 @@ class SimulinkEnv(gym.Env):
         for t in time_2d:
             time_lst.append(t[0])
 
-        # print(f"angle:({angle_lst}")
-        # print(f"{time_lst =}")
-
         return angle_lst, time_lst
 
     def reset(self):
-        print("resetting")
+        print("\nResetting environment...")
         # stop any sim and zero the clock
         self.current_time = 0.0
         eng.set_param(self.model_name, 'SimulationCommand', 'stop', nargout=0)
 
         # Set random initial angle
+        print("Setting new initial angle...")
         initial_angle = np.random.uniform(-1, 1)
         while -0.05 < initial_angle < 0.05:
             initial_angle = np.random.uniform(-1, 1)
         eng.set_param(f'{self.model_name}/Pendulum and Cart', 'init', str(initial_angle), nargout=0)
 
         # Set random noise seeds/power
+        print("Updating noise parameters...")
         noise_seed    = str(np.random.randint(1, 40000))
         noise_seed_v  = str(np.random.randint(1, 40000))
         for blk, seed in [( 'Noise', noise_seed ), ( 'Noise_v', noise_seed_v )]:
             eng.set_param(f'{self.model_name}/{blk}', 'seed', f'[{seed}]', nargout=0)
             eng.set_param(f'{self.model_name}/{blk}', 'Cov',  '[0]',          nargout=0)
 
-         # 4. temporarily disable FastRestart **and** any LoadInitialState
+        # temporarily disable FastRestart and any LoadInitialState
+        print("Preparing simulation state...")
         eng.set_param(self.model_name,
                       'FastRestart',       'off',
                       'LoadInitialState',  'off',
                       nargout=0)
         
-       # run zero-length sim to seed the state and create 'xFinal'
-        # run a very short sim to ensure xFinal is created
+        # run zero-length sim to seed the state and create 'xFinal'
+        print("Initializing simulation...")
         eng.eval(
         f"out = sim('{self.model_name}',"
         " 'StopTime','1e-4',"
@@ -171,12 +148,11 @@ class SimulinkEnv(gym.Env):
         nargout=0
         )
 
-        print("Workspace variables:", eng.eval("who", nargout=1))
-
-        # --- Re-enable FastRestart for speed on subsequent steps ---
+        # Re-enable FastRestart for speed on subsequent steps
         eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
 
         # now pull initial angle & velocity
+        print("Getting initial state...")
         angle_lst, time_lst = self.get_data()
         theta0 = angle_lst[-1]
         if len(angle_lst) >= 2:
@@ -185,27 +161,8 @@ class SimulinkEnv(gym.Env):
         else:
             vel0 = 0.0
 
-        # ─── clear the live‐plot buffers ───
-        self._times.clear()
-        self._thetas.clear()
-        self._thetavs.clear()
-        self._us.clear()
-
-        # clear the lines
-        for line in (self.line_theta, self.line_thetav, self.line_u):
-            line.set_data([], [])
-        self.line_rod.set_data([], [])
-        self.point_mass.set_data([], [])
-
-        # redraw empty plot
-        for ax in (self.ax_theta, self.ax_thetav, self.ax_u):
-            ax.relim()
-            ax.autoscale_view()
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
+        print(f"Reset complete. Initial angle: {theta0:.3f}, Initial velocity: {vel0:.3f}\n")
         return np.array([theta0, vel0], dtype=np.float32)
-
 
     def step(self, action):
         # 1. clip & apply action
@@ -225,19 +182,17 @@ class SimulinkEnv(gym.Env):
                         'FastRestart', 'off',
                         nargout=0)
 
-        # 4. run exactly one step, *loading* the previous xFinal, 
-        #    then *saving* the new final state back into xFinal:
+        # 4. run exactly one step
         eng.eval(
         f"out = sim('{self.model_name}',"
         f" 'LoadInitialState','on',"
         f" 'InitialState','xFinal',"
         f" 'StopTime','{stop}',"
         f" 'SaveFinalState','on',"
-        f" 'StateSaveName','xFinal');"  # ✅ correctly ends the sim() call
+        f" 'StateSaveName','xFinal');"
         "xFinal = out.xFinal;",
         nargout=0
         )
-
 
         # 5. immediately re-enable FastRestart for speed
         eng.set_param(self.model_name,
@@ -249,54 +204,30 @@ class SimulinkEnv(gym.Env):
         theta = angle_lst[-1]
         t     = time_lst[-1]
 
-        # 7. finite-difference for velocity
-        if len(time_lst) >= 2:
-            dt  = t - time_lst[-2]
-            vel = (theta - angle_lst[-2]) / (dt or self.dt)
+        # 7. compute velocity
+        if len(angle_lst) >= 2:
+            dt   = time_lst[-1] - time_lst[-2]
+            vel  = (angle_lst[-1] - angle_lst[-2]) / (dt or self.dt)
         else:
-            vel = 0.0
+            vel  = 0.0
 
-        # 8. build obs, reward, done
-        obs    = np.array([theta, vel], dtype=np.float32)
-        reward = np.cos(theta) - 0.1 * vel**2 - 0.01 * u**2
-
-        done   = bool(abs(theta)  > self.angle_threshold 
-                    or t         >= self.max_episode_time)
-
-        # ─── update live‐plot ───
-        self._times.append(t)
-        self._thetas.append(theta)
-        self._thetavs.append(vel)
-        self._us.append(u)
-
-        # Compute pendulum position
-        x = self.pendulum_length * np.sin(theta)
-        y = -self.pendulum_length * np.cos(theta)
-
-        # push data into lines
-        self.line_theta.set_data(self._times, self._thetas)
-        self.line_thetav.set_data(self._times, self._thetavs)
-        self.line_u.set_data(self._times, self._us)
-        self.line_rod.set_data([0, x], [0, y])
-        self.point_mass.set_data([x], [y])
-
-        # rescale axes
-        for ax in (self.ax_theta, self.ax_thetav, self.ax_u):
-            ax.relim()
-            ax.autoscale_view()
-
-        # redraw
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
-        # 9. update your Python clock and return
+        # 8. update clock
         self.current_time = t
-        return obs, reward, done, {"time": t}
 
+        # 9. compute reward
+        reward = -abs(theta) - 0.1*abs(vel) - 0.001*abs(u)
+
+        # 10. check if episode is done
+        done = (t >= self.max_episode_time)
+
+        return np.array([theta, vel], dtype=np.float32), reward, done, {}
 
     def render(self, mode='human'):
         pass
 
     def close(self):
-        plt.close(self.fig)  # Close the matplotlib figure
+        print("\nClosing environment and MATLAB engine...")
+        # Re-enable warnings before closing
+        eng.eval("warning('on', 'Simulink:Engine:ModelOperatingPointChanged');", nargout=0)
         eng.quit()
+        print("Environment closed successfully.\n")
