@@ -1,6 +1,7 @@
 import numpy as np
 from simulink_env import SimulinkEnv
 from stable_baselines3 import TD3
+import time
 
 def evaluate_full_metrics(
     model, env, n_episodes=5,
@@ -54,14 +55,19 @@ def evaluate_full_metrics(
         "steady_state_errors": steady_state_errors
     }
 
-env = SimulinkEnv()
-model = TD3.load("td3_simulinker")
+if __name__ == "__main__":
+    env   = SimulinkEnv()
+    model = TD3.load("td3_simulinker")
 
-metrics = evaluate_full_metrics(
-    model, env,
-    n_episodes=5,
-    target_value=0.0,        # Replace with your setpoint
-    tolerance=0.01,
-    stable_duration=0.5,
-    sim_timestep=0.01
-)
+    start = time.perf_counter()
+    metrics = evaluate_full_metrics(
+        model, env,
+        n_episodes=5,
+        target_value=0.0,
+        tolerance=0.01,
+        stable_duration=0.5,
+        sim_timestep=0.01
+    )
+    elapsed = time.perf_counter() - start
+
+    print(f"Total evaluation time: {elapsed:.2f} seconds")
