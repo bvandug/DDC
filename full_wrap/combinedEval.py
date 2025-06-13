@@ -70,4 +70,4 @@ if __name__ == "__main__":
     )
     elapsed = time.perf_counter() - start
 
-    print(f"Total evaluation time: {elapsed:.2f} seconds")
+    print(f"Total evaluation time: {elapsed:.2f} seconds")
