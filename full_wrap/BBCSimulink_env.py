@@ -8,10 +8,19 @@ class BBCSimulinkEnv(gym.Env):
     """
     A universal Gym environment for the Buck-Boost Converter Simulink model,
     compatible with multiple stable-baselines3 agents (PPO, SAC, TD3, etc.).
+    
+    This corrected version includes the 'goal' in the observation space to allow
+    the agent to generalize across different target voltages.
     """
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, model_name="bbcSim", dt=5e-6, max_episode_time=0.15):
+    def __init__(self, model_name="bbcSim", dt=5e-6, max_episode_time=0.015):
+        """
+        dt: Time step for the simulation
+        max_episode_time: Maximum time for the episode
+        Steps per episode = max_episode_time / dt (e.g. 0.015 / 5e-6 = 3000 steps per episode)
+        Total episodes = Total timesteps / steps per episode (e.g. 25000 / 3000 = 8.33 episodes)
+        """
         # --- Initialization ---
         print("Starting MATLAB engine...")
         self.eng = matlab.engine.start_matlab()
@@ -26,15 +35,12 @@ class BBCSimulinkEnv(gym.Env):
         self.max_episode_time = max_episode_time
         self.current_time = 0.0
 
-        # Define the action space with the TRUE PHYSICAL LIMITS of the duty cycle.
-        # This allows different SB3 agents to adapt correctly.
-        # - SAC/TD3 will automatically scale their [-1, 1] output to this range.
-        # - PPO/A2C will learn to output actions directly within this range.
+        # Define the action space (duty cycle)
         self.action_space = spaces.Box(low=0.1, high=0.9, shape=(1,), dtype=np.float32)
 
-        # Define the observation space
+        # Define the observation space with 4 elements: [voltage, error, derivative_error, goal]
         high = np.finfo(np.float32).max
-        self.observation_space = spaces.Box(low=-high, high=high, shape=(3,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-high, high=high, shape=(4,), dtype=np.float32)
 
         self.prev_error = 0
         self._np_random = None # For seeding
@@ -97,8 +103,6 @@ class BBCSimulinkEnv(gym.Env):
 
         self.eng.set_param(f'{self.model_name}/Goal', 'Value', str(self.goal), nargout=0)
 
-        # This simulation pattern is a known performance bottleneck but necessary for some
-        # complex models. Ensure your Simulink solver is 'discrete' and Fast Restart is ON.
         self.eng.set_param(self.model_name, 'FastRestart', 'off', 'LoadInitialState', 'off', nargout=0)
         self.eng.eval(
             f"out = sim('{self.model_name}', 'StopTime','1e-6', 'SaveFinalState','on', 'StateSaveName','xFinal');"
@@ -122,36 +126,32 @@ class BBCSimulinkEnv(gym.Env):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-        observation = np.array([initial_voltage, self.prev_error, 0.0], dtype=np.float32)
+        # Include the goal in the observation array
+        observation = np.array([initial_voltage, self.prev_error, 0.0, self.goal], dtype=np.float32)
         info = {}
         return observation, info
 
     def step(self, action):
         """
         Takes an action and returns the next state, reward, and done flag.
-        This version is compatible with multiple SB3 agents.
         """
-        # The agent's raw action. SB3 handles scaling or direct output based on the agent.
         proposed_duty_cycle = action[0]
 
         # Define the conditional duty cycle range based on the goal
-        if self.goal > -48: # Buck-ish mode (if the goal is closer to 0)
+        if self.goal > -48: # Buck-ish mode (goal is closer to 0V)
             min_duty = 0.1
             max_duty = 0.5
-        else: # Boost-ish mode
+        else: # Boost-ish mode (goal is more negative than -48V)
             min_duty = 0.5
             max_duty = 0.9
 
-        # Clip the agent's proposed action to the correct conditional range.
-        # This acts as a safety guardrail and prunes the search space.
+        # Clip the agent's proposed action to the correct conditional range
         duty_cycle = float(np.clip(proposed_duty_cycle, min_duty, max_duty))
 
         # Set the parameter and run the simulation for one time step
         self.eng.set_param(f"{self.model_name}/DutyCycleInput", 'Value', str(duty_cycle), nargout=0)
         stop_time = self.current_time + self.dt
-        # NOTE: This block is a major performance bottleneck. For true high-speed training,
-        # a different interaction method (e.g., running the sim with 'SimulationCommand') is needed.
-        # But this works and is robust.
+        
         self.eng.set_param(self.model_name, 'FastRestart', 'off', nargout=0)
         self.eng.eval(
             f"out = sim('{self.model_name}', 'LoadInitialState','on', 'InitialState','xFinal',"
@@ -168,8 +168,13 @@ class BBCSimulinkEnv(gym.Env):
         error = voltage - self.goal
         derivative_error = (error - self.prev_error) / self.dt if self.dt > 0 else 0
         self.prev_error = error
-        observation = np.array([voltage, error, derivative_error], dtype=np.float32)
 
+        # Include the goal in the observation array
+        observation = np.array([voltage, error, derivative_error, self.goal], dtype=np.float32)
+
+        # Reward is negative squared error (to maximize reward by minimizing error)
+        # plus a small penalty for large duty cycle changes to encourage efficiency.
+        # Uses penalty based rewards to encourage the agent to learn the correct duty cycle range for the goal voltage.
         reward = -(error ** 2) - 0.01 * (duty_cycle ** 2)
 
         print(f"Step {len(self._times):<4} | Action (Duty Cycle): {duty_cycle:.4f} -> Voltage: {voltage:.4f} | Goal: {self.goal:.2f} | Reward: {reward:.4f}")
@@ -197,4 +202,5 @@ class BBCSimulinkEnv(gym.Env):
 
     def close(self):
         plt.close(self.fig)
+        print("\nMATLAB engine shut down.")
         self.eng.quit()

@@ -1,76 +1,100 @@
 import os
+import torch
 import numpy as np
+from datetime import datetime
 from stable_baselines3 import TD3
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import BaseCallback
 
-# Import the custom Simulink environment class from the other file
+# Import the custom Simulink environment class
 # Make sure 'BBCSimulink_env.py' is in the same directory
 from BBCSimulink_env import BBCSimulinkEnv
 
-# --- Definition of the Custom Callback ---
-class TimestepAndFinalStatsCallback(BaseCallback):
+# --- Definition of the Custom Callback for Episode Logging ---
+class EpisodeStatsLogger(BaseCallback):
     """
-    Custom callback that logs SB3 stats at a specific timestep frequency
-    and also reports final stats at the end of training.
+    A custom callback that logs episode statistics (reward, length) to the console
+    and to a text file at the end of each episode.
     """
-    def __init__(self, log_freq: int, verbose: int = 0):
-        super(TimestepAndFinalStatsCallback, self).__init__(verbose)
-        self.log_freq = log_freq
+    def __init__(self, log_path: str, verbose: int = 0):
+        super(EpisodeStatsLogger, self).__init__(verbose)
+        self.log_path = log_path
+        self.log_file = None
+        self.episode_rewards = []
+        self.episode_lengths = []
         self.current_episode_reward = 0.0
+        self.current_episode_length = 0
+
+    def _on_training_start(self) -> None:
+        """
+        This method is called before the first rollout starts.
+        We use it to open the log file and write the header.
+        """
+        self.log_file = open(self.log_path, "w")
+        header = f"Training started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        header += "-"*70 + "\n"
+        header += f"{'Episode':<10}{'Total Reward':<20}{'Episode Length':<20}{'Goal Voltage':<20}\n"
+        header += "-"*70 + "\n"
+        self.log_file.write(header)
+        self.log_file.flush()
+        print(header, end='')
 
     def _on_step(self) -> bool:
         """
         This method is called after each step in the environment.
         """
-        # Log the standard SB3 output at the specified frequency
-        if self.n_calls % self.log_freq == 0:
-            # Dumps all the values collected by the logger to the console
-            self.model.logger.dump(step=self.num_timesteps)
-
-        # Accumulate reward for the final, incomplete episode report
-        # self.locals['rewards'] is a numpy array with the reward of the last step
         reward = self.locals['rewards'][0]
         self.current_episode_reward += reward
+        self.current_episode_length += 1
 
-        # Reset the reward tracker if an episode has ended
         done = self.locals['dones'][0]
         if done:
-            self.current_episode_reward = 0.0
+            self.episode_rewards.append(self.current_episode_reward)
+            self.episode_lengths.append(self.current_episode_length)
+            episode_num = len(self.episode_rewards)
+            goal_voltage = self.training_env.get_attr('goal')[0]
 
-        return True # Return True to continue training
+            log_line = (f"{episode_num:<10}"
+                        f"{self.current_episode_reward:<20.4f}"
+                        f"{self.current_episode_length:<20}"
+                        f"{goal_voltage:<20.4f}\n")
+
+            print(log_line, end='')
+            self.log_file.write(log_line)
+            self.log_file.flush()
+
+            self.current_episode_reward = 0.0
+            self.current_episode_length = 0
+
+        return True
 
     def _on_training_end(self) -> None:
         """
         This method is called at the end of training.
         """
-        print("\n--- Training Complete ---")
-
-        # Dump the very last set of logs
-        self.model.logger.dump(step=self.num_timesteps)
-
-        # Report the reward from the final, potentially incomplete, episode
-        print(f"\nReward accumulated in the final (incomplete) episode: {self.current_episode_reward:.4f}")
-        print("-----------------------")
+        footer = "-"*70 + "\n"
+        footer += f"Training finished at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        print(footer, end='')
+        self.log_file.write(footer)
+        self.log_file.close()
 
 
 # --- Main execution block ---
 if __name__ == "__main__":
-    # 1. Instantiate the Simulink Environment using the SB3 helper
+    # 1. Instantiate the Simulink Environment
     print("Starting the environment...")
     env = make_vec_env(BBCSimulinkEnv, n_envs=1)
 
-    # 2. Define training parameters for the TD3 agent
-    total_timesteps = 25000
-    
-    # Define action noise for exploration
+    # 2. Define training parameters
+    # Set timesteps to 27,000 to run for exactly 9 episodes (3000 steps/episode)
+    total_timesteps = 27000
+    log_file_path = "td3_bbc_training_log.txt"
+
     n_actions = env.action_space.shape[-1]
     action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
-    # Create the TD3 model
     print("Creating the model...")
-    # Set verbose=0 to prevent SB3 from logging on its own (our callback handles it)
     model = TD3(
         "MlpPolicy",
         env,
@@ -81,25 +105,25 @@ if __name__ == "__main__":
         gamma=0.99,
         train_freq=(10, "step"), #Train every 10 steps
         action_noise=action_noise,
-        verbose=0, 
+        verbose=1,
     )
 
-    # Instantiate the custom callback to log every 1000 timesteps
-    custom_callback = TimestepAndFinalStatsCallback(log_freq=1000)
+    # 4. Instantiate the custom callback for logging
+    custom_callback = EpisodeStatsLogger(log_path=log_file_path)
 
-    # 3. Train the agent
-    print(f"--- Starting Training {model.__class__.__name__} for {total_timesteps} Timesteps ---")
-    # The callback is passed to the learn method
+    # 5. Train the agent
+    print(f"--- Starting Training for {total_timesteps} Timesteps ---")
+    print(f"Logging episode stats to: {log_file_path}")
+
     model.learn(
         total_timesteps=total_timesteps,
         progress_bar=True,
         callback=custom_callback
     )
-    # The callback now handles the "Training Complete" message and final stats
 
-    # 4. Save the trained model
-    model.save("td3_bbc_model")
-    print("--- Model Saved as td3_bbc_model.zip ---")
+    # 6. Save the trained model
+    model.save("td3_bbc_model_tuned")
+    print("\n--- Model Saved as td3_bbc_model_tuned.zip ---")
 
-    # 5. Close the environment (and the MATLAB engine)
+    # 7. Close the environment (and the MATLAB engine)
     env.close()
