@@ -175,7 +175,23 @@ class BBCSimulinkEnv(gym.Env):
         # Reward is negative squared error (to maximize reward by minimizing error)
         # plus a small penalty for large duty cycle changes to encourage efficiency.
         # Uses penalty based rewards to encourage the agent to learn the correct duty cycle range for the goal voltage.
-        reward = -(error ** 2) - 0.01 * (duty_cycle ** 2)
+        # Reward Function Components:
+        # 1. Original squared error penalty
+        reward_error = -(error ** 2) # ACCURACY (negative reward)
+
+        # 2. Penalty for large duty cycle changes
+        reward_duty = -0.01 * (duty_cycle ** 2) # EFFICIENCY (negative reward)
+
+        # 3. Reward for making progress (i.e. reducing the error)
+        progress = abs(self.prev_error) - abs(error)
+        reward_progress = progress * 10 # RESPONSIVENESS (positive reward)
+
+        # 4. Penalty for instability (large voltage changes)
+        reward_instability = -0.1 * (derivative_error ** 2) # STABILITY (negative reward)
+
+        
+        # reward = -(error ** 2) - 0.01 * (duty_cycle ** 2) + (abs(self.prev_error) - abs(error))*10 - 0.1 * (derivative_error ** 2)
+        reward = reward_error + reward_duty + reward_progress + reward_instability
 
         print(f"Step {len(self._times):<4} | Action (Duty Cycle): {duty_cycle:.4f} -> Voltage: {voltage:.4f} | Goal: {self.goal:.2f} | Reward: {reward:.4f}")
 
