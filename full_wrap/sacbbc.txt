@@ -1,0 +1,51 @@
+import os
+import numpy as np
+from stable_baselines3 import SAC
+from stable_baselines3.common.env_util import make_vec_env
+
+# Import the custom Simulink environment class from the other file
+from BBCSimulink_env import BBCSimulinkEnv
+
+# --- Main execution block ---
+if __name__ == "__main__":
+    # 1. Instantiate the Simulink Environment using the SB3 helper
+    print("Starting the environment...")
+    env = make_vec_env(BBCSimulinkEnv, n_envs=2) #n_envs should approx. be the number of cores on the machine
+
+    # 2. Define training parameters for the SAC agent
+    total_timesteps = 2000
+
+    print(f"Creating the model...")
+    model = SAC(
+        "MlpPolicy",
+        env,
+        learning_rate=3e-4,
+        buffer_size=1_000_000,
+        batch_size=256,
+        tau=0.005,
+        gamma=0.99,
+        train_freq=(32, "step"),   # Train less often to speed up wall-clock time
+        gradient_steps=32,         
+        policy_kwargs=dict(net_arch=[64, 64]), # Use the smaller, faster network
+        learning_starts=1000,
+        use_sde=True,
+        verbose=1,
+        tensorboard_log="./bbc_sac_tensorboard/"
+    )
+
+    # 3. Train the agent
+    print(f"--- Starting Training {model.__class__.__name__} for {total_timesteps} Timesteps ---")
+    model.learn(
+        total_timesteps=total_timesteps,
+        progress_bar=True,
+        log_interval=1000
+    )
+    print("--- Training Complete ---")
+
+    # 4. Save the trained model
+    model_save_name = "sac_bbc_model_fast_agent_2"
+    model.save(model_save_name)
+    print(f"--- Model Saved as {model_save_name}.zip ---")
+
+    # 5. Close the environment (and the MATLAB engine)
+    env.close()
