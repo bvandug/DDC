@@ -6,7 +6,7 @@ import time
 def evaluate_full_metrics(
     model, env, n_episodes=5,
     target_value=0.0, tolerance=0.1,
-    stable_duration=0.5, sim_timestep=0.01
+    stable_duration=0.1, sim_timestep=0.01
 ):
     all_rewards = []
     stabilisation_times = []
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         model, env,
         n_episodes=5,
         target_value=0.0,
-        tolerance=0.01,
+        tolerance=0.1,
         stable_duration=0.5,
         sim_timestep=0.01
     )

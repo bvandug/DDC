@@ -146,15 +146,20 @@ class SimulinkEnv(gym.Env):
         theta = angle_lst[-1]
         t = time_lst[-1]
         vel = (
-            (theta - angle_lst[-2]) / (t - time_lst[-2]) if len(time_lst) >= 2 else 0.0
+            (theta - angle_lst[-2]) / (t - time_lst[-2]) if len(angle_lst) >= 2 else 0.0
         )
         obs = np.array([theta, vel], dtype=np.float32)
-        reward = np.cos(theta)
+
+        # Custom reward with velocity and effort penalties
+        k_vel = 0.5
+        k_u = 0.05
+        reward = np.cos(theta) #- k_vel * (vel ** 2) - k_u * (u ** 2)
+
         done = abs(theta) > self.angle_threshold or t >= self.max_episode_time
-
-
         self.current_time = t
+
         return obs, reward, done, {"time": t}
+
 
     def render(self, mode="human"):
         pass
