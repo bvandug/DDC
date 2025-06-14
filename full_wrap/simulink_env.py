@@ -1,307 +1,200 @@
-# simulink_env.py
-
 import gym
 from gym import spaces
 import numpy as np
 import matlab.engine
 import matplotlib.pyplot as plt
 
-# ────────────────────────────────────────────────────────────────────────────────
-# Start MATLAB engine exactly once, at import time, and bind it to the module
-# name `eng`.  Now every function in this file can refer to that same engine.
-# ────────────────────────────────────────────────────────────────────────────────
 
 class SimulinkEnv(gym.Env):
-    """
-    A Gym wrapper around your Pendulum-on-Cart Simulink model,
-    now using the global `eng` and the unmodified get_data().
-    """
-    metadata = {'render.modes': []}
+    metadata = {"render.modes": []}
 
-    def __init__(self,
-             model_name: str = "PendCart",
-             agent_block: str = "PendCart/DRL",
-             dt: float = 0.02,
-             max_episode_time: float = 5,
-             angle_threshold: float = np.pi/3):
+    def __init__(
+    self,
+    model_name: str = "PendCart",
+    agent_block: str = "PendCart/DRL",
+    dt: float = 0.01,
+    max_episode_time: float = 5,
+    angle_threshold: float = np.pi / 3,
+    ):
         super().__init__()
-        global eng
+
+        import shutil
+        import tempfile
+        import uuid
+        import os
+
+        # 🔄 Instance-specific MATLAB engine
         print("Starting MATLAB engine...")
-        eng = matlab.engine.start_matlab()
-        # load your model once, via the global engine
-        eng.load_system(model_name, nargout=0)
-        eng.set_param('PendCart', 'FastRestart', 'on', nargout=0)
-        # eng.set_param(self.model_name, 'SimulationMode', 'Accelerator', nargout=0)
+        self.eng = matlab.engine.start_matlab()
 
+        # 🆕 Create a unique copy of the model file
+        unique_id = uuid.uuid4().hex[:8]
+        self.model_name = f"{model_name}_{unique_id}"
+        self.model_path = os.path.join(tempfile.gettempdir(), f"{self.model_name}.slx")
+        shutil.copy(f"{model_name}.slx", self.model_path)
 
-        self.model_name       = model_name
-        self.agent_block      = agent_block
-        self.dt               = dt
-        self.current_time     = 0.0
+        # Load the unique model copy
+        self.eng.load_system(self.model_path, nargout=0)
+        self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
+
+        self.agent_block = agent_block
+        self.dt = dt
+        self.current_time = 0.0
         self.max_episode_time = max_episode_time
-        self.angle_threshold  = angle_threshold
-        self.pendulum_length  = 1.0  # Length of the pendulum for visualization
+        self.angle_threshold = angle_threshold
+        self.pendulum_length = 1.0
 
         max_force = 10.0
         self.action_space = spaces.Box(
-            low=-max_force, high=+max_force,
-            shape=(1,), dtype=np.float32
+            low=-max_force, high=+max_force, shape=(1,), dtype=np.float32
         )
         high = np.array([np.pi, np.finfo(np.float32).max], np.float32)
-        self.observation_space = spaces.Box(
-            low=-high, high=high, dtype=np.float32
-        )
+        self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
-        # Set random initial angle
+        # Random init angle
         initial_angle = np.random.uniform(-1, 1)
         while -0.05 <= initial_angle <= 0.05:
             initial_angle = np.random.uniform(-1, 1)
-        eng.set_param(f'{model_name}/Pendulum and Cart', 'init', str(initial_angle), nargout=0)
+        self.eng.set_param(
+            f"{self.model_name}/Pendulum and Cart", "init", str(initial_angle), nargout=0
+        )
 
-        # Set random noise
-        noise_seed   = str(np.random.randint(1, high=40000))
-        noise_power  = 0
-        eng.set_param(f'{model_name}/Noise',   'seed', f'[{noise_seed}]', nargout=0)
-        eng.set_param(f'{model_name}/Noise',   'Cov',  f'[{noise_power}]',  nargout=0)
-        noise_seed_v = str(np.random.randint(1, high=40000))
+        # Random noise
+        noise_seed = str(np.random.randint(1, 40000))
+        noise_power = 0
+        self.eng.set_param(f"{self.model_name}/Noise", "seed", f"[{noise_seed}]", nargout=0)
+        self.eng.set_param(f"{self.model_name}/Noise", "Cov", f"[{noise_power}]", nargout=0)
+        noise_seed_v = str(np.random.randint(1, 40000))
         noise_power_v = 0
-        eng.set_param(f'{model_name}/Noise_v', 'seed', f'[{noise_seed_v}]', nargout=0)
-        eng.set_param(f'{model_name}/Noise_v', 'Cov',  f'[{noise_power_v}]', nargout=0)
-
-        #----------------------------------------------------------------------------------------------------------------
-        # ─── set up live‐plot ───
-        plt.ion()
-        self.fig, (self.ax_anim, self.ax_theta, self.ax_thetav, self.ax_u) = plt.subplots(4, 1, figsize=(6, 10))
-        
-        # Set up animation axes
-        self.ax_anim.axis('off')
-        L = self.pendulum_length
-        self.ax_anim.set_xlim(-L, L)
-        self.ax_anim.set_ylim(-L, L)
-        self.ax_anim.set_aspect('equal')
-        
-        # Create empty Line2D objects for each signal
-        self.line_rod, = self.ax_anim.plot([], [], lw=3)    # the line from pivot to mass
-        self.point_mass, = self.ax_anim.plot([], [], 'o', ms=8)  # the mass at the end
-        self.line_theta   = self.ax_theta  .plot([], [], label="θ")[0]
-        self.line_thetav  = self.ax_thetav .plot([], [], label="θ̇")[0]
-        self.line_u       = self.ax_u      .plot([], [], label="u")[0]
-        
-        for ax in (self.ax_theta, self.ax_thetav, self.ax_u):
-            ax.set_xlabel("time (s)")
-            ax.legend(loc="upper right")
-
-        # buffers to store data
-        self._times   = []
-        self._thetas  = []
-        self._thetavs = []
-        self._us      = []
-        #----------------------------------------------------------------------------------------------------------------
+        self.eng.set_param(
+            f"{self.model_name}/Noise_v", "seed", f"[{noise_seed_v}]", nargout=0
+        )
+        self.eng.set_param(
+            f"{self.model_name}/Noise_v", "Cov", f"[{noise_power_v}]", nargout=0
+        )
 
 
     def get_data(self):
-        """
-        Collects and returns the workspace data, handling both
-        single-value and multi-value returns from MATLAB.
-        Returns:
-            angle_lst (List[float]) : Observed angles.
-            time_lst  (List[float]) : Simulation times.
-        """
-        # pull back whatever MATLAB has in out.angle / out.tout
-        raw_ang  = eng.eval("out.angle", nargout=1)
-        raw_time = eng.eval("out.tout",  nargout=1)
-
-        # if it's a bare float, wrap it so our loop works
-        if isinstance(raw_ang, float):
-            angle_2d = [[raw_ang]]
-        else:
-            angle_2d = raw_ang
-
-        if isinstance(raw_time, float):
-            time_2d = [[raw_time]]
-        else:
-            time_2d = raw_time
-
-        # now your original two-loops will never see a float
-        angle_lst = []
-        for angle in angle_2d:
-            # angle might be [val], so angle[0] is safe
-            angle_lst.append(angle[0])
-
-        time_lst = []
-        for t in time_2d:
-            time_lst.append(t[0])
-
-        # print(f"angle:({angle_lst}")
-        # print(f"{time_lst =}")
-
+        raw_ang = self.eng.eval("out.angle", nargout=1)
+        raw_time = self.eng.eval("out.tout", nargout=1)
+        angle_2d = [[raw_ang]] if isinstance(raw_ang, float) else raw_ang
+        time_2d = [[raw_time]] if isinstance(raw_time, float) else raw_time
+        angle_lst = [a[0] for a in angle_2d]
+        time_lst = [t[0] for t in time_2d]
         return angle_lst, time_lst
 
     def reset(self):
-        print("resetting")
-        # stop any sim and zero the clock
-        self.current_time = 0.0
-        eng.set_param(self.model_name, 'SimulationCommand', 'stop', nargout=0)
 
-        # Set random initial angle
+        self.current_time = 0.0
+        self.eng.set_param(self.model_name, "SimulationCommand", "stop", nargout=0)
+
         initial_angle = np.random.uniform(-1, 1)
         while -0.05 < initial_angle < 0.05:
             initial_angle = np.random.uniform(-1, 1)
-        eng.set_param(f'{self.model_name}/Pendulum and Cart', 'init', str(initial_angle), nargout=0)
-
-        # Set random noise seeds/power
-        noise_seed    = str(np.random.randint(1, 40000))
-        noise_seed_v  = str(np.random.randint(1, 40000))
-        for blk, seed in [( 'Noise', noise_seed ), ( 'Noise_v', noise_seed_v )]:
-            eng.set_param(f'{self.model_name}/{blk}', 'seed', f'[{seed}]', nargout=0)
-            eng.set_param(f'{self.model_name}/{blk}', 'Cov',  '[0]',          nargout=0)
-
-         # 4. temporarily disable FastRestart **and** any LoadInitialState
-        eng.set_param(self.model_name,
-                      'FastRestart',       'off',
-                      'LoadInitialState',  'off',
-                      nargout=0)
-        
-       # run zero-length sim to seed the state and create 'xFinal'
-        # run a very short sim to ensure xFinal is created
-        eng.eval(
-        f"out = sim('{self.model_name}',"
-        " 'StopTime','1e-4',"
-        " 'SaveFinalState','on',"
-        " 'StateSaveName','xFinal');"
-        "xFinal = out.xFinal;",
-        nargout=0
+        self.eng.set_param(
+            f"{self.model_name}/Pendulum and Cart",
+            "init",
+            str(initial_angle),
+            nargout=0,
         )
 
-        print("Workspace variables:", eng.eval("who", nargout=1))
+        noise_seed = str(np.random.randint(1, 40000))
+        noise_seed_v = str(np.random.randint(1, 40000))
+        for blk, seed in [("Noise", noise_seed), ("Noise_v", noise_seed_v)]:
+            self.eng.set_param(
+                f"{self.model_name}/{blk}", "seed", f"[{seed}]", nargout=0
+            )
+            self.eng.set_param(f"{self.model_name}/{blk}", "Cov", "[0]", nargout=0)
 
-        # --- Re-enable FastRestart for speed on subsequent steps ---
-        eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
+        self.eng.set_param(
+            self.model_name, "FastRestart", "off", "LoadInitialState", "off", nargout=0
+        )
+        self.eng.eval(
+            f"out = sim('{self.model_name}', 'StopTime','1e-4', 'SaveFinalState','on', 'StateSaveName','xFinal'); xFinal = out.xFinal;",
+            nargout=0,
+        )
+        self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
-        # now pull initial angle & velocity
         angle_lst, time_lst = self.get_data()
         theta0 = angle_lst[-1]
-        if len(angle_lst) >= 2:
-            dt   = time_lst[-1] - time_lst[-2]
-            vel0 = (angle_lst[-1] - angle_lst[-2]) / (dt or self.dt)
-        else:
-            vel0 = 0.0
-
-        #----------------------------------------------------------------------------------------------------------
-        # ─── clear the live‐plot buffers ───
-        self._times.clear()
-        self._thetas.clear()
-        self._thetavs.clear()
-        self._us.clear()
-
-        # clear the lines
-        for line in (self.line_theta, self.line_thetav, self.line_u):
-            line.set_data([], [])
-        self.line_rod.set_data([], [])
-        self.point_mass.set_data([], [])
-
-        # redraw empty plot
-        for ax in (self.ax_theta, self.ax_thetav, self.ax_u):
-            ax.relim()
-            ax.autoscale_view()
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-        #----------------------------------------------------------------------------------------------------------
-        return np.array([theta0, vel0], dtype=np.float32)
-
-
-    def step(self, action):
-        # 1. clip & apply action
-        u = float(np.clip(action,
-                            self.action_space.low,
-                            self.action_space.high))
-        eng.set_param(f"{self.model_name}/Constant",
-                        'Value', str(u),
-                        nargout=0)
-
-        # 2. decide next stop time
-        start = self.current_time
-        stop  = start + self.dt
-
-        # 3. turn FastRestart OFF for this one sim  
-        eng.set_param(self.model_name,
-                        'FastRestart', 'off',
-                        nargout=0)
-
-        # 4. run exactly one step, *loading* the previous xFinal, 
-        #    then *saving* the new final state back into xFinal:
-        eng.eval(
-        f"out = sim('{self.model_name}',"
-        f" 'LoadInitialState','on',"
-        f" 'InitialState','xFinal',"
-        f" 'StopTime','{stop}',"
-        f" 'SaveFinalState','on',"
-        f" 'StateSaveName','xFinal');"
-        "xFinal = out.xFinal;",
-        nargout=0
+        vel0 = (
+            (angle_lst[-1] - angle_lst[-2]) / (time_lst[-1] - time_lst[-2])
+            if len(angle_lst) >= 2
+            else 0.0
         )
 
+        return np.array([theta0, vel0], dtype=np.float32)
 
-        # 5. immediately re-enable FastRestart for speed
-        eng.set_param(self.model_name,
-                        'FastRestart', 'on',
-                        nargout=0)
+    def step(self, action):
+        u = float(np.clip(action, self.action_space.low, self.action_space.high))
+        self.eng.set_param(f"{self.model_name}/Constant", "Value", str(u), nargout=0)
+        start, stop = self.current_time, self.current_time + self.dt
+        self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
+        self.eng.eval(
+            f"out = sim('{self.model_name}',"
+            f" 'LoadInitialState','on',"
+            f" 'InitialState','xFinal',"
+            f" 'StopTime','{stop}',"
+            f" 'SaveFinalState','on',"
+            f" 'StateSaveName','xFinal');"
+            "xFinal = out.xFinal;",
+            nargout=0,
+        )
+        self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
-        # 6. grab the latest angle & time
         angle_lst, time_lst = self.get_data()
         theta = angle_lst[-1]
-        t     = time_lst[-1]
-
-        # 7. finite-difference for velocity
-        if len(time_lst) >= 2:
-            dt  = t - time_lst[-2]
-            vel = (theta - angle_lst[-2]) / (dt or self.dt)
-        else:
-            vel = 0.0
-
-        # 8. build obs, reward, done
-        obs    = np.array([theta, vel], dtype=np.float32)
+        t = time_lst[-1]
+        vel = (
+            (theta - angle_lst[-2]) / (t - time_lst[-2]) if len(time_lst) >= 2 else 0.0
+        )
+        obs = np.array([theta, vel], dtype=np.float32)
         reward = np.cos(theta)
-
-        done   = bool(abs(theta)  > self.angle_threshold 
-                    or t         >= self.max_episode_time)
+        done = abs(theta) > self.angle_threshold or t >= self.max_episode_time
 
 
-        #-----------------------------------------------------------------------------------------------------------
-        # ─── update live‐plot ───
-        self._times.append(t)
-        self._thetas.append(theta)
-        self._thetavs.append(vel)
-        self._us.append(u)
-
-        # Compute pendulum position
-        x = self.pendulum_length * np.sin(theta)
-        y = -self.pendulum_length * np.cos(theta)
-
-        # push data into lines
-        self.line_theta.set_data(self._times, self._thetas)
-        self.line_thetav.set_data(self._times, self._thetavs)
-        self.line_u.set_data(self._times, self._us)
-        self.line_rod.set_data([0, x], [0, y])
-        self.point_mass.set_data([x], [y])
-
-        # rescale axes
-        for ax in (self.ax_theta, self.ax_thetav, self.ax_u):
-            ax.relim()
-            ax.autoscale_view()
-
-        # redraw
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-        #-----------------------------------------------------------------------------------------------------------
-        # 9. update your Python clock and return
         self.current_time = t
         return obs, reward, done, {"time": t}
 
-
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         pass
 
     def close(self):
-        plt.close(self.fig)  # Close the matplotlib figure
-        eng.quit()
+        import os
+        import shutil
+        import glob
+
+        self.eng.quit()
+
+        # Clean up temporary model file
+        if hasattr(self, "model_path") and os.path.exists(self.model_path):
+            try:
+                os.remove(self.model_path)
+                print(f"Deleted temporary model file: {self.model_path}")
+            except Exception as e:
+                print(f"Warning: could not delete model file: {e}")
+
+        # Clean slprj/<model_name> folder (worker-specific)
+        slprj_model_dir = os.path.join(os.getcwd(), "slprj", self.model_name)
+        if os.path.exists(slprj_model_dir):
+            try:
+                shutil.rmtree(slprj_model_dir)
+                print(f"Deleted slprj cache for model: {self.model_name}")
+            except Exception as e:
+                print(f"Warning: could not delete slprj folder: {e}")
+
+        # Remove any autosave or .slxc file linked to this model
+        base_name = os.path.splitext(self.model_name)[0]
+        autosave_file = f"{base_name}.slx.autosave"
+        slxc_file = f"{base_name}.slxc"
+
+        for filename in [autosave_file, slxc_file]:
+            full_path = os.path.join(os.getcwd(), filename)
+            if os.path.exists(full_path):
+                try:
+                    os.remove(full_path)
+                    print(f"Deleted: {full_path}")
+                except Exception as e:
+                    print(f"Warning: could not delete file: {full_path}: {e}")
+
+

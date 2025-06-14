@@ -1,0 +1,235 @@
+PS C:\Users\benva\OneDrive\Documents\MATLAB> myenv\Scripts\Activate.ps1
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB> cd .\full_wrap\
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap> python .\hyperparameter_tuning.py
+Starting hyperparameter tuning...
+
+==================================================
+Tuning hyperparameters for TD3...
+==================================================
+
+
+Tuning TD3 with 4 parallel workers
+[I 2025-06-14 00:03:33,578] A new study created in memory with name: no-name-7ca45ad8-ad67-4d57-b3a2-fdddfc4c1e2e
+Tuning TD3:   0%|                                                                                                                                                                                               | 0/50 [00:00<?, ?it/s]Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Using device: cuda
+Using device: cuda
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\vec_env\patch_gym.py:49: UserWarning: You provided an OpenAI Gym environment. We strongly recommend transitioning to Gymnasium environments. Stable-Baselines3 is automatically wrapping your environments in a compatibility layer, which could potentially cause issues.
+  warnings.warn(
+Using device: cuda
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_561c776c.slx
+[I 2025-06-14 00:43:11,896] Trial 0 finished with value: 118.94138722833227 and parameters: {'learning_rate': 0.0009531916300780667, 'buffer_size': 127040, 'batch_size': 511, 'tau': 0.007702202735525895, 'gamma': 0.9428889303152354, 'policy_delay': 4, 'action_noise_sigma': 0.1020777897320515, 'target_policy_noise': 0.10477469465730704, 'target_noise_clip': 0.5635043295165336, 'n_layers': 2, 'layer_size': 64, 'activation_fn': 'relu'}. Best is trial 0 with value: 118.94138722833227.
+Tuning TD3:   2%|███▏                                                                                                                                                           | 1/50 [39:38<32:22:17, 2378.32s/it, best_value=118.94]Starting MATLAB engine...
+Using device: cuda
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\vec_env\patch_gym.py:49: UserWarning: You provided an OpenAI Gym environment. We strongly recommend transitioning to Gymnasium environments. Stable-Baselines3 is automatically wrapping your environments in a compatibility layer, which could potentially cause issues.
+  warnings.warn(
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_41f0a3e4.slx
+[I 2025-06-14 00:44:05,679] Trial 3 finished with value: 17.751983440446633 and parameters: {'learning_rate': 4.198908361153436e-05, 'buffer_size': 95293, 'batch_size': 486, 'tau': 0.01455032036054844, 'gamma': 0.9529863834558269, 'policy_delay': 3, 'action_noise_sigma': 0.3087692840060601, 'target_policy_noise': 0.20498669587759868, 'target_noise_clip': 0.6631082100450579, 'n_layers': 1, 'layer_size': 203, 'activation_fn': 'leaky_relu'}. Best is trial 0 with value: 118.94138722833227.
+Tuning TD3:   4%|██████▎                                                                                                                                                        | 2/50 [40:32<13:28:45, 1010.94s/it, best_value=118.94]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6c0fb391.slx
+[I 2025-06-14 00:45:25,356] Trial 1 finished with value: 105.4188849512199 and parameters: {'learning_rate': 1.8714230386716687e-05, 'buffer_size': 52508, 'batch_size': 281, 'tau': 0.019084259889626806, 'gamma': 0.941608448191699, 'policy_delay': 1, 'action_noise_sigma': 0.29896719911741815, 'target_policy_noise': 0.43030112808690535, 'target_noise_clip': 0.33658977385601957, 'n_layers': 2, 'layer_size': 153, 'activation_fn': 'elu'}. Best is trial 0 with value: 118.94138722833227.
+Tuning TD3:   6%|█████████▋                                                                                                                                                       | 3/50 [41:51<7:38:48, 585.71s/it, best_value=118.94]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_eb7329eb.slx
+[I 2025-06-14 00:51:51,777] Trial 2 finished with value: 490.03284926703645 and parameters: {'learning_rate': 0.00012567046648622813, 'buffer_size': 199627, 'batch_size': 357, 'tau': 0.0012617998752425129, 'gamma': 0.9094568561921038, 'policy_delay': 2, 'action_noise_sigma': 0.4338302553552793, 'target_policy_noise': 0.39261547272129194, 'target_noise_clip': 0.6649082926020251, 'n_layers': 2, 'layer_size': 242, 'activation_fn': 'elu'}. Best is trial 2 with value: 490.03284926703645.
+Tuning TD3:   8%|████████████▉                                                                                                                                                    | 4/50 [48:18<6:28:43, 507.03s/it, best_value=490.03]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_19e0da64.slx
+[I 2025-06-14 01:27:55,572] Trial 4 finished with value: 397.7257861368098 and parameters: {'learning_rate': 0.0002329218030016842, 'buffer_size': 67869, 'batch_size': 385, 'tau': 0.012082734599694923, 'gamma': 0.9633998266717692, 'policy_delay': 1, 'action_noise_sigma': 0.4855536911520647, 'target_policy_noise': 0.32127073872471723, 'target_noise_clip': 0.30037574562916675, 'n_layers': 2, 'layer_size': 120, 'activation_fn': 'leaky_relu'}. Best is trial 2 with value: 490.03284926703645.
+Tuning TD3:  10%|███████████████▋                                                                                                                                             | 5/50 [1:24:21<13:48:21, 1104.47s/it, best_value=490.03]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_5c2d5006.slx
+[I 2025-06-14 01:30:11,009] Trial 5 finished with value: 490.12145716507484 and parameters: {'learning_rate': 0.0007424670830578253, 'buffer_size': 146096, 'batch_size': 511, 'tau': 0.013231266351160998, 'gamma': 0.9420904298697835, 'policy_delay': 3, 'action_noise_sigma': 0.2564049275955024, 'target_policy_noise': 0.29737110803138256, 'target_noise_clip': 0.53962609691064, 'n_layers': 2, 'layer_size': 255, 'activation_fn': 'leaky_relu'}. Best is trial 5 with value: 490.12145716507484.
+Tuning TD3:  12%|███████████████████                                                                                                                                            | 6/50 [1:26:37<9:28:19, 775.00s/it, best_value=490.12]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_870d6c1a.slx
+[I 2025-06-14 01:31:49,443] Trial 6 finished with value: 448.1069187091674 and parameters: {'learning_rate': 2.803318842288408e-05, 'buffer_size': 156105, 'batch_size': 143, 'tau': 0.015998857689195217, 'gamma': 0.9351695514658965, 'policy_delay': 4, 'action_noise_sigma': 0.28396410925640736, 'target_policy_noise': 0.15858465527168222, 'target_noise_clip': 0.30820798516562503, 'n_layers': 3, 'layer_size': 229, 'activation_fn': 'leaky_relu'}. Best is trial 5 with value: 490.12145716507484.
+Tuning TD3:  14%|██████████████████████▎                                                                                                                                        | 7/50 [1:28:15<6:36:54, 553.81s/it, best_value=490.12]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_9fe6d97a.slx
+[I 2025-06-14 01:37:25,743] Trial 7 finished with value: 474.3458028570382 and parameters: {'learning_rate': 0.0004825682677110868, 'buffer_size': 106645, 'batch_size': 90, 'tau': 0.01822402724722868, 'gamma': 0.9195382208820211, 'policy_delay': 3, 'action_noise_sigma': 0.2933939006424527, 'target_policy_noise': 0.48259613660415657, 'target_noise_clip': 0.6080256007623017, 'n_layers': 3, 'layer_size': 119, 'activation_fn': 'elu'}. Best is trial 5 with value: 490.12145716507484.
+Tuning TD3:  16%|█████████████████████████▍                                                                                                                                     | 8/50 [1:33:52<5:39:11, 484.57s/it, best_value=490.12]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_22601ebb.slx
+[I 2025-06-14 02:13:58,629] Trial 8 finished with value: 497.3096977756055 and parameters: {'learning_rate': 0.00046429685573950736, 'buffer_size': 133639, 'batch_size': 326, 'tau': 0.019642256794568266, 'gamma': 0.9500155212346649, 'policy_delay': 4, 'action_noise_sigma': 0.25910492239204236, 'target_policy_noise': 0.2908752489737062, 'target_noise_clip': 0.4826182489663199, 'n_layers': 3, 'layer_size': 59, 'activation_fn': 'relu'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  18%|████████████████████████████▎                                                                                                                                | 9/50 [2:10:25<11:36:03, 1018.61s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_684e9e5e.slx
+[I 2025-06-14 02:15:09,550] Trial 9 finished with value: 464.5074354880926 and parameters: {'learning_rate': 0.0004960704011572842, 'buffer_size': 165909, 'batch_size': 137, 'tau': 0.006703508638999854, 'gamma': 0.9454011658851493, 'policy_delay': 3, 'action_noise_sigma': 0.3749117206745515, 'target_policy_noise': 0.2710592013403646, 'target_noise_clip': 0.35138884217002214, 'n_layers': 2, 'layer_size': 137, 'activation_fn': 'tanh'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  20%|███████████████████████████████▌                                                                                                                              | 10/50 [2:11:35<8:04:01, 726.04s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_0b01bce7.slx
+[I 2025-06-14 02:17:31,945] Trial 10 finished with value: 494.1001301409565 and parameters: {'learning_rate': 0.0002573200468599372, 'buffer_size': 116643, 'batch_size': 203, 'tau': 0.010205393872537407, 'gamma': 0.9112623587364241, 'policy_delay': 2, 'action_noise_sigma': 0.2819750984674717, 'target_policy_noise': 0.20165856712133534, 'target_noise_clip': 0.5600595923500199, 'n_layers': 1, 'layer_size': 225, 'activation_fn': 'elu'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  22%|██████████████████████████████████▊                                                                                                                           | 11/50 [2:13:58<5:55:49, 547.42s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_ee8f037d.slx
+[I 2025-06-14 02:23:51,757] Trial 11 finished with value: 461.1316485209305 and parameters: {'learning_rate': 6.211329555268307e-05, 'buffer_size': 167472, 'batch_size': 425, 'tau': 0.013100007685831996, 'gamma': 0.969710836209125, 'policy_delay': 1, 'action_noise_sigma': 0.3384803747488519, 'target_policy_noise': 0.32109563188043366, 'target_noise_clip': 0.6705887091643088, 'n_layers': 3, 'layer_size': 159, 'activation_fn': 'elu'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  24%|█████████████████████████████████████▉                                                                                                                        | 12/50 [2:20:18<5:14:24, 496.43s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a59ad1a3.slx
+[I 2025-06-14 02:56:37,930] Trial 12 finished with value: 303.9676637454062 and parameters: {'learning_rate': 0.0008277317355009393, 'buffer_size': 138506, 'batch_size': 287, 'tau': 0.0066292716415517735, 'gamma': 0.9734432073112561, 'policy_delay': 3, 'action_noise_sigma': 0.20422120495258156, 'target_policy_noise': 0.2525556029138484, 'target_noise_clip': 0.5254542781612599, 'n_layers': 1, 'layer_size': 215, 'activation_fn': 'relu'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  26%|█████████████████████████████████████████                                                                                                                     | 13/50 [2:53:04<9:40:41, 941.67s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_2fc91285.slx
+[I 2025-06-14 02:58:50,065] Trial 13 finished with value: 223.35809226052328 and parameters: {'learning_rate': 8.275750582088829e-05, 'buffer_size': 189724, 'batch_size': 268, 'tau': 0.008156628633290055, 'gamma': 0.9966978993491016, 'policy_delay': 4, 'action_noise_sigma': 0.16796761275022412, 'target_policy_noise': 0.3696195823545837, 'target_noise_clip': 0.4525981198147895, 'n_layers': 3, 'layer_size': 36, 'activation_fn': 'relu'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  28%|████████████████████████████████████████████▏                                                                                                                 | 14/50 [2:55:16<6:58:17, 697.15s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_83ffb243.slx
+[I 2025-06-14 03:05:15,015] Trial 14 finished with value: 472.5283805000813 and parameters: {'learning_rate': 0.0001978991579883752, 'buffer_size': 117968, 'batch_size': 232, 'tau': 0.009133656191021413, 'gamma': 0.9921120818414719, 'policy_delay': 2, 'action_noise_sigma': 0.1797298088467022, 'target_policy_noise': 0.22897961506891912, 'target_noise_clip': 0.4407205702137593, 'n_layers': 1, 'layer_size': 56, 'activation_fn': 'relu'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  30%|███████████████████████████████████████████████▍                                                                                                              | 15/50 [3:01:41<5:51:46, 603.04s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b49b77aa.slx
+[I 2025-06-14 03:11:38,829] Trial 15 finished with value: 433.5991145644713 and parameters: {'learning_rate': 0.0002037071597480834, 'buffer_size': 118473, 'batch_size': 257, 'tau': 0.008539342481418962, 'gamma': 0.9949685162198393, 'policy_delay': 2, 'action_noise_sigma': 0.18981995339466362, 'target_policy_noise': 0.2393595758450474, 'target_noise_clip': 0.44636565267912426, 'n_layers': 1, 'layer_size': 54, 'activation_fn': 'relu'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  32%|██████████████████████████████████████████████████▌                                                                                                           | 16/50 [3:08:05<5:04:19, 537.05s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_33513d8c.slx
+[I 2025-06-14 03:43:49,088] Trial 16 finished with value: 421.8776872420027 and parameters: {'learning_rate': 0.0001835215910432004, 'buffer_size': 98762, 'batch_size': 202, 'tau': 0.009295901343692264, 'gamma': 0.9982804063867157, 'policy_delay': 2, 'action_noise_sigma': 0.20482558409862686, 'target_policy_noise': 0.20434830211153487, 'target_noise_clip': 0.4303400772466524, 'n_layers': 1, 'layer_size': 48, 'activation_fn': 'relu'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  34%|█████████████████████████████████████████████████████▋                                                                                                        | 17/50 [3:40:15<8:45:47, 955.99s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b3a1aa48.slx
+[I 2025-06-14 03:44:28,429] Trial 17 finished with value: 347.64595487665724 and parameters: {'learning_rate': 0.00021586868931560118, 'buffer_size': 113275, 'batch_size': 233, 'tau': 0.010103321817902855, 'gamma': 0.9228238077544657, 'policy_delay': 2, 'action_noise_sigma': 0.22526347928490106, 'target_policy_noise': 0.206925291130005, 'target_noise_clip': 0.4480460494509484, 'n_layers': 1, 'layer_size': 91, 'activation_fn': 'tanh'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  36%|████████████████████████████████████████████████████████▉                                                                                                     | 18/50 [3:40:54<6:02:57, 680.55s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_f608cb8c.slx
+[I 2025-06-14 03:51:35,809] Trial 18 finished with value: 479.2562930531737 and parameters: {'learning_rate': 0.00024248995924000432, 'buffer_size': 89138, 'batch_size': 210, 'tau': 0.0028809432635791337, 'gamma': 0.9015597269795367, 'policy_delay': 2, 'action_noise_sigma': 0.23142539022251188, 'target_policy_noise': 0.18063351306836165, 'target_noise_clip': 0.4622835669350364, 'n_layers': 1, 'layer_size': 88, 'activation_fn': 'tanh'}. Best is trial 8 with value: 497.3096977756055.
+Tuning TD3:  38%|████████████████████████████████████████████████████████████                                                                                                  | 19/50 [3:48:02<5:12:19, 604.51s/it, best_value=497.31]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_56ed9e93.slx
+[I 2025-06-14 03:57:45,853] Trial 19 finished with value: 497.88514375586203 and parameters: {'learning_rate': 0.0003628679940906992, 'buffer_size': 87109, 'batch_size': 211, 'tau': 0.0038994688719567227, 'gamma': 0.901171035191233, 'policy_delay': 2, 'action_noise_sigma': 0.385735825460373, 'target_policy_noise': 0.1725812902376957, 'target_noise_clip': 0.601027096247111, 'n_layers': 3, 'layer_size': 187, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  40%|███████████████████████████████████████████████████████████████▏                                                                                              | 20/50 [3:54:12<4:27:03, 534.12s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_234b73c5.slx
+[I 2025-06-14 04:29:57,583] Trial 21 finished with value: 465.4834784642334 and parameters: {'learning_rate': 0.000384725716781245, 'buffer_size': 87113, 'batch_size': 342, 'tau': 0.0033518128643982657, 'gamma': 0.9244793975139853, 'policy_delay': 4, 'action_noise_sigma': 0.3838063943424809, 'target_policy_noise': 0.14849308903778297, 'target_noise_clip': 0.5898935473916783, 'n_layers': 3, 'layer_size': 185, 'activation_fn': 'elu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  42%|██████████████████████████████████████████████████████████████████▎                                                                                           | 21/50 [4:26:24<7:40:55, 953.63s/it, best_value=497.89]Starting MATLAB engine...
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6182c8c3.slx
+[I 2025-06-14 04:29:57,807] Trial 20 finished with value: 478.48043223270736 and parameters: {'learning_rate': 0.00036967440441698694, 'buffer_size': 75765, 'batch_size': 348, 'tau': 0.003610637897924064, 'gamma': 0.9274185293290722, 'policy_delay': 4, 'action_noise_sigma': 0.3622423126949032, 'target_policy_noise': 0.14944415577251913, 'target_noise_clip': 0.5943542447620154, 'n_layers': 3, 'layer_size': 181, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  44%|█████████████████████████████████████████████████████████████████████▌                                                                                        | 22/50 [4:26:24<5:11:29, 667.50s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_aed6255e.slx
+[I 2025-06-14 04:35:35,961] Trial 22 finished with value: 398.7106721927444 and parameters: {'learning_rate': 0.00045707386959027225, 'buffer_size': 83809, 'batch_size': 335, 'tau': 0.016804941788120486, 'gamma': 0.9266689574782777, 'policy_delay': 4, 'action_noise_sigma': 0.36675773767188896, 'target_policy_noise': 0.11730963635844854, 'target_noise_clip': 0.6032863518050323, 'n_layers': 3, 'layer_size': 183, 'activation_fn': 'elu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  46%|████████████████████████████████████████████████████████████████████████▋                                                                                     | 23/50 [4:32:02<4:15:54, 568.67s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_c7fe5a16.slx
+[I 2025-06-14 04:44:06,276] Trial 23 finished with value: 463.86043867281415 and parameters: {'learning_rate': 0.00041110555873513866, 'buffer_size': 80040, 'batch_size': 321, 'tau': 0.0045149679518516235, 'gamma': 0.9291777100857477, 'policy_delay': 4, 'action_noise_sigma': 0.391326154473687, 'target_policy_noise': 0.10811756349577403, 'target_noise_clip': 0.6165774668473121, 'n_layers': 3, 'layer_size': 178, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  48%|███████████████████████████████████████████████████████████████████████████▊                                                                                  | 24/50 [4:40:32<3:58:50, 551.16s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d4f1dee4.slx
+[I 2025-06-14 05:12:02,837] Trial 25 finished with value: 138.77239612924723 and parameters: {'learning_rate': 1.0353988392372463e-05, 'buffer_size': 133389, 'batch_size': 151, 'tau': 0.01695602150923751, 'gamma': 0.9083836193674794, 'policy_delay': 1, 'action_noise_sigma': 0.40899258349271556, 'target_policy_noise': 0.12385148820836134, 'target_noise_clip': 0.49858382949927155, 'n_layers': 3, 'layer_size': 183, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  50%|███████████████████████████████████████████████████████████████████████████████                                                                               | 25/50 [5:08:29<6:10:20, 888.82s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_16327162.slx
+[I 2025-06-14 05:16:30,817] Trial 24 finished with value: 489.2258685989914 and parameters: {'learning_rate': 0.00011680040340705722, 'buffer_size': 133148, 'batch_size': 179, 'tau': 0.01699629803294116, 'gamma': 0.902761169654503, 'policy_delay': 1, 'action_noise_sigma': 0.4340715129355058, 'target_policy_noise': 0.2700295029681301, 'target_noise_clip': 0.5027283384727605, 'n_layers': 3, 'layer_size': 194, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  52%|██████████████████████████████████████████████████████████████████████████████████▏                                                                           | 26/50 [5:12:57<4:41:01, 702.55s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_9612f6c2.slx
+[I 2025-06-14 05:21:24,372] Trial 26 finished with value: 390.27965513698575 and parameters: {'learning_rate': 0.00013089304576719863, 'buffer_size': 140644, 'batch_size': 152, 'tau': 0.005020898565924987, 'gamma': 0.909448142932182, 'policy_delay': 1, 'action_noise_sigma': 0.43086717172454264, 'target_policy_noise': 0.28484734859299615, 'target_noise_clip': 0.4930009384845692, 'n_layers': 3, 'layer_size': 211, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  54%|█████████████████████████████████████████████████████████████████████████████████████▎                                                                        | 27/50 [5:17:50<3:42:16, 579.85s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_c29a4f5e.slx
+[I 2025-06-14 05:30:59,069] Trial 27 finished with value: 496.58185789502267 and parameters: {'learning_rate': 0.0001076657324763249, 'buffer_size': 129507, 'batch_size': 160, 'tau': 0.005232941453596631, 'gamma': 0.9123155958640029, 'policy_delay': 1, 'action_noise_sigma': 0.4414905134325743, 'target_policy_noise': 0.2802783505058568, 'target_noise_clip': 0.4893654505328299, 'n_layers': 2, 'layer_size': 211, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  56%|████████████████████████████████████████████████████████████████████████████████████████▍                                                                     | 28/50 [5:27:25<3:32:02, 578.30s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_4185161f.slx
+[I 2025-06-14 05:58:10,670] Trial 28 finished with value: 489.4657957383758 and parameters: {'learning_rate': 0.00014786480663050563, 'buffer_size': 103331, 'batch_size': 187, 'tau': 0.005402271829697482, 'gamma': 0.9553271383752828, 'policy_delay': 2, 'action_noise_sigma': 0.33347545688427344, 'target_policy_noise': 0.3529807209403729, 'target_noise_clip': 0.50334868908232, 'n_layers': 2, 'layer_size': 200, 'activation_fn': 'elu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  58%|███████████████████████████████████████████████████████████████████████████████████████████▋                                                                  | 29/50 [5:54:37<5:13:00, 894.30s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_12249e5e.slx
+[I 2025-06-14 06:03:26,048] Trial 29 finished with value: 462.0530931294684 and parameters: {'learning_rate': 0.0006480656247551962, 'buffer_size': 103987, 'batch_size': 406, 'tau': 0.011275165542984734, 'gamma': 0.9154121679140739, 'policy_delay': 2, 'action_noise_sigma': 0.3364030397757043, 'target_policy_noise': 0.18715202143540005, 'target_noise_clip': 0.6404200817360595, 'n_layers': 2, 'layer_size': 216, 'activation_fn': 'relu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  60%|██████████████████████████████████████████████████████████████████████████████████████████████▊                                                               | 30/50 [5:59:52<4:00:12, 720.62s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_43c06f28.slx
+[I 2025-06-14 06:07:31,559] Trial 30 finished with value: 494.0861207821671 and parameters: {'learning_rate': 0.0006071195121382319, 'buffer_size': 106376, 'batch_size': 71, 'tau': 0.011652353843728674, 'gamma': 0.9554676165846462, 'policy_delay': 2, 'action_noise_sigma': 0.3353320032276686, 'target_policy_noise': 0.3519365106130455, 'target_noise_clip': 0.38899819545530245, 'n_layers': 2, 'layer_size': 230, 'activation_fn': 'elu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  62%|█████████████████████████████████████████████████████████████████████████████████████████████████▉                                                            | 31/50 [6:03:57<3:03:03, 578.09s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7f150d85.slx
+[I 2025-06-14 06:14:47,981] Trial 31 finished with value: 223.28098342454768 and parameters: {'learning_rate': 0.0006472720325014994, 'buffer_size': 152490, 'batch_size': 80, 'tau': 0.0012836360817834276, 'gamma': 0.9556994834295773, 'policy_delay': 3, 'action_noise_sigma': 0.3359043861846346, 'target_policy_noise': 0.3262230961280239, 'target_noise_clip': 0.40110179178610356, 'n_layers': 2, 'layer_size': 166, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  64%|█████████████████████████████████████████████████████████████████████████████████████████████████████                                                         | 32/50 [6:11:14<2:40:40, 535.59s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_c9b22a14.slx
+[I 2025-06-14 06:37:51,029] Trial 32 finished with value: 13.985682104811985 and parameters: {'learning_rate': 8.116200645166549e-05, 'buffer_size': 152878, 'batch_size': 78, 'tau': 0.0015751372654118695, 'gamma': 0.9803960153951948, 'policy_delay': 3, 'action_noise_sigma': 0.48836915257570224, 'target_policy_noise': 0.33044456629874314, 'target_noise_clip': 0.4013209055292756, 'n_layers': 2, 'layer_size': 81, 'activation_fn': 'relu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  66%|████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                                     | 33/50 [6:34:17<3:43:47, 789.83s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_21b43d80.slx
+[I 2025-06-14 06:50:09,713] Trial 33 finished with value: 373.54076079420116 and parameters: {'learning_rate': 0.0009334668460083357, 'buffer_size': 125447, 'batch_size': 69, 'tau': 0.0013021477868929389, 'gamma': 0.9815401883545104, 'policy_delay': 3, 'action_noise_sigma': 0.48529333030574573, 'target_policy_noise': 0.34063251620836266, 'target_noise_clip': 0.41511414590501866, 'n_layers': 2, 'layer_size': 92, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  68%|███████████████████████████████████████████████████████████████████████████████████████████████████████████▍                                                  | 34/50 [6:46:36<3:26:31, 774.48s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_33c9435d.slx
+[I 2025-06-14 06:53:26,962] Trial 34 finished with value: 472.8697631937318 and parameters: {'learning_rate': 0.0002909357738468997, 'buffer_size': 127469, 'batch_size': 239, 'tau': 0.0010902048960448139, 'gamma': 0.9137176337101537, 'policy_delay': 3, 'action_noise_sigma': 0.4898857496391259, 'target_policy_noise': 0.23433747644241976, 'target_noise_clip': 0.5649696936271953, 'n_layers': 2, 'layer_size': 165, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  70%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                                               | 35/50 [6:49:53<2:30:19, 601.31s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_af1c5172.slx
+[I 2025-06-14 07:00:19,061] Trial 35 finished with value: 497.57722085672697 and parameters: {'learning_rate': 0.000993192290520294, 'buffer_size': 52272, 'batch_size': 117, 'tau': 0.019975030367716546, 'gamma': 0.915617314825994, 'policy_delay': 1, 'action_noise_sigma': 0.46527490706060615, 'target_policy_noise': 0.23211473638492452, 'target_noise_clip': 0.561120086482872, 'n_layers': 2, 'layer_size': 228, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  72%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                            | 36/50 [6:56:45<2:07:03, 544.55s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_23f05bf4.slx
+[I 2025-06-14 07:23:46,799] Trial 36 finished with value: 489.413152492027 and parameters: {'learning_rate': 0.00028361220962564983, 'buffer_size': 124966, 'batch_size': 309, 'tau': 0.019779824126236148, 'gamma': 0.9154614722988157, 'policy_delay': 1, 'action_noise_sigma': 0.4585189791509967, 'target_policy_noise': 0.415136969319794, 'target_noise_clip': 0.565189985404559, 'n_layers': 3, 'layer_size': 245, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  74%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                                         | 37/50 [7:20:13<2:54:05, 803.51s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8af2c0df.slx
+[I 2025-06-14 07:36:08,310] Trial 37 finished with value: 497.0650430924763 and parameters: {'learning_rate': 0.0003087761671134689, 'buffer_size': 52842, 'batch_size': 116, 'tau': 0.006834535117860885, 'gamma': 0.915065247413427, 'policy_delay': 1, 'action_noise_sigma': 0.12156557553709282, 'target_policy_noise': 0.41699377705847773, 'target_noise_clip': 0.562711267917507, 'n_layers': 3, 'layer_size': 232, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  76%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                      | 38/50 [7:32:34<2:36:58, 784.91s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_5db59d25.slx
+[I 2025-06-14 07:39:34,532] Trial 38 finished with value: 474.2810199795657 and parameters: {'learning_rate': 0.00031150494127835235, 'buffer_size': 53974, 'batch_size': 110, 'tau': 0.0069057923737720055, 'gamma': 0.9380667223435655, 'policy_delay': 1, 'action_noise_sigma': 0.2642690416851093, 'target_policy_noise': 0.3874346967823582, 'target_noise_clip': 0.570189182851924, 'n_layers': 3, 'layer_size': 251, 'activation_fn': 'elu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  78%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                                  | 39/50 [7:36:00<1:52:04, 611.30s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_570eb6bf.slx
+[I 2025-06-14 07:46:49,854] Trial 39 finished with value: 480.7946722200316 and parameters: {'learning_rate': 4.41167359501913e-05, 'buffer_size': 53181, 'batch_size': 300, 'tau': 0.019475939482158207, 'gamma': 0.9351942003449294, 'policy_delay': 1, 'action_noise_sigma': 0.4456108092658708, 'target_policy_noise': 0.4025881156525305, 'target_noise_clip': 0.6926020724790132, 'n_layers': 2, 'layer_size': 252, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  80%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▍                               | 40/50 [7:43:16<1:33:05, 558.51s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d19df61e.slx
+[I 2025-06-14 08:06:21,219] Trial 40 finished with value: 129.96727471418413 and parameters: {'learning_rate': 4.578346044726092e-05, 'buffer_size': 73573, 'batch_size': 115, 'tau': 0.01864143081034938, 'gamma': 0.9001891094831478, 'policy_delay': 1, 'action_noise_sigma': 0.454166858014339, 'target_policy_noise': 0.30481071887110217, 'target_noise_clip': 0.530221699640228, 'n_layers': 2, 'layer_size': 147, 'activation_fn': 'leaky_relu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  82%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                            | 41/50 [8:02:47<1:51:21, 742.37s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_800bcf88.slx
+[I 2025-06-14 08:17:53,863] Trial 41 finished with value: 6.50125181155804 and parameters: {'learning_rate': 0.000981929454969554, 'buffer_size': 50207, 'batch_size': 126, 'tau': 0.019062730796868002, 'gamma': 0.9323976470621662, 'policy_delay': 1, 'action_noise_sigma': 0.1066838159847335, 'target_policy_noise': 0.46247661193678835, 'target_noise_clip': 0.6941298878291344, 'n_layers': 3, 'layer_size': 251, 'activation_fn': 'leaky_relu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  84%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▋                         | 42/50 [8:14:20<1:36:59, 727.45s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_e862c23d.slx
+[I 2025-06-14 08:21:22,816] Trial 42 finished with value: 10.61695572422111 and parameters: {'learning_rate': 0.000979995140213564, 'buffer_size': 60735, 'batch_size': 124, 'tau': 0.018066893993907252, 'gamma': 0.9339733023577961, 'policy_delay': 1, 'action_noise_sigma': 0.10237458365019148, 'target_policy_noise': 0.47585716771381936, 'target_noise_clip': 0.6350469565486732, 'n_layers': 3, 'layer_size': 136, 'activation_fn': 'leaky_relu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  86%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                      | 43/50 [8:17:49<1:06:43, 571.90s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_01832e01.slx
+[I 2025-06-14 08:36:40,188] Trial 43 finished with value: 433.85818257260473 and parameters: {'learning_rate': 0.0009439032074461447, 'buffer_size': 63394, 'batch_size': 115, 'tau': 0.01859068015158783, 'gamma': 0.9493114049784466, 'policy_delay': 1, 'action_noise_sigma': 0.10168773112773839, 'target_policy_noise': 0.4543095867897177, 'target_noise_clip': 0.5392716000201243, 'n_layers': 3, 'layer_size': 139, 'activation_fn': 'leaky_relu'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  88%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                   | 44/50 [8:33:06<1:07:33, 675.54s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b9267850.slx
+[I 2025-06-14 08:52:41,373] Trial 44 finished with value: 490.3582970596087 and parameters: {'learning_rate': 0.0009580357719075948, 'buffer_size': 63046, 'batch_size': 121, 'tau': 0.014829121980136549, 'gamma': 0.9049798024753648, 'policy_delay': 1, 'action_noise_sigma': 0.12795788462762087, 'target_policy_noise': 0.43930833101868105, 'target_noise_clip': 0.47462740337430126, 'n_layers': 3, 'layer_size': 234, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  90%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏               | 45/50 [8:49:07<1:03:26, 761.23s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_bd4f733f.slx
+[I 2025-06-14 09:03:29,161] Trial 45 finished with value: 482.5180178246396 and parameters: {'learning_rate': 0.0005410992868506262, 'buffer_size': 64416, 'batch_size': 170, 'tau': 0.014892817846779484, 'gamma': 0.9457709356782296, 'policy_delay': 1, 'action_noise_sigma': 0.1253571328711175, 'target_policy_noise': 0.2623724785647665, 'target_noise_clip': 0.47463108780478047, 'n_layers': 2, 'layer_size': 236, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  92%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏            | 46/50 [8:59:55<48:28, 727.20s/it, best_value=497.89]Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_0c63663e.slx
+[I 2025-06-14 09:07:14,688] Trial 46 finished with value: 497.78899909989696 and parameters: {'learning_rate': 0.0005578546279436468, 'buffer_size': 65308, 'batch_size': 177, 'tau': 0.014782965668397562, 'gamma': 0.9052294968307261, 'policy_delay': 1, 'action_noise_sigma': 0.1448199333284067, 'target_policy_noise': 0.26912288958039177, 'target_noise_clip': 0.47464391198642714, 'n_layers': 2, 'layer_size': 234, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  94%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▍         | 47/50 [9:03:41<28:50, 576.70s/it, best_value=497.89]Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_2251af9e.slx
+[I 2025-06-14 09:21:15,817] Trial 47 finished with value: 486.1135634916871 and parameters: {'learning_rate': 0.0005248147968117925, 'buffer_size': 67242, 'batch_size': 165, 'tau': 0.014427761793071743, 'gamma': 0.9052694570829753, 'policy_delay': 1, 'action_noise_sigma': 0.1294924668596794, 'target_policy_noise': 0.29895332037949046, 'target_noise_clip': 0.46633154363494245, 'n_layers': 2, 'layer_size': 234, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  96%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌      | 48/50 [9:17:42<21:52, 656.03s/it, best_value=497.89]Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_85292e04.slx
+[I 2025-06-14 09:34:10,590] Trial 48 finished with value: 399.6527967117225 and parameters: {'learning_rate': 0.0005163319884710568, 'buffer_size': 68743, 'batch_size': 170, 'tau': 0.006401479194754596, 'gamma': 0.9207016291281298, 'policy_delay': 1, 'action_noise_sigma': 0.4724926188346518, 'target_policy_noise': 0.2635935439969507, 'target_noise_clip': 0.5198703861611892, 'n_layers': 2, 'layer_size': 222, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3:  98%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊   | 49/50 [9:30:37<11:31, 691.65s/it, best_value=497.89]Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7f251ff0.slx
+[I 2025-06-14 09:39:25,196] Trial 49 finished with value: 89.2244141290204 and parameters: {'learning_rate': 2.3931471215445666e-05, 'buffer_size': 70438, 'batch_size': 96, 'tau': 0.006016060239177655, 'gamma': 0.9189051348935606, 'policy_delay': 1, 'action_noise_sigma': 0.4061583004234537, 'target_policy_noise': 0.28838347021967914, 'target_noise_clip': 0.5188496823007173, 'n_layers': 2, 'layer_size': 221, 'activation_fn': 'tanh'}. Best is trial 19 with value: 497.88514375586203.
+Tuning TD3: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [9:35:51<00:00, 691.03s/it, best_value=497.89] 
+
+Best parameters for td3:
+Best value: 497.88514375586203
+  learning_rate: 0.0003628679940906992
+  buffer_size: 87109
+  batch_size: 211
+  tau: 0.0038994688719567227
+  gamma: 0.901171035191233
+  policy_delay: 2
+  action_noise_sigma: 0.385735825460373
+  target_policy_noise: 0.1725812902376957
+  target_noise_clip: 0.601027096247111
+  n_layers: 3
+  layer_size: 187
+  activation_fn: tanh
+  net_arch: [187, 187, 187]
+  activation_fn: tanh
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap> 
