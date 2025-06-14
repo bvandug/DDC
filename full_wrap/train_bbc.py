@@ -4,11 +4,13 @@ import numpy as np
 from datetime import datetime
 from stable_baselines3 import TD3
 from stable_baselines3.common.noise import NormalActionNoise
-from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import BaseCallback
 
-# Import the custom Simulink environment class
-# Make sure 'BBCSimulink_env.py' is in the same directory
+# --- Import the necessary wrappers ---
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+
+# Import your custom Simulink environment class
 from BBCSimulink_env import BBCSimulinkEnv
 
 # --- Definition of the Custom Callback for Episode Logging ---
@@ -44,15 +46,19 @@ class EpisodeStatsLogger(BaseCallback):
         """
         This method is called after each step in the environment.
         """
+        # Note: self.locals['rewards'] is a numpy array, access the element with [0]
         reward = self.locals['rewards'][0]
         self.current_episode_reward += reward
         self.current_episode_length += 1
 
+        # Check if the episode is done
         done = self.locals['dones'][0]
         if done:
             self.episode_rewards.append(self.current_episode_reward)
             self.episode_lengths.append(self.current_episode_length)
             episode_num = len(self.episode_rewards)
+            
+            # For wrapped envs, get the original environment to access custom attributes
             goal_voltage = self.training_env.get_attr('goal')[0]
 
             log_line = (f"{episode_num:<10}"
@@ -64,6 +70,7 @@ class EpisodeStatsLogger(BaseCallback):
             self.log_file.write(log_line)
             self.log_file.flush()
 
+            # Reset for the next episode
             self.current_episode_reward = 0.0
             self.current_episode_length = 0
 
@@ -82,18 +89,30 @@ class EpisodeStatsLogger(BaseCallback):
 
 # --- Main execution block ---
 if __name__ == "__main__":
-    # 1. Instantiate the Simulink Environment
+    # --- UPDATE: Instantiate and Wrap the Environment ---
     print("Starting the environment...")
-    env = make_vec_env(BBCSimulinkEnv, n_envs=1)
-
-    # 2. Define training parameters
-    # Set timesteps to 27,000 to run for exactly 9 episodes (3000 steps/episode)
+    
+    # 1. Create a function to instantiate your custom environment
+    env_fn = lambda: BBCSimulinkEnv(model_name="bbcSim")
+    
+    # 2. Wrap it in DummyVecEnv, which is needed for VecNormalize
+    env = DummyVecEnv([env_fn])
+    
+    # 3. Wrap it in VecNormalize to automatically scale observations
+    env = VecNormalize(env, 
+                       norm_obs=True,      # This is the crucial part
+                       norm_reward=False,  # We don't normalize reward
+                       clip_obs=10.0)      # Clip observations for stability
+    
+    # --- Training parameters ---
     total_timesteps = 27000
     log_file_path = "td3_bbc_training_log.txt"
 
+    # Define action noise for TD3 exploration
     n_actions = env.action_space.shape[-1]
     action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
+    # --- Model Definition ---
     print("Creating the model...")
     model = TD3(
         "MlpPolicy",
@@ -103,15 +122,15 @@ if __name__ == "__main__":
         batch_size=256,
         tau=0.005,
         gamma=0.99,
-        train_freq=(10, "step"), #Train every 10 steps
+        train_freq=(1, "step"),
+        learning_starts=1500, # Start training after one full episode of random exploration
         action_noise=action_noise,
         verbose=1,
     )
 
-    # 4. Instantiate the custom callback for logging
+    # --- Training ---
     custom_callback = EpisodeStatsLogger(log_path=log_file_path)
-
-    # 5. Train the agent
+    
     print(f"--- Starting Training for {total_timesteps} Timesteps ---")
     print(f"Logging episode stats to: {log_file_path}")
 
@@ -121,9 +140,14 @@ if __name__ == "__main__":
         callback=custom_callback
     )
 
-    # 6. Save the trained model
+    # --- Saving ---
+    # Save the trained model
     model.save("td3_bbc_model_tuned")
-    print("\n--- Model Saved as td3_bbc_model_tuned.zip ---")
+    
+    # IMPORTANT: Save the normalization statistics
+    # You will need this file to load the model for later use
+    env.save("vec_normalize_stats.pkl")
+    print("\n--- Model and Normalization Stats Saved ---")
 
-    # 7. Close the environment (and the MATLAB engine)
+    # Close the environment (and the MATLAB engine)
     env.close()

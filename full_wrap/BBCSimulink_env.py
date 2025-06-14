@@ -14,9 +14,14 @@ class BBCSimulinkEnv(gym.Env):
     """
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, model_name="bbcSim", dt=5e-6, max_episode_time=0.015):
+    def __init__(self, model_name="bbcSim", dt=1e-5, max_episode_time=0.015):
         """
         dt: Time step for the simulation
+        - original: 5e-6
+        - try: 1e-5
+        If doesnt work:
+        - try max episode time: 0.012
+        - try max episode time: 0.01
         max_episode_time: Maximum time for the episode
         Steps per episode = max_episode_time / dt (e.g. 0.015 / 5e-6 = 3000 steps per episode)
         Total episodes = Total timesteps / steps per episode (e.g. 25000 / 3000 = 8.33 episodes)
@@ -137,15 +142,11 @@ class BBCSimulinkEnv(gym.Env):
         """
         proposed_duty_cycle = action[0]
 
-        # Define the conditional duty cycle range based on the goal
-        if self.goal > -48: # Buck-ish mode (goal is closer to 0V)
-            min_duty = 0.1
-            max_duty = 0.5
-        else: # Boost-ish mode (goal is more negative than -48V)
-            min_duty = 0.5
-            max_duty = 0.9
-
-        # Clip the agent's proposed action to the correct conditional range
+        # --- UPDATE 1: REMOVE FLAWED CONDITIONAL LOGIC ---
+        # The old if/else logic was incorrect. A single, wide range allows the
+        # agent to learn the true optimal duty cycle for any goal.
+        min_duty = 0.1
+        max_duty = 0.9
         duty_cycle = float(np.clip(proposed_duty_cycle, min_duty, max_duty))
 
         # Set the parameter and run the simulation for one time step
@@ -166,33 +167,34 @@ class BBCSimulinkEnv(gym.Env):
         self.current_time = t
 
         error = voltage - self.goal
-        derivative_error = (error - self.prev_error) / self.dt if self.dt > 0 else 0
+        derivative_error = error - self.prev_error
         self.prev_error = error
 
         # Include the goal in the observation array
         observation = np.array([voltage, error, derivative_error, self.goal], dtype=np.float32)
 
-        # Reward is negative squared error (to maximize reward by minimizing error)
-        # plus a small penalty for large duty cycle changes to encourage efficiency.
-        # Uses penalty based rewards to encourage the agent to learn the correct duty cycle range for the goal voltage.
-        # Reward Function Components:
-        # 1. Original squared error penalty
-        reward_error = -(error ** 2) # ACCURACY (negative reward)
+        # REWARD FUNCTION COMPONENTS
+        # 1. ACCURACY (negative reward)
+        # --- UPDATE: Use a logarithmic penalty instead of squared ---
+        # This is much less sensitive to huge initial errors and encourages exploration.
+        # The +1 prevents log(0) which is undefined.
+        reward_error = -np.log(abs(error) + 1)
 
-        # 2. Penalty for large duty cycle changes
-        reward_duty = -0.01 * (duty_cycle ** 2) # EFFICIENCY (negative reward)
+        # 2. EFFICIENCY (negative reward)
+        reward_duty = -0.5 * (duty_cycle ** 2)
 
-        # 3. Reward for making progress (i.e. reducing the error)
+        # 3. RESPONSIVENESS (positive reward)
         progress = abs(self.prev_error) - abs(error)
-        reward_progress = progress * 10 # RESPONSIVENESS (positive reward)
+        reward_progress = progress * 10
 
-        # 4. Penalty for instability (large voltage changes)
-        reward_instability = -0.1 * (derivative_error ** 2) # STABILITY (negative reward)
+        # 4. STABILITY (negative reward)
+        # if approaches too slow or sluggish, change to -0.5
+        reward_instability = -1.0 * (derivative_error ** 2)
 
-        
-        # reward = -(error ** 2) - 0.01 * (duty_cycle ** 2) + (abs(self.prev_error) - abs(error))*10 - 0.1 * (derivative_error ** 2)
+        # Combine reward components
         reward = reward_error + reward_duty + reward_progress + reward_instability
 
+        # The print statement below is for debugging and can be commented out for faster training.
         print(f"Step {len(self._times):<4} | Action (Duty Cycle): {duty_cycle:.4f} -> Voltage: {voltage:.4f} | Goal: {self.goal:.2f} | Reward: {reward:.4f}")
 
         terminated = bool(t >= self.max_episode_time)
@@ -211,6 +213,7 @@ class BBCSimulinkEnv(gym.Env):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+        #print(f"Step {len(self._times):<4} | Observation: {observation}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
         return observation, reward, terminated, truncated, info
 
     def render(self, mode='human'):
