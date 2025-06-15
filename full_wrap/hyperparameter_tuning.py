@@ -1,6 +1,6 @@
 import optuna
 import numpy as np
-from stable_baselines3 import PPO, SAC, TD3
+from stable_baselines3 import PPO, SAC, TD3, A2C
 from stable_baselines3.common.noise import NormalActionNoise
 from simulink_env import SimulinkEnv
 import json
@@ -19,7 +19,6 @@ def objective(trial, algo_name):
         print(f"Using device: {device}")
 
         if algo_name == "td3":
-            # Suggested hyperparameters
             params = {
                 "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
                 "buffer_size": trial.suggest_int("buffer_size", 50000, 200000),
@@ -72,6 +71,56 @@ def objective(trial, algo_name):
                 policy_kwargs=policy_kwargs,
             )
 
+        elif algo_name == "a2c":
+            params = {
+                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "gamma": trial.suggest_float("gamma", 0.90, 0.9999),
+                "n_steps": trial.suggest_int("n_steps", 8, 2048, log=True),
+                "ent_coef": trial.suggest_float("ent_coef", 1e-7, 0.1, log=True),
+                "vf_coef": trial.suggest_float("vf_coef", 0.1, 1.0),
+                "max_grad_norm": trial.suggest_float("max_grad_norm", 0.3, 5.0),
+                "rms_prop_eps": trial.suggest_float("rms_prop_eps", 1e-6, 1e-3, log=True),
+                "use_rms_prop": trial.suggest_categorical("use_rms_prop", [True, False]),
+                "n_layers": trial.suggest_int("n_layers", 1, 3),
+                "layer_size": trial.suggest_int("layer_size", 32, 256),
+                "activation_fn": trial.suggest_categorical(
+                    "activation_fn", ["tanh", "relu", "leaky_relu", "elu"]
+                ),
+            }
+
+            net_arch = [params["layer_size"]] * params["n_layers"]
+            activation_map = {
+                "tanh": nn.Tanh,
+                "relu": nn.ReLU,
+                "leaky_relu": nn.LeakyReLU,
+                "elu": nn.ELU,
+            }
+            activation_fn = activation_map[params["activation_fn"]]
+
+            policy_kwargs = {
+                "net_arch": net_arch,
+                "activation_fn": activation_fn,
+            }
+
+            model = A2C(
+                "MlpPolicy",
+                env,
+                verbose=0,
+                device=device,
+                learning_rate=params["learning_rate"],
+                gamma=params["gamma"],
+                n_steps=params["n_steps"],
+                ent_coef=params["ent_coef"],
+                vf_coef=params["vf_coef"],
+                max_grad_norm=params["max_grad_norm"],
+                rms_prop_eps=params["rms_prop_eps"],
+                use_rms_prop=params["use_rms_prop"],
+                policy_kwargs=policy_kwargs,
+            )
+
+        else:
+            raise ValueError(f"Unsupported algorithm: {algo_name}")
+
         model.learn(total_timesteps=10000, progress_bar=False)
 
         mean_reward = 0
@@ -97,22 +146,22 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
 
     study = optuna.create_study(direction="maximize")
 
-    # Seed Optuna with known best parameters (from Trial 11)
-    best_known_params = {
-        "learning_rate": 0.0009531916300780667,
-        "buffer_size": 127040,
-        "batch_size": 511,
-        "tau": 0.007702202735525895,
-        "gamma": 0.9428889303152354,
-        "policy_delay": 4,
-        "action_noise_sigma": 0.1020777897320515,
-        "target_policy_noise": 0.10477469465730704,
-        "target_noise_clip": 0.5635043295165336,
-        "n_layers": 2,
-        "layer_size": 64,
-        "activation_fn": "relu",
-    }
-    study.enqueue_trial(best_known_params)
+    if algo_name == "td3":
+        best_known_params = {
+            "learning_rate": 0.0009531916300780667,
+            "buffer_size": 127040,
+            "batch_size": 511,
+            "tau": 0.007702202735525895,
+            "gamma": 0.9428889303152354,
+            "policy_delay": 4,
+            "action_noise_sigma": 0.1020777897320515,
+            "target_policy_noise": 0.10477469465730704,
+            "target_noise_clip": 0.5635043295165336,
+            "n_layers": 2,
+            "layer_size": 64,
+            "activation_fn": "relu",
+        }
+        study.enqueue_trial(best_known_params)
 
     pbar = tqdm(
         total=n_trials,
@@ -142,8 +191,9 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
         "best_params": best_params,
         "best_value": best_value,
         "n_trials": n_trials,
-        "best_net_arch": [best_params["layer_size"]] * best_params["n_layers"],
-        "best_activation_fn": best_params["activation_fn"],
+        "best_net_arch": [best_params["layer_size"]] * best_params["n_layers"]
+        if "layer_size" in best_params else None,
+        "best_activation_fn": best_params.get("activation_fn"),
     }
 
     os.makedirs("hyperparameter_results", exist_ok=True)
@@ -154,14 +204,16 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
     print(f"Best value: {best_value}")
     for key, value in best_params.items():
         print(f"  {key}: {value}")
-    print(f"  net_arch: {results['best_net_arch']}")
-    print(f"  activation_fn: {results['best_activation_fn']}")
+    if results["best_net_arch"]:
+        print(f"  net_arch: {results['best_net_arch']}")
+    if results["best_activation_fn"]:
+        print(f"  activation_fn: {results['best_activation_fn']}")
 
     return best_params
 
 
 if __name__ == "__main__":
-    algorithms = ["td3"]
+    algorithms = ["a2c"]
     print("Starting hyperparameter tuning...")
     for algo in algorithms:
         print(f"\n{'=' * 50}")
