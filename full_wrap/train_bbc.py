@@ -110,6 +110,7 @@ if __name__ == "__main__":
     # --- Training ---
     custom_callback = EpisodeStatsLogger(log_path=log_file_path)
     print(f"--- Starting Training for {total_timesteps} Timesteps ---")
+    print(f"Learning starts at: {LEARNING_STARTS} steps to allow for random exploration")
     print(f"Logging episode stats to: {log_file_path}")
 
     model.learn(
