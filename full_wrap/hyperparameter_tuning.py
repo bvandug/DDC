@@ -227,27 +227,46 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
         }
         study.enqueue_trial(best_known_params)
 
-    pbar = tqdm(
-        total=n_trials,
-        desc=f"Tuning {algo_name.upper()}",
-        file=sys.stdout,
-        dynamic_ncols=True,
-        leave=True,
-    )
+    if algo_name == "ppo":
+        best_known_params = {
+            "n_steps": 68,
+            "batch_size_idx": 1,
+            "learning_rate": 0.000344580194153308,
+            "n_epochs": 4,
+            "gamma": 0.9479956062170828,
+            "clip_range": 0.13195201626331293,
+            "ent_coef": 1.0974275204517842e-05,
+            "vf_coef": 0.6245891170378073,
+            "max_grad_norm": 2.4987564934099336,
+            "gae_lambda": 0.9381761664814343,
+            "n_layers": 3,
+            "layer_size": 249,
+            "activation_fn": "tanh",
+        }
+        study.enqueue_trial(best_known_params)
 
-    def update_progress(study, trial):
-        pbar.update(1)
-        pbar.refresh()
-        pbar.set_postfix({"best_value": f"{study.best_value:.2f}"})
 
-    study.optimize(
-        lambda trial: objective(trial, algo_name),
-        n_trials=n_trials,
-        callbacks=[update_progress],
-        n_jobs=n_parallel,
-    )
+    # pbar = tqdm(
+    #     total=n_trials,
+    #     desc=f"Tuning {algo_name.upper()}",
+    #     file=sys.stdout,
+    #     dynamic_ncols=True,
+    #     leave=True,
+    # )
 
-    pbar.close()
+    # def update_progress(study, trial):
+    #     pbar.update(1)
+    #     pbar.refresh()
+    #     pbar.set_postfix({"best_value": f"{study.best_value:.2f}"})
+
+    # study.optimize(
+    #     lambda trial: objective(trial, algo_name),
+    #     n_trials=n_trials,
+    #     callbacks=[update_progress],
+    #     n_jobs=n_parallel,
+    #)
+
+    # pbar.close()
 
     best_params = study.best_params
     best_value = study.best_value
