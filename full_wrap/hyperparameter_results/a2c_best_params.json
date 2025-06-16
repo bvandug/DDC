@@ -1,0 +1,23 @@
+{
+    "best_params": {
+        "learning_rate": 0.0005609313874353129,
+        "gamma": 0.9271100087931456,
+        "n_steps": 16,
+        "ent_coef": 0.00027892387987561745,
+        "vf_coef": 0.7229760725706151,
+        "max_grad_norm": 2.3188343262079782,
+        "rms_prop_eps": 0.00028937290303221105,
+        "use_rms_prop": true,
+        "n_layers": 3,
+        "layer_size": 251,
+        "activation_fn": "tanh"
+    },
+    "best_value": 494.8679123832855,
+    "n_trials": 50,
+    "best_net_arch": [
+        251,
+        251,
+        251
+    ],
+    "best_activation_fn": "tanh"
+}
