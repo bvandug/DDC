@@ -110,7 +110,7 @@ def main(algo_name="td3", timesteps=50000):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--algo", choices=["td3", "a2c"], default="td3", help="Algorithm to train (td3 or a2c)")
+    parser.add_argument("--algo", choices=["td3", "a2c", "ppo"], default="td3", help="Algorithm to train (td3 or a2c)")
     parser.add_argument("--timesteps", type=int, default=50000, help="Number of training timesteps")
     args = parser.parse_args()
 

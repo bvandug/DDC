@@ -118,13 +118,77 @@ def objective(trial, algo_name):
                 policy_kwargs=policy_kwargs,
             )
 
+        elif algo_name == "ppo":
+            def get_valid_batch_sizes(n, min_bs=32, max_bs=512):
+                return [i for i in range(min_bs, min(n + 1, max_bs + 1)) if n % i == 0]
+
+            n_steps = trial.suggest_int("n_steps", 64, 2048, log=True)
+            valid_batch_sizes = get_valid_batch_sizes(n_steps)
+            if not valid_batch_sizes:
+                valid_batch_sizes = [n_steps]  # safe fallback
+
+            batch_size_idx = trial.suggest_int("batch_size_idx", 0, len(valid_batch_sizes) - 1)
+            batch_size = valid_batch_sizes[batch_size_idx]
+
+            params = {
+                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "n_steps": n_steps,
+                "batch_size": batch_size,
+                "n_epochs": trial.suggest_int("n_epochs", 4, 20),
+                "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+                "clip_range": trial.suggest_float("clip_range", 0.1, 0.4),
+                "ent_coef": trial.suggest_float("ent_coef", 1e-8, 0.1, log=True),
+                "vf_coef": trial.suggest_float("vf_coef", 0.1, 1.0),
+                "max_grad_norm": trial.suggest_float("max_grad_norm", 0.3, 5.0),
+                "gae_lambda": trial.suggest_float("gae_lambda", 0.8, 1.0),
+                "n_layers": trial.suggest_int("n_layers", 1, 3),
+                "layer_size": trial.suggest_int("layer_size", 32, 256),
+                "activation_fn": trial.suggest_categorical(
+                    "activation_fn", ["tanh", "relu", "leaky_relu", "elu"]
+                ),
+            }
+
+            net_arch = [params["layer_size"]] * params["n_layers"]
+            activation_map = {
+                "tanh": nn.Tanh,
+                "relu": nn.ReLU,
+                "leaky_relu": nn.LeakyReLU,
+                "elu": nn.ELU,
+            }
+            activation_fn = activation_map[params["activation_fn"]]
+
+            policy_kwargs = {
+                "net_arch": net_arch,
+                "activation_fn": activation_fn,
+            }
+
+            model = PPO(
+                "MlpPolicy",
+                env,
+                verbose=0,
+                device=device,
+                learning_rate=params["learning_rate"],
+                n_steps=params["n_steps"],
+                batch_size=params["batch_size"],
+                n_epochs=params["n_epochs"],
+                gamma=params["gamma"],
+                clip_range=params["clip_range"],
+                ent_coef=params["ent_coef"],
+                vf_coef=params["vf_coef"],
+                max_grad_norm=params["max_grad_norm"],
+                gae_lambda=params["gae_lambda"],
+                policy_kwargs=policy_kwargs,
+            )
+
+
+
         else:
             raise ValueError(f"Unsupported algorithm: {algo_name}")
 
-        model.learn(total_timesteps=10000, progress_bar=False)
+        model.learn(total_timesteps=50000, progress_bar=False)
 
         mean_reward = 0
-        n_eval_episodes = 5
+        n_eval_episodes = 20
         for _ in range(n_eval_episodes):
             obs = env.reset()
             done = False
@@ -213,7 +277,7 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
 
 
 if __name__ == "__main__":
-    algorithms = ["a2c"]
+    algorithms = ["ppo"]
     print("Starting hyperparameter tuning...")
     for algo in algorithms:
         print(f"\n{'=' * 50}")
