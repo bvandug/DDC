@@ -14,7 +14,7 @@ class BBCSimulinkEnv(gym.Env):
     """
     def __init__(self, model_name="bbcSim", dt=5e-6, max_episode_time=0.03,
                  grace_period_steps=50,
-                 frame_skip=10,
+                 frame_skip=1,
                  enable_plotting=False):
         """
         Args:
@@ -142,8 +142,8 @@ class BBCSimulinkEnv(gym.Env):
                 reward -= 10
 
         # Reduce print frequency to speed up training
-        if self.steps_taken % 100 == 0:
-            print(f"Step {self.steps_taken:<4} | Duty: {duty_cycle:.3f} | Volt: {voltage:.3f} | Goal: {self.goal:.2f} | Reward: {reward:.3f}")
+        #if self.steps_taken % 100 == 0:
+            #print(f"Step {self.steps_taken:<4} | Duty: {duty_cycle:.3f} | Volt: {voltage:.3f} | Goal: {self.goal:.2f} | Reward: {reward:.3f}")
 
         observation = np.array([voltage, error, derivative_error, self.goal], dtype=np.float32)
 

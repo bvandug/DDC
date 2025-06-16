@@ -74,8 +74,8 @@ if __name__ == "__main__":
     # --- Environment Instantiation with Final Recommended Settings ---
     env_fn = lambda: BBCSimulinkEnv(
         model_name="bbcSim",
-        frame_skip=10,
-        enable_plotting=True,           # Disable plotting for fast training
+        frame_skip=1,
+        enable_plotting=False,           # Disable plotting for fast training
         grace_period_steps=GRACE_PERIOD, # Use the short, fixed grace period
         max_episode_time=EPISODE_TIME    # Use the longer episode time
     )
