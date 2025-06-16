@@ -1,0 +1,308 @@
+### A2C (Advantage Actor-Critic)
+**Algorithm Explanation:**
+A2C is an **on-policy** algorithm that uses two neural networks:
+- an **Actor** that decides which action to take
+- a **Critic** that estimates how good the chosen action was. 
+It updates its policy based on a batch of recent experiences ("rollouts") simultaneously, making it a synchronous and often fast algorithm.
+
+**Key Hyperparameters:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Hyperparameter             | Description                                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| policy                     | The type of policy network to use (e.g., 'MlpPolicy', 'CnnPolicy').                                      |
+| learning_rate              | The step size for the optimizer. Controls how much the model's weights are adjusted.                     |
+| n_steps                    | The number of steps to run for each environment per update.                                              |
+| gamma                      | The discount factor for future rewards. A value closer to 1 prioritizes long-term reward.                |
+| gae_lambda                 | Factor for trade-off between bias and variance in the Generalized Advantage Estimator.                   |
+| ent_coef                   | Entropy coefficient. Encourages exploration by penalizing policy certainty.                              |
+| vf_coef                    | Value function (critic) coefficient. The weight of the critic loss in the total loss.                    |
+| max_grad_norm              | The maximum value for the gradient clipping to prevent exploding gradients.                              |
+| policy_kwargs              | A dictionary of extra arguments to pass to the policy network (e.g., `net_arch`).                        |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+**Logged Outputs:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Term                       | Meaning                                                                                                  |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| rollout                    |                                                                                                          |
+|    ep_len_mean             | The average length of an episode over a recent window.                                                   |
+|    ep_rew_mean             | The average total reward per episode over a recent window. A key performance metric.                     |
+| time                       |                                                                                                          |
+|    episodes                | Total number of full episodes completed.                                                                 |
+|    fps                     | Frames Per Second; measures training speed.                                                              |
+|    time_elapsed            | Total time passed in seconds since training started.                                                     |
+|    total_timesteps         | Cumulative number of steps taken in the environment.                                                     |
+| train                      |                                                                                                          |
+|    entropy_loss            | A measure of the policy's randomness to encourage exploration.                                           |
+|    explained_variance      | How well the critic's value predictions explain the actual returns. Closer to 1 is better.               |
+|    learning_rate           | The current learning rate used by the optimizers.                                                        |
+|    policy_loss             | The loss for the actor network, driving it to take better actions.                                       |
+|    value_loss              | The loss for the critic network, measuring its prediction error.                                         |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+### PPO (Proximal Policy Optimization)
+**Algorithm Explanation:**
+PPO is an **on-policy** algorithm and an improvement upon A2C.
+It also uses an Actor-Critic model but prevents overly large policy updates by "clipping" the objective function.
+This clipping ensures more stable and reliable training by preventing the new policy from straying too far from the old one in a single update.
+
+**Key Hyperparameters:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Hyperparameter             | Description                                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| policy                     | The type of policy network to use (e.g., 'MlpPolicy', 'CnnPolicy').                                      |
+| learning_rate              | The step size for the optimizer. Controls how much the model's weights are adjusted.                     |
+| n_steps                    | The number of steps to run for each environment before updating the policy.                              |
+| batch_size                 | The number of samples per minibatch for the policy update.                                               |
+| n_epochs                   | The number of epochs to run when updating the policy.                                                    |
+| gamma                      | The discount factor for future rewards. A value closer to 1 prioritizes long-term reward.                |
+| gae_lambda                 | Factor for trade-off between bias and variance in the Generalized Advantage Estimator.                   |
+| clip_range                 | The clipping parameter. The most important PPO-specific hyperparameter.                                  |
+| ent_coef                   | Entropy coefficient. Encourages exploration by penalizing policy certainty.                              |
+| vf_coef                    | Value function (critic) coefficient. The weight of the critic loss in the total loss.                    |
+| policy_kwargs              | A dictionary of extra arguments to pass to the policy network (e.g., `net_arch`).                        |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+**Logged Outputs:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Term                       | Meaning                                                                                                  |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| rollout                    |                                                                                                          |
+|    ep_len_mean             | The average length of an episode over a recent window.                                                   |
+|    ep_rew_mean             | The average total reward per episode over a recent window. A key performance metric.                     |
+| time                       |                                                                                                          |
+|    episodes                | Total number of full episodes completed.                                                                 |
+|    fps                     | Frames Per Second; measures training speed.                                                              |
+|    time_elapsed            | Total time passed in seconds since training started.                                                     |
+|    total_timesteps         | Cumulative number of steps taken in the environment.                                                     |
+| train                      |                                                                                                          |
+|    approx_kl               | Approximate KL divergence between the old and new policies. Measures how much the policy changed.        |
+|    clip_fraction           | The fraction of the policy update that was "clipped" to prevent it from changing too drastically.        |
+|    entropy_loss            | A measure of the policy's randomness to encourage exploration.                                           |
+|    explained_variance      | How well the critic's value predictions explain the actual returns. Closer to 1 is better.               |
+|    learning_rate           | The current learning rate used by the optimizers.                                                        |
+|    policy_gradient_loss    | The loss associated with improving the policy, also known as the actor loss.                             |
+|    value_loss              | The loss for the critic network, measuring its prediction error.                                         |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+### DQN (Deep Q-Network)
+**Algorithm Explanation:**
+DQN is an **off-policy** algorithm designed for discrete action spaces.
+It learns a **Q-value function**, which estimates the expected return of taking an action in a given state.
+It uses a **replay buffer** to store past experiences and samples from it to break correlations in training data.
+To choose an action, it typically uses an epsilon-greedy strategy: most of the time it picks the best-known action, but sometimes it explores by picking a random one.
+
+**Key Hyperparameters:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Hyperparameter             | Description                                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| policy                     | The type of policy network to use (e.g., 'MlpPolicy', 'CnnPolicy').                                      |
+| learning_rate              | The step size for the optimizer.                                                                         |
+| buffer_size                | The maximum size of the replay buffer.                                                                   |
+| learning_starts            | How many steps to collect before starting to train.                                                      |
+| batch_size                 | The number of samples to train on from the replay buffer.                                                |
+| tau                        | The soft update coefficient for updating the target network.                                             |
+| gamma                      | The discount factor for future rewards.                                                                  |
+| train_freq                 | Update the model every `train_freq` steps.                                                               |
+| gradient_steps             | How many gradient steps to do after each rollout.                                                        |
+| exploration_fraction       | The fraction of training time over which epsilon decreases.                                              |
+| exploration_final_eps      | The final value of epsilon (the exploration probability).                                                |
+| target_update_interval     | Update the target network every `target_update_interval` steps.                                          |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+**Logged Outputs:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Term                       | Meaning                                                                                                  |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| rollout                    |                                                                                                          |
+|    ep_len_mean             | The average length of an episode over a recent window.                                                   |
+|    ep_rew_mean             | The average total reward per episode over a recent window. A key performance metric.                     |
+|    exploration_rate        | The current value of epsilon, the probability of taking a random action.                                 |
+| time                       |                                                                                                          |
+|    episodes                | Total number of full episodes completed.                                                                 |
+|    fps                     | Frames Per Second; measures training speed.                                                              |
+|    time_elapsed            | Total time passed in seconds since training started.                                                     |
+|    total_timesteps         | Cumulative number of steps taken in the environment.                                                     |
+| train                      |                                                                                                          |
+|    learning_rate           | The current learning rate used by the optimizer.                                                         |
+|    loss                    | The loss for the Q-network, measuring the error in its value predictions.                                |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+### DDPG (Deep Deterministic Policy Gradient)
+**Algorithm Explanation:**
+DDPG is an **off-policy**, model-free algorithm for continuous action spaces.
+It's essentially DQN for continuous actions, combining insights from both DQN (replay buffer, target networks) and Actor-Critic methods.
+It learns a deterministic policy (the actor) that gives the exact action to take, rather than a probability over actions.
+
+**Key Hyperparameters:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Hyperparameter             | Description                                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| policy                     | The type of policy network to use ('MlpPolicy', 'CnnPolicy').                                            |
+| learning_rate              | The step size for both actor and critic optimizers.                                                      |
+| buffer_size                | The maximum size of the replay buffer.                                                                   |
+| learning_starts            | How many steps to collect before starting to train.                                                      |
+| batch_size                 | The number of samples to train on from the replay buffer.                                                |
+| tau                        | The soft update coefficient for updating the target networks.                                            |
+| gamma                      | The discount factor for future rewards.                                                                  |
+| action_noise               | The noise added to the action for exploration (e.g., `OrnsteinUhlenbeckActionNoise`).                    |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+**Logged Outputs:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Term                       | Meaning                                                                                                  |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| rollout                    |                                                                                                          |
+|    ep_len_mean             | The average length of an episode over a recent window.                                                   |
+|    ep_rew_mean             | The average total reward per episode over a recent window. A key performance metric.                     |
+| time                       |                                                                                                          |
+|    episodes                | Total number of full episodes completed.                                                                 |
+|    fps                     | Frames Per Second; measures training speed.                                                              |
+|    time_elapsed            | Total time passed in seconds since training started.                                                     |
+|    total_timesteps         | Cumulative number of steps taken in the environment.                                                     |
+| train                      |                                                                                                          |
+|    actor_loss              | Loss for the actor network; a lower value generally indicates the actor is better at choosing high-value |
+|                            | actions.                                                                                                 |
+|    critic_loss             | Loss for the critic network; measures the error in predicting the value of state-action pairs.           |
+|    learning_rate           | The current learning rate used by the optimizers.                                                        |
+|    n_updates               | The total number of times the neural networks have been updated.                                         |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+### TD3 (Twin Delayed Deep Deterministic Policy Gradient)
+**Algorithm Explanation:**
+TD3 is an **off-policy** algorithm and a direct successor to DDPG. It addresses DDPG's tendency to overestimate Q-values by introducing three key improvements:
+1.  **Twin Critics:** It learns two critic networks and uses the minimum of their predictions to form the target, which counters overestimation.
+2.  **Delayed Policy Updates:** The actor is updated less frequently than the critics, allowing the critic value estimates to stabilize first.
+3.  **Target Policy Smoothing:** Noise is added to the target action, which makes the value estimate more robust.
+
+**Key Hyperparameters:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Hyperparameter             | Description                                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| policy                     | The type of policy network to use ('MlpPolicy', 'CnnPolicy').                                            |
+| learning_rate              | The step size for the optimizers.                                                                        |
+| buffer_size                | The maximum size of the replay buffer.                                                                   |
+| batch_size                 | The number of samples to train on from the replay buffer.                                                |
+| tau                        | The soft update coefficient for updating the target networks.                                            |
+| gamma                      | The discount factor for future rewards.                                                                  |
+| policy_delay               | The number of critic updates to perform before one actor update. A key TD3 parameter.                    |
+| target_policy_noise        | The standard deviation of the noise added to the target policy.                                          |
+| target_noise_clip          | The bounds for the target policy noise.                                                                  |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+**Logged Outputs:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Term                       | Meaning                                                                                                  |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| rollout                    |                                                                                                          |
+|    ep_len_mean             | The average length of an episode over a recent window.                                                   |
+|    ep_rew_mean             | The average total reward per episode over a recent window. A key performance metric.                     |
+| time                       |                                                                                                          |
+|    episodes                | Total number of full episodes completed.                                                                 |
+|    fps                     | Frames Per Second; measures training speed.                                                              |
+|    time_elapsed            | Total time passed in seconds since training started.                                                     |
+|    total_timesteps         | Cumulative number of steps taken in the environment.                                                     |
+| train                      |                                                                                                          |
+|    actor_loss              | Loss for the actor network; a lower value generally indicates the actor is better at choosing high-value |
+|                            | actions.                                                                                                 |
+|    critic_loss             | Loss for the critic network; measures the error in predicting the value of state-action pairs.           |
+|    learning_rate           | The current learning rate used by the optimizers.                                                        |
+|    n_updates               | The total number of times the neural networks have been updated.                                         |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+### SAC (Soft Actor-Critic)
+**Algorithm Explanation:**
+SAC is a state-of-the-art **off-policy** algorithm for continuous action spaces. Its main feature is **entropy maximization**.
+The agent is trained not only to maximize cumulative reward but also to act as randomly as possible while still succeeding at the task.
+This encourages broader exploration, leading to more robust and stable policies.
+It achieves this by adding an entropy term to the objective function, with its importance controlled by a temperature parameter (alpha).
+
+**Key Hyperparameters:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Hyperparameter             | Description                                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| policy                     | The type of policy network to use ('MlpPolicy', 'CnnPolicy').                                            |
+| learning_rate              | The step size for the optimizers.                                                                        |
+| buffer_size                | The maximum size of the replay buffer.                                                                   |
+| batch_size                 | The number of samples to train on from the replay buffer.                                                |
+| tau                        | The soft update coefficient for updating the target critic network.                                      |
+| gamma                      | The discount factor for future rewards.                                                                  |
+| ent_coef                   | The entropy regularization coefficient (alpha). Can be 'auto' for automatic tuning.                      |
+| train_freq                 | Update the model every `train_freq` steps.                                                               |
+| use_sde                    | Whether to use State-Dependent Exploration (SDE) for exploration.                                        |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+**Logged Outputs:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Term                       | Meaning                                                                                                  |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| rollout                    |                                                                                                          |
+|    ep_len_mean             | The average length of an episode over a recent window.                                                   |
+|    ep_rew_mean             | The average total reward per episode over a recent window. A key performance metric.                     |
+| time                       |                                                                                                          |
+|    episodes                | Total number of full episodes completed.                                                                 |
+|    fps                     | Frames Per Second; measures training speed.                                                              |
+|    time_elapsed            | Total time passed in seconds since training started.                                                     |
+|    total_timesteps         | Cumulative number of steps taken in the environment.                                                     |
+| train                      |                                                                                                          |
+|    actor_loss              | Loss for the actor network; a lower value generally indicates the actor is better at choosing high-value |
+|                            | actions.                                                                                                 |
+|    critic_loss             | Loss for the critic networks; measures the error in predicting the value of state-action pairs.          |
+|    ent_coef                | The entropy coefficient (alpha) that balances the reward maximization and exploration trade-off.         |
+|    ent_coef_loss           | The loss used to automatically tune the entropy coefficient.                                             |
+|    learning_rate           | The current learning rate used by the optimizers.                                                        |
+|    n_updates               | The total number of times the neural networks have been updated.                                         |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+### HER (Hindsight Experience Replay)
+**Algorithm Explanation:**
+HER is not a standalone algorithm but a **wrapper** that can be used with any off-policy algorithm (DDPG, TD3, SAC).
+It is designed for environments with sparse rewards, especially goal-based tasks (e.g., a robot arm moving an object to a target).
+If an agent fails to reach the intended goal, HER allows it to learn anyway by pretending that the state it *did* reach was the goal it was trying to achieve all along.
+This "hindsight" turns failures into learning opportunities.
+# NOT RECOMMENDED FOR OUR SIMULATIONS BECAUSE WE HAVE DENSE REWARDS, NOT SPARSE REWARDS
+
+**Key Hyperparameters:**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Hyperparameter             | Description                                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| model_class                | The off-policy algorithm to wrap (e.g., SAC, TD3).                                                       |
+| n_sampled_goal             | Number of "hindsight" goals to sample for each transition in the replay buffer.                          |
+| goal_selection_strategy    | The strategy for selecting hindsight goals ('future', 'final', 'episode').                               |
+| ...                        | ...plus all the hyperparameters of the `model_class` you selected.                                       |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+**Logged Outputs (Example using SAC + HER):**
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Term                       | Meaning                                                                                                  |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| rollout                    |                                                                                                          |
+|    ep_len_mean             | The average length of an episode over a recent window.                                                   |
+|    ep_rew_mean             | The average total reward per episode over a recent window.                                               |
+|    success_rate            | The fraction of episodes where the agent achieved the intended goal. A key metric for HER.               |
+| time                       |                                                                                                          |
+|    episodes                | Total number of full episodes completed.                                                                 |
+|    fps                     | Frames Per Second; measures training speed.                                                              |
+|    time_elapsed            | Total time passed in seconds since training started.                                                     |
+|    total_timesteps         | Cumulative number of steps taken in the environment.                                                     |
+| train                      |                                                                                                          |
+|    actor_loss              | Loss for the actor network; a lower value generally indicates the actor is better at choosing high-value |
+|                            | actions.                                                                                                 |
+|    critic_loss             | Loss for the critic networks; measures the error in predicting the value of state-action pairs.          |
+|    ent_coef                | The entropy coefficient (alpha) that balances the reward maximization and exploration trade-off.         |
+|    ent_coef_loss           | The loss used to automatically tune the entropy coefficient.                                             |
+|    learning_rate           | The current learning rate used by the optimizers.                                                        |
+|    n_updates               | The total number of times the neural networks have been updated.                                         |
+-----------------------------------------------------------------------------------------------------------------------------------------
