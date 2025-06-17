@@ -180,15 +180,62 @@ def objective(trial, algo_name):
                 policy_kwargs=policy_kwargs,
             )
 
+        elif algo_name == "ddpg":
+            from stable_baselines3 import DDPG  # only import if not already
 
+            params = {
+                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "buffer_size": trial.suggest_int("buffer_size", 50000, 200000),
+                "batch_size": trial.suggest_int("batch_size", 64, 512),
+                "tau": trial.suggest_float("tau", 0.001, 0.02),
+                "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+                "action_noise_sigma": trial.suggest_float("action_noise_sigma", 0.1, 0.5),
+                "n_layers": trial.suggest_int("n_layers", 1, 3),
+                "layer_size": trial.suggest_int("layer_size", 32, 256),
+                "activation_fn": trial.suggest_categorical(
+                    "activation_fn", ["tanh", "relu", "leaky_relu", "elu"]
+                ),
+            }
+
+            net_arch = [params["layer_size"]] * params["n_layers"]
+            activation_map = {
+                "tanh": nn.Tanh,
+                "relu": nn.ReLU,
+                "leaky_relu": nn.LeakyReLU,
+                "elu": nn.ELU,
+            }
+            activation_fn = activation_map[params["activation_fn"]]
+
+            policy_kwargs = {
+                "net_arch": net_arch,
+                "activation_fn": activation_fn,
+            }
+
+            model = DDPG(
+                "MlpPolicy",
+                env,
+                verbose=0,
+                device=device,
+                train_freq= (1, "step"),
+                learning_rate=params["learning_rate"],
+                buffer_size=params["buffer_size"],
+                batch_size=params["batch_size"],
+                tau=params["tau"],
+                gamma=params["gamma"],
+                action_noise=NormalActionNoise(
+                    mean=np.zeros(1),
+                    sigma=params["action_noise_sigma"] * np.ones(1),
+                ),
+                policy_kwargs=policy_kwargs,
+            )
 
         else:
             raise ValueError(f"Unsupported algorithm: {algo_name}")
 
-        model.learn(total_timesteps=50000, progress_bar=False)
+        model.learn(total_timesteps=20000, progress_bar=False)
 
         mean_reward = 0
-        n_eval_episodes = 20
+        n_eval_episodes = 10
         for _ in range(n_eval_episodes):
             obs = env.reset()
             done = False
@@ -259,12 +306,12 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
     #     pbar.refresh()
     #     pbar.set_postfix({"best_value": f"{study.best_value:.2f}"})
 
-    # study.optimize(
-    #     lambda trial: objective(trial, algo_name),
-    #     n_trials=n_trials,
-    #     callbacks=[update_progress],
-    #     n_jobs=n_parallel,
-    #)
+    study.optimize(
+        lambda trial: objective(trial, algo_name),
+        n_trials=n_trials,
+        # callbacks=[update_progress],
+        n_jobs=n_parallel,
+    )
 
     # pbar.close()
 
@@ -296,10 +343,10 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
 
 
 if __name__ == "__main__":
-    algorithms = ["ppo"]
+    algorithms = ["ddpg"]
     print("Starting hyperparameter tuning...")
     for algo in algorithms:
         print(f"\n{'=' * 50}")
         print(f"Tuning hyperparameters for {algo.upper()}...")
         print(f"{'=' * 50}\n")
-        tune_hyperparameters(algo_name=algo, n_trials=50, n_parallel=4)
+        tune_hyperparameters(algo_name=algo, n_trials=50, n_parallel=6)
