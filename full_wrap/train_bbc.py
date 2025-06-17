@@ -64,7 +64,7 @@ class EpisodeStatsLogger(BaseCallback):
 
 if __name__ == "__main__":
     # --- Training Parameters ---
-    total_timesteps = 50000      # Increased total training time
+    total_timesteps = 15000      # Increased total training time
     LEARNING_STARTS = 600        # Random exploration for the first episode
     EPISODE_TIME = 0.03          # Corresponds to 600 agent steps
     GRACE_PERIOD = 50            # Short grace period for every episode startup
@@ -74,8 +74,8 @@ if __name__ == "__main__":
     # --- Environment Instantiation with Final Recommended Settings ---
     env_fn = lambda: BBCSimulinkEnv(
         model_name="bbcSim",
-        frame_skip=1,
-        enable_plotting=False,           # Disable plotting for fast training
+        frame_skip=10,
+        enable_plotting=True,           # Disable plotting for fast training
         grace_period_steps=GRACE_PERIOD, # Use the short, fixed grace period
         max_episode_time=EPISODE_TIME    # Use the longer episode time
     )
@@ -89,14 +89,14 @@ if __name__ == "__main__":
 
     log_file_path = "td3_bbc_training_log.txt"
     n_actions = env.action_space.shape[-1]
-    action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.3 * np.ones(n_actions))
+    action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.2 * np.ones(n_actions))
 
     # --- Model Definition ---
     print("Creating the TD3 model...")
     model = TD3(
         "MlpPolicy",
         env,
-        learning_rate=1e-4,
+        learning_rate=1e-5,
         buffer_size=250_000,
         batch_size=256,
         tau=0.005,

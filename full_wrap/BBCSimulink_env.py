@@ -14,7 +14,7 @@ class BBCSimulinkEnv(gym.Env):
     """
     def __init__(self, model_name="bbcSim", dt=5e-6, max_episode_time=0.03,
                  grace_period_steps=50,
-                 frame_skip=1,
+                 frame_skip=10,
                  enable_plotting=False):
         """
         Args:
@@ -113,16 +113,12 @@ class BBCSimulinkEnv(gym.Env):
         error = voltage - self.goal
         derivative_error = error - self.prev_error
 
-        # --- CRITICAL FIX: Scaled reward to prevent exploding losses ---
         reward_accuracy = -0.01 * (error**2)
-        
         progress = abs(self.prev_error) - abs(error)
-        reward_progress = 10 * progress
-        # Increase the penalty for high duty cycles to encourage moderation
-        reward_efficiency = -2.0 * (duty_cycle**2)
-        reward = reward_accuracy + reward_progress + reward_efficiency
+        reward_progress = 5 * progress
+        reward_efficiency = -1 * (duty_cycle**2)
 
-        self.prev_error = error
+        reward = reward_accuracy + reward_progress + reward_efficiency
 
         terminated = bool(t >= self.max_episode_time)
         truncated = False
@@ -134,16 +130,22 @@ class BBCSimulinkEnv(gym.Env):
             SOFT_LOWER_LIMIT = -52.0 # 3 below the goal voltage range
             SOFT_UPPER_LIMIT = -25.0 # 3 above the goal voltage range
 
-            if (voltage < HARD_LOWER_LIMIT) or (voltage > HARD_UPPER_LIMIT):
-                reward -= 100
+            if (voltage < HARD_LOWER_LIMIT):
+                penalty = 20 + 10 * abs(voltage - HARD_LOWER_LIMIT)  # Smoothly increase penalty as violation worsens
+                reward -= penalty
                 truncated = True
-                print(f"Terminated due to hard limit violation, voltage: {voltage:.3f} exceeded limits [-90V, -15V]")
-            elif (voltage < SOFT_LOWER_LIMIT) or (voltage > SOFT_UPPER_LIMIT):
-                reward -= 10
+            elif (voltage > HARD_UPPER_LIMIT):
+                penalty = 20 + 10 * abs(voltage - HARD_UPPER_LIMIT)
+                reward -= penalty
+                truncated = True
+            if (SOFT_LOWER_LIMIT < voltage < HARD_LOWER_LIMIT):
+                reward -= 5 * (HARD_LOWER_LIMIT - voltage)  # Gradually penalize based on distance
+            elif (SOFT_UPPER_LIMIT > voltage > HARD_UPPER_LIMIT):
+                reward -= 5 * (voltage - HARD_UPPER_LIMIT)
 
-        # Reduce print frequency to speed up training
-        #if self.steps_taken % 100 == 0:
-            #print(f"Step {self.steps_taken:<4} | Duty: {duty_cycle:.3f} | Volt: {voltage:.3f} | Goal: {self.goal:.2f} | Reward: {reward:.3f}")
+        reward = np.tanh(reward / 25.0) * 25.0
+        self.prev_error = error
+        print(f"reward: {reward:.3f} | acc: {reward_accuracy:.3f} | prog: {reward_progress:.3f} | eff: {reward_efficiency:.3f} | voltage: {voltage:.3f}")
 
         observation = np.array([voltage, error, derivative_error, self.goal], dtype=np.float32)
 
