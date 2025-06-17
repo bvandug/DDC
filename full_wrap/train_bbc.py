@@ -64,7 +64,7 @@ class EpisodeStatsLogger(BaseCallback):
 
 if __name__ == "__main__":
     # --- Training Parameters ---
-    total_timesteps = 50000      # Increased total training time
+    total_timesteps = 17000      # Increased total training time
     LEARNING_STARTS = 600        # Random exploration for the first episode
     EPISODE_TIME = 0.03          # Corresponds to 600 agent steps
     GRACE_PERIOD = 50            # Short grace period for every episode startup
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     model = TD3(
         "MlpPolicy",
         env,
-        learning_rate=1e-4,
+        learning_rate=5e-5, # Was 1e-4 (0.0001), trying 0.00005 (5e-5)
         buffer_size=250_000,
         batch_size=256,
         tau=0.005,
