@@ -156,7 +156,7 @@ def evaluate_full_metrics(
 
 if __name__ == "__main__":
     env = SimulinkEnv()
-    name = "td3_simulinker"  # Replace with your model name
+    name = "best_model_td3.zip"  # Replace with your model name
     print(f"Loading model {name}...")
     model = TD3.load(name)
 

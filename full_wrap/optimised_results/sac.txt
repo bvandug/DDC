@@ -1,0 +1,281 @@
+PS C:\Users\benva\OneDrive\Documents\MATLAB> myenv\Scripts\Activate.ps1
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB> cd .\full_wrap\
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap> python .\hyperparameter_tuning.py
+Starting hyperparameter tuning...
+
+==================================================
+Tuning hyperparameters for SAC...
+==================================================
+
+
+Tuning SAC with 6 parallel workers
+[I 2025-06-17 18:08:09,483] A new study created in memory with name: no-name-9003e748-4166-4c17-b0c3-82a1de17b9e5
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Using device: cuda
+Using device: cudaUsing device: cudaUsing device: cudaUsing device: cuda
+
+
+
+Using device: cuda
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\vec_env\patch_gym.py:49: UserWarning: You provided an OpenAI Gym environment. We strongly recommend transitioning to Gymnasium environments. Stable-Baselines3 is automatically wrapping your environments in a compatibility layer, which could potentially cause issues.
+  warnings.warn(
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_f92bb1e3.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_f92bb1e3.slxc
+[I 2025-06-17 19:54:10,402] Trial 4 finished with value: 10.958884036966452 and parameters: {'learning_rate': 6.488752755773996e-05, 'buffer_size': 82089, 'batch_size': 471, 'tau': 0.009751454364877385, 'gamma': 0.9159440298289121, 'ent_coef': 'auto', 'n_layers': 1, 'layer_size': 98, 'activation_fn': 'tanh'}. Best is trial 4 with value: 10.958884036966452.
+Starting MATLAB engine...
+Using device: cuda
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\vec_env\patch_gym.py:49: UserWarning: You provided an OpenAI Gym environment. We strongly recommend transitioning to Gymnasium environments. Stable-Baselines3 is automatically wrapping your environments in a compatibility layer, which could potentially cause issues.
+  warnings.warn(
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7304813d.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_7304813d.slxc
+[I 2025-06-17 19:55:52,464] Trial 5 finished with value: 13.45311826051458 and parameters: {'learning_rate': 3.70894620052274e-05, 'buffer_size': 75397, 'batch_size': 235, 'tau': 0.009805223448143382, 'gamma': 0.9307778544584457, 'ent_coef': 'auto', 'n_layers': 3, 'layer_size': 117, 'activation_fn': 'tanh'}. Best is trial 5 with value: 13.45311826051458.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_4c2249a6.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_4c2249a6.slxc
+[I 2025-06-17 20:19:25,560] Trial 2 finished with value: 401.75241228030814 and parameters: {'learning_rate': 0.00015215522738244223, 'buffer_size': 116146, 'batch_size': 64, 'tau': 0.003760617526585519, 'gamma': 0.9009636308720795, 'ent_coef': 0.001, 'n_layers': 3, 'layer_size': 146, 'activation_fn': 'relu'}. Best is trial 2 with value: 401.75241228030814.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_66205e71.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_66205e71.slxc
+[I 2025-06-17 20:24:16,453] Trial 0 finished with value: 444.0506351335982 and parameters: {'learning_rate': 0.00018945593345531857, 'buffer_size': 166727, 'batch_size': 347, 'tau': 0.012143647949178427, 'gamma': 0.9868180599774827, 'ent_coef': 0.1, 'n_layers': 2, 'layer_size': 228, 'activation_fn': 'elu'}. Best is trial 0 with value: 444.0506351335982.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_cd881b6c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_cd881b6c.slxc
+[I 2025-06-17 20:27:05,100] Trial 1 finished with value: 398.2394075038752 and parameters: {'learning_rate': 1.3618517401567809e-05, 'buffer_size': 109491, 'batch_size': 228, 'tau': 0.01824578770035572, 'gamma': 0.9269358987807365, 'ent_coef': 0.01, 'n_layers': 2, 'layer_size': 194, 'activation_fn': 'relu'}. Best is trial 0 with value: 444.0506351335982.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_dc43cd50.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_dc43cd50.slxc
+[I 2025-06-17 20:28:40,351] Trial 3 finished with value: 468.4261677477222 and parameters: {'learning_rate': 4.548218256550721e-05, 'buffer_size': 148924, 'batch_size': 213, 'tau': 0.01938835117186786, 'gamma': 0.9408406850221781, 'ent_coef': 0.001, 'n_layers': 3, 'layer_size': 205, 'activation_fn': 'elu'}. Best is trial 3 with value: 468.4261677477222.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7c4f738c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_7c4f738c.slxc
+[I 2025-06-17 21:52:11,678] Trial 7 finished with value: 19.31698121040768 and parameters: {'learning_rate': 0.00020121861593000033, 'buffer_size': 61049, 'batch_size': 507, 'tau': 0.0054101514196577705, 'gamma': 0.9071984703681034, 'ent_coef': 0.1, 'n_layers': 3, 'layer_size': 158, 'activation_fn': 'leaky_relu'}. Best is trial 3 with value: 468.4261677477222.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_71925a7f.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_71925a7f.slxc
+[I 2025-06-17 22:14:50,100] Trial 8 finished with value: 13.659063148137317 and parameters: {'learning_rate': 6.834716867353494e-05, 'buffer_size': 174199, 'batch_size': 222, 'tau': 0.0058312065332627745, 'gamma': 0.9416253494442213, 'ent_coef': 'auto', 'n_layers': 2, 'layer_size': 117, 'activation_fn': 'leaky_relu'}. Best is trial 3 with value: 468.4261677477222.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8e3c22f5.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8e3c22f5.slxc
+[I 2025-06-17 22:26:29,708] Trial 6 finished with value: 468.8842384501985 and parameters: {'learning_rate': 2.169111794312413e-05, 'buffer_size': 171295, 'batch_size': 457, 'tau': 0.010291276232147841, 'gamma': 0.9087853887170669, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 78, 'activation_fn': 'relu'}. Best is trial 6 with value: 468.8842384501985.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8f0d1871.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8f0d1871.slxc
+[I 2025-06-17 22:43:48,451] Trial 11 finished with value: 283.89387818784104 and parameters: {'learning_rate': 0.0001317870367310436, 'buffer_size': 138707, 'batch_size': 212, 'tau': 0.005202863670627992, 'gamma': 0.909569142372109, 'ent_coef': 0.1, 'n_layers': 1, 'layer_size': 106, 'activation_fn': 'tanh'}. Best is trial 6 with value: 468.8842384501985.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_e74eb057.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_e74eb057.slxc
+[I 2025-06-17 22:48:40,489] Trial 9 finished with value: 446.98194341676924 and parameters: {'learning_rate': 5.905153997686731e-05, 'buffer_size': 100948, 'batch_size': 278, 'tau': 0.018079560516911855, 'gamma': 0.9416994795488771, 'ent_coef': 0.01, 'n_layers': 3, 'layer_size': 211, 'activation_fn': 'leaky_relu'}. Best is trial 6 with value: 468.8842384501985.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8a652b9a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8a652b9a.slxc
+[I 2025-06-17 22:54:23,423] Trial 10 finished with value: 380.8549729353265 and parameters: {'learning_rate': 2.007351334842144e-05, 'buffer_size': 94360, 'batch_size': 284, 'tau': 0.002670171716667751, 'gamma': 0.9271162230828559, 'ent_coef': 0.1, 'n_layers': 2, 'layer_size': 132, 'activation_fn': 'leaky_relu'}. Best is trial 6 with value: 468.8842384501985.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_15b01d23.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_15b01d23.slxc
+[I 2025-06-18 00:18:37,861] Trial 14 finished with value: 18.59767577104882 and parameters: {'learning_rate': 1.555282717522618e-05, 'buffer_size': 179548, 'batch_size': 484, 'tau': 0.01878306745042293, 'gamma': 0.9161791011193723, 'ent_coef': 0.1, 'n_layers': 3, 'layer_size': 42, 'activation_fn': 'relu'}. Best is trial 6 with value: 468.8842384501985.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_529281ac.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_529281ac.slxc
+[I 2025-06-18 00:19:36,430] Trial 12 finished with value: 399.46105471618984 and parameters: {'learning_rate': 1.0010259825083297e-05, 'buffer_size': 117393, 'batch_size': 392, 'tau': 0.01349143234450469, 'gamma': 0.95818182184038, 'ent_coef': 0.001, 'n_layers': 3, 'layer_size': 188, 'activation_fn': 'tanh'}. Best is trial 6 with value: 468.8842384501985.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_90d6439f.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_90d6439f.slxc
+[I 2025-06-18 00:41:13,346] Trial 13 finished with value: 481.47656756406076 and parameters: {'learning_rate': 2.8169975461828758e-05, 'buffer_size': 113482, 'batch_size': 252, 'tau': 0.017049462237933598, 'gamma': 0.989609785636382, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 146, 'activation_fn': 'elu'}. Best is trial 13 with value: 481.47656756406076.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7865faf4.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_7865faf4.slxc
+[I 2025-06-18 01:08:40,724] Trial 15 finished with value: 495.6869855793728 and parameters: {'learning_rate': 0.0007682770167963583, 'buffer_size': 197319, 'batch_size': 398, 'tau': 0.014313217062865665, 'gamma': 0.96988618771499, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 35, 'activation_fn': 'relu'}. Best is trial 15 with value: 495.6869855793728.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_050d2ae9.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_050d2ae9.slxc
+[I 2025-06-18 01:13:08,523] Trial 16 finished with value: 489.9893779910277 and parameters: {'learning_rate': 0.0007923628463971176, 'buffer_size': 147544, 'batch_size': 400, 'tau': 0.014195268064267578, 'gamma': 0.9611027103187345, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 43, 'activation_fn': 'elu'}. Best is trial 15 with value: 495.6869855793728.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_dfa0d492.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_dfa0d492.slxc
+[I 2025-06-18 01:19:51,691] Trial 17 finished with value: 417.7922630246559 and parameters: {'learning_rate': 0.0008071655439997594, 'buffer_size': 194583, 'batch_size': 396, 'tau': 0.0142803361390774, 'gamma': 0.9667557836018031, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 34, 'activation_fn': 'elu'}. Best is trial 15 with value: 495.6869855793728.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8c03e66c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8c03e66c.slxc
+[I 2025-06-18 02:42:03,296] Trial 18 finished with value: 469.3138756971459 and parameters: {'learning_rate': 0.0006695039775314517, 'buffer_size': 144173, 'batch_size': 390, 'tau': 0.013180671277048372, 'gamma': 0.9673322762578549, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 48, 'activation_fn': 'elu'}. Best is trial 15 with value: 495.6869855793728.
+Starting MATLAB engine...
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_242c6a9c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_242c6a9c.slxc
+[I 2025-06-18 02:42:21,927] Trial 19 finished with value: 496.3737265343487 and parameters: {'learning_rate': 0.0006568655035134386, 'buffer_size': 199097, 'batch_size': 101, 'tau': 0.014284180457288305, 'gamma': 0.9655695790108878, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 256, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_071e4564.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_071e4564.slxc
+[I 2025-06-18 03:04:36,165] Trial 20 finished with value: 441.2289770462086 and parameters: {'learning_rate': 0.0007827407736619049, 'buffer_size': 191293, 'batch_size': 138, 'tau': 0.015431179660773765, 'gamma': 0.994792827814396, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 66, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d17ead2b.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_d17ead2b.slxc
+[I 2025-06-18 03:31:57,810] Trial 21 finished with value: 417.9059352830788 and parameters: {'learning_rate': 0.0008648291823043875, 'buffer_size': 195220, 'batch_size': 145, 'tau': 0.015488766522620826, 'gamma': 0.9934445927951775, 'ent_coef': 0.001, 'n_layers': 1, 'layer_size': 41, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_be5d1eff.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_be5d1eff.slxc
+[I 2025-06-18 03:35:39,245] Trial 22 finished with value: 496.0278565552541 and parameters: {'learning_rate': 0.0009715509055803751, 'buffer_size': 194457, 'batch_size': 391, 'tau': 0.015351250968892319, 'gamma': 0.9675537155048637, 'ent_coef': 0.001, 'n_layers': 1, 'layer_size': 32, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_2981ba33.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_2981ba33.slxc
+[I 2025-06-18 03:37:40,304] Trial 23 finished with value: 422.33695403762675 and parameters: {'learning_rate': 0.0009102272672125433, 'buffer_size': 145096, 'batch_size': 354, 'tau': 0.015994012080503515, 'gamma': 0.9731476245478855, 'ent_coef': 0.001, 'n_layers': 1, 'layer_size': 68, 'activation_fn': 'relu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b2271224.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_b2271224.slxc
+[I 2025-06-18 05:04:11,145] Trial 24 finished with value: 413.89631194955126 and parameters: {'learning_rate': 0.0003673421230118183, 'buffer_size': 198442, 'batch_size': 137, 'tau': 0.01612420300965707, 'gamma': 0.9991677617951209, 'ent_coef': 0.01, 'n_layers': 1, 'layer_size': 237, 'activation_fn': 'relu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_e76dba50.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_e76dba50.slxc
+[I 2025-06-18 05:05:01,501] Trial 25 finished with value: 474.10129089473264 and parameters: {'learning_rate': 0.00038237688145463777, 'buffer_size': 196016, 'batch_size': 142, 'tau': 0.01589129549225135, 'gamma': 0.9812568351872574, 'ent_coef': 0.01, 'n_layers': 1, 'layer_size': 254, 'activation_fn': 'relu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_37a663a2.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_37a663a2.slxc
+[I 2025-06-18 05:18:29,775] Trial 26 finished with value: 353.141090990232 and parameters: {'learning_rate': 0.000411666912136488, 'buffer_size': 198726, 'batch_size': 333, 'tau': 0.015797551135709142, 'gamma': 0.9747830461008542, 'ent_coef': 0.001, 'n_layers': 1, 'layer_size': 73, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7842ebfb.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_7842ebfb.slxc
+[I 2025-06-18 05:49:46,970] Trial 27 finished with value: 447.72409324893914 and parameters: {'learning_rate': 0.00038810843714213143, 'buffer_size': 157665, 'batch_size': 336, 'tau': 0.01225108819228226, 'gamma': 0.9738210751572107, 'ent_coef': 0.001, 'n_layers': 1, 'layer_size': 250, 'activation_fn': 'relu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_72f3c5a0.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_72f3c5a0.slxc
+[I 2025-06-18 05:50:25,416] Trial 29 finished with value: 399.74639904894843 and parameters: {'learning_rate': 0.00036986102032720387, 'buffer_size': 182585, 'batch_size': 333, 'tau': 0.008089289177500231, 'gamma': 0.9810169669580857, 'ent_coef': 0.01, 'n_layers': 1, 'layer_size': 243, 'activation_fn': 'relu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a6ce5f3b.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a6ce5f3b.slxc
+[I 2025-06-18 05:58:22,922] Trial 28 finished with value: 494.8128497169155 and parameters: {'learning_rate': 0.00035451506033877273, 'buffer_size': 183970, 'batch_size': 345, 'tau': 0.011405726378917479, 'gamma': 0.979482098551968, 'ent_coef': 0.01, 'n_layers': 1, 'layer_size': 247, 'activation_fn': 'relu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a2d6d6f3.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a2d6d6f3.slxc
+[I 2025-06-18 07:18:50,135] Trial 31 finished with value: 376.3581135678639 and parameters: {'learning_rate': 0.0004531268638914074, 'buffer_size': 182822, 'batch_size': 329, 'tau': 0.011522043607710825, 'gamma': 0.9528936412628611, 'ent_coef': 0.001, 'n_layers': 1, 'layer_size': 173, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_ad98d8e7.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_ad98d8e7.slxc
+[I 2025-06-18 07:26:52,363] Trial 30 finished with value: 492.055924359078 and parameters: {'learning_rate': 0.000374911433742785, 'buffer_size': 161950, 'batch_size': 330, 'tau': 0.012067095587799111, 'gamma': 0.9777072358509719, 'ent_coef': 0.001, 'n_layers': 1, 'layer_size': 252, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8f541d03.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8f541d03.slxc
+[I 2025-06-18 07:40:32,998] Trial 32 finished with value: 488.29692829294817 and parameters: {'learning_rate': 0.0005755862233833547, 'buffer_size': 160409, 'batch_size': 436, 'tau': 0.011897591335733699, 'gamma': 0.9533111773078448, 'ent_coef': 0.001, 'n_layers': 1, 'layer_size': 171, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_86a28256.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_86a28256.slxc
+[I 2025-06-18 08:09:08,699] Trial 33 finished with value: 441.87967421419864 and parameters: {'learning_rate': 0.0005436522200818032, 'buffer_size': 184137, 'batch_size': 415, 'tau': 0.008107535497592504, 'gamma': 0.9530894178103658, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 180, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8d56df4a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8d56df4a.slxc
+[I 2025-06-18 08:09:25,353] Trial 34 finished with value: 446.9607869782769 and parameters: {'learning_rate': 0.0005776372998450722, 'buffer_size': 161175, 'batch_size': 432, 'tau': 0.011587246520196859, 'gamma': 0.9524970131446048, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 167, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_fca20fd1.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_fca20fd1.slxc
+[I 2025-06-18 08:21:46,739] Trial 35 finished with value: 494.72324876174537 and parameters: {'learning_rate': 0.0005551420121226357, 'buffer_size': 165140, 'batch_size': 440, 'tau': 0.012033205357514377, 'gamma': 0.9539758142018389, 'ent_coef': 0.001, 'n_layers': 2, 'layer_size': 87, 'activation_fn': 'elu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_2bfe388a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_2bfe388a.slxc
+[I 2025-06-18 09:42:42,406] Trial 36 finished with value: 494.393238006105 and parameters: {'learning_rate': 0.0005648949691923782, 'buffer_size': 161812, 'batch_size': 416, 'tau': 0.011880669489250418, 'gamma': 0.9811730180646615, 'ent_coef': 0.01, 'n_layers': 2, 'layer_size': 227, 'activation_fn': 'relu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_e77eea04.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_e77eea04.slxc
+[I 2025-06-18 09:50:09,473] Trial 37 finished with value: 475.35471337119196 and parameters: {'learning_rate': 0.0005906895694966814, 'buffer_size': 184966, 'batch_size': 434, 'tau': 0.00874999291554771, 'gamma': 0.9861704745441354, 'ent_coef': 0.01, 'n_layers': 2, 'layer_size': 223, 'activation_fn': 'relu'}. Best is trial 19 with value: 496.3737265343487.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_69dd425d.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_69dd425d.slxc
+[I 2025-06-18 10:05:08,839] Trial 38 finished with value: 496.58817270056363 and parameters: {'learning_rate': 0.00026204739487281235, 'buffer_size': 185774, 'batch_size': 437, 'tau': 0.007548062404301567, 'gamma': 0.9645566858284886, 'ent_coef': 0.01, 'n_layers': 2, 'layer_size': 224, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_c8463d96.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_c8463d96.slxc
+[I 2025-06-18 10:29:25,626] Trial 40 finished with value: 447.5701530893449 and parameters: {'learning_rate': 0.0002571173679088708, 'buffer_size': 185523, 'batch_size': 371, 'tau': 0.017436087344457316, 'gamma': 0.9655087447302513, 'ent_coef': 0.01, 'n_layers': 2, 'layer_size': 228, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Starting MATLAB engine...
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6f83d9d4.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6f83d9d4.slxc
+[I 2025-06-18 10:29:47,738] Trial 39 finished with value: 444.3886360643208 and parameters: {'learning_rate': 0.00024106087889346837, 'buffer_size': 187396, 'batch_size': 360, 'tau': 0.0173094354991968, 'gamma': 0.9651602841133277, 'ent_coef': 0.01, 'n_layers': 2, 'layer_size': 220, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Starting MATLAB engine...
+Using device: cuda
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_c922e1bf.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_c922e1bf.slxc
+[I 2025-06-18 10:41:16,443] Trial 41 finished with value: 448.7208106312023 and parameters: {'learning_rate': 0.0003099776047678176, 'buffer_size': 188223, 'batch_size': 367, 'tau': 0.017433290686833493, 'gamma': 0.9642917523158698, 'ent_coef': 0.01, 'n_layers': 1, 'layer_size': 236, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_fa4f937c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_fa4f937c.slxc
+[I 2025-06-18 12:14:29,470] Trial 43 finished with value: 399.2277938265024 and parameters: {'learning_rate': 0.0002523164955518116, 'buffer_size': 129987, 'batch_size': 370, 'tau': 0.017472472767942025, 'gamma': 0.9654997843339354, 'ent_coef': 'auto', 'n_layers': 1, 'layer_size': 200, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6baea300.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6baea300.slxc
+[I 2025-06-18 12:16:06,747] Trial 42 finished with value: 474.89022457485027 and parameters: {'learning_rate': 0.0002666733495267179, 'buffer_size': 189131, 'batch_size': 353, 'tau': 0.014406304486825032, 'gamma': 0.9662494281346289, 'ent_coef': 'auto', 'n_layers': 1, 'layer_size': 210, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Starting MATLAB engine...
+Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_0b1ebe39.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_0b1ebe39.slxc
+[I 2025-06-18 12:30:59,987] Trial 45 finished with value: 145.2137057156533 and parameters: {'learning_rate': 0.00028481117518639593, 'buffer_size': 172659, 'batch_size': 305, 'tau': 0.007097288232785796, 'gamma': 0.9710188189049714, 'ent_coef': 'auto', 'n_layers': 2, 'layer_size': 207, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_674d7067.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_674d7067.slxc
+[I 2025-06-18 12:32:00,749] Trial 44 finished with value: 397.6382403042636 and parameters: {'learning_rate': 0.00024898059689451487, 'buffer_size': 172175, 'batch_size': 67, 'tau': 0.017420376610683908, 'gamma': 0.9639550374580916, 'ent_coef': 'auto', 'n_layers': 3, 'layer_size': 211, 'activation_fn': 'tanh'}. Best is trial 38 with value: 496.58817270056363.
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_295627b2.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_295627b2.slxc
+[I 2025-06-18 12:44:29,762] Trial 46 finished with value: 306.89043150931957 and parameters: {'learning_rate': 0.00027391317960164446, 'buffer_size': 172429, 'batch_size': 308, 'tau': 0.007145119642453137, 'gamma': 0.9702272757118439, 'ent_coef': 'auto', 'n_layers': 2, 'layer_size': 59, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_dba452f6.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_dba452f6.slxc
+[I 2025-06-18 13:05:39,370] Trial 47 finished with value: 494.9440970018227 and parameters: {'learning_rate': 0.0009836358915010217, 'buffer_size': 172746, 'batch_size': 67, 'tau': 0.007000802349170963, 'gamma': 0.9708954955341426, 'ent_coef': 'auto', 'n_layers': 2, 'layer_size': 53, 'activation_fn': 'relu'}. Best is trial 38 with value: 496.58817270056363.
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7596173a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_7596173a.slxc
+[I 2025-06-18 13:50:40,184] Trial 48 finished with value: 11.768943642069212 and parameters: {'learning_rate': 0.00014269647868036105, 'buffer_size': 167957, 'batch_size': 304, 'tau': 0.010459971447147038, 'gamma': 0.9710677013909634, 'ent_coef': 'auto', 'n_layers': 2, 'layer_size': 55, 'activation_fn': 'tanh'}. Best is trial 38 with value: 496.58817270056363.
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_48330bb9.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_48330bb9.slxc
+[I 2025-06-18 14:09:42,617] Trial 49 finished with value: 421.136288579937 and parameters: {'learning_rate': 0.00017508670394327774, 'buffer_size': 174054, 'batch_size': 74, 'tau': 0.00712953800110608, 'gamma': 0.9707001857292512, 'ent_coef': 0.01, 'n_layers': 3, 'layer_size': 60, 'activation_fn': 'tanh'}. Best is trial 38 with value: 496.58817270056363.
+
+Best parameters for sac:
+Best value: 496.58817270056363
+  learning_rate: 0.00026204739487281235
+  buffer_size: 185774
+  batch_size: 437
+  tau: 0.007548062404301567
+  gamma: 0.9645566858284886
+  ent_coef: 0.01
+  n_layers: 2
+  layer_size: 224
+  activation_fn: relu
+  net_arch: [224, 224]
+  activation_fn: relu
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap> 0
