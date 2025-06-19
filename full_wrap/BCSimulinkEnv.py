@@ -48,7 +48,7 @@ class BCSimulinkEnv(gym.Env):
 
     def _setup_plot(self):
         """
-        Sets up the live plot for the environment.
+        Sets up the live plot for the environment that plots the voltage, goal, and duty cycle.
         """
         print("Setting up the live plot...")
         plt.ion()
