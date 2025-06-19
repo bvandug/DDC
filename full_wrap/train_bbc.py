@@ -2,7 +2,7 @@ import os
 import torch
 import numpy as np
 from datetime import datetime
-from stable_baselines3 import TD3
+from stable_baselines3 import TD3, A2C
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -64,7 +64,7 @@ class EpisodeStatsLogger(BaseCallback):
 
 if __name__ == "__main__":
     # --- Training Parameters ---
-    total_timesteps = 15000      # Increased total training time
+    total_timesteps = 25000      # Increased total training time
     LEARNING_STARTS = 600        # Random exploration for the first episode
     EPISODE_TIME = 0.03          # Corresponds to 600 agent steps
     GRACE_PERIOD = 50            # Short grace period for every episode startup
@@ -88,24 +88,22 @@ if __name__ == "__main__":
                        clip_obs=10.0)
 
     log_file_path = "td3_bbc_training_log.txt"
-    n_actions = env.action_space.shape[-1]
-    action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.2 * np.ones(n_actions))
 
-    # --- Model Definition ---
-    print("Creating the TD3 model...")
-    model = TD3(
+    print("Creating the A2C model...")  # CHANGED PRINT
+    model = A2C(
         "MlpPolicy",
         env,
-        learning_rate=1e-5,
-        buffer_size=250_000,
-        batch_size=256,
-        tau=0.005,
+        learning_rate=1e-4,
+        n_steps=10,
         gamma=0.99,
-        train_freq=(1, "step"),
-        learning_starts=LEARNING_STARTS,
-        action_noise=action_noise,
-        verbose=1,
+        gae_lambda=0.95,
+        ent_coef=0.01,
+        vf_coef=0.5,
+        max_grad_norm=0.5,
+        policy_kwargs=dict(net_arch=[64, 64]),
+        verbose=1
     )
+
 
     # --- Training ---
     custom_callback = EpisodeStatsLogger(log_path=log_file_path)
@@ -119,9 +117,48 @@ if __name__ == "__main__":
     )
 
     # --- Saving ---
-    model.save("td3_bbc_model_final")
+    model.save("a2c_bbc_model_final")  # CHANGED NAME
     env.save("vec_normalize_stats_final.pkl")
     print("\n--- Model and Normalization Stats Saved ---")
 
     # Close the environment (and the MATLAB engine)
     env.close()
+
+
+    # n_actions = env.action_space.shape[-1]
+    # action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.2 * np.ones(n_actions))
+
+    # --- Model Definition ---
+    # print("Creating the TD3 model...")
+    # model = TD3(
+    #     "MlpPolicy",
+    #     env,
+    #     learning_rate=1e-4, #Was 1e-5
+    #     buffer_size=250_000,
+    #     batch_size=256,
+    #     tau=0.005,
+    #     gamma=0.99,
+    #     train_freq=(1, "step"),
+    #     learning_starts=LEARNING_STARTS,
+    #     action_noise=action_noise,
+    #     verbose=1,
+    # )
+
+    # # --- Training ---
+    # custom_callback = EpisodeStatsLogger(log_path=log_file_path)
+    # print(f"--- Starting Training for {total_timesteps} Timesteps ---")
+    # print(f"Logging episode stats to: {log_file_path}")
+
+    # model.learn(
+    #     total_timesteps=total_timesteps,
+    #     progress_bar=True,
+    #     callback=custom_callback
+    # )
+
+    # # --- Saving ---
+    # model.save("td3_bbc_model_final")
+    # env.save("vec_normalize_stats_final.pkl")
+    # print("\n--- Model and Normalization Stats Saved ---")
+
+    # # Close the environment (and the MATLAB engine)
+    # env.close()
