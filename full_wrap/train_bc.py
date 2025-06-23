@@ -78,7 +78,7 @@ if __name__ == "__main__":
         enable_plotting=True,           # Disable plotting for fast training
         grace_period_steps=GRACE_PERIOD, # Use the short, fixed grace period
         max_episode_time=EPISODE_TIME,   # Use the longer episode time
-        target_voltage=24.0
+        target_voltage=30.0
     )
 
     # Wrap the environment for use with Stable Baselines3
