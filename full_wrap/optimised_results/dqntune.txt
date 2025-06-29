@@ -1,0 +1,310 @@
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap> python .\hyperparameter_tuning.py
+Starting hyperparameter tuning …
+
+============================================================
+Tuning DQN …
+============================================================
+
+
+Tuning DQN with 6 parallel workers
+[I 2025-06-26 19:48:11,383] A new study created in memory with name: no-name-6ae1b22a-194d-4d2f-b96e-2bd6c2c0af9c
+Tuning DQN:   0%|                                                                                                                                                                                    | 0/50 [00:00<?, ?it/s]Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+[DQN] Using device: cuda[DQN] Using device: cuda[DQN] Using device: cuda
+
+
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\optuna\trial\_trial.py:652: UserWarning: Fixed parameter 'exploration_fraction' with value 0.1 is out of range for distribution FloatDistribution(high=0.4, log=False, low=0.15, step=None).
+  warnings.warn(
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\vec_env\patch_gym.py:49: UserWarning: You provided an OpenAI Gym environment. We strongly recommend transitioning to Gymnasium environments. Stable-Baselines3 is automatically wrapping your environments in a compatibility layer, which could potentially cause issues.
+  warnings.warn(
+[DQN] Using device: cuda
+[DQN] Using device: cuda
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\vec_env\patch_gym.py:49: UserWarning: You provided an OpenAI Gym environment. We strongly recommend transitioning to Gymnasium environments. Stable-Baselines3 is automatically wrapping your environments in a compatibility layer, which could potentially cause issues.
+  warnings.warn(
+[DQN] Using device: cuda
+[DQN|Trial 0] ✘ Pruned by Halving at 20000 (reward 12.0)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_db87b5e1.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_db87b5e1.slxc
+[I 2025-06-26 21:35:20,442] Trial 0 pruned. 
+Tuning DQN:   2%|███                                                                                                                                                      | 1/50 [1:47:09<87:30:23, 6429.06s/it, best_val=–]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 5] ✘ Pruned by Halving at 20000 (reward 6.6)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_2873bd72.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_2873bd72.slxc
+[I 2025-06-26 21:36:11,618] Trial 5 pruned. 
+Tuning DQN:   4%|██████                                                                                                                                                   | 2/50 [1:48:00<35:41:53, 2677.36s/it, best_val=–]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 2] ✘ Pruned by Halving at 20000 (reward 8.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_4873adfd.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_4873adfd.slxc
+[I 2025-06-26 21:36:43,181] Trial 2 pruned. 
+Tuning DQN:   6%|█████████▏                                                                                                                                               | 3/50 [1:48:31<19:10:54, 1469.23s/it, best_val=–]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 4] ✘ Pruned by Halving at 20000 (reward 11.0)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_cb58c521.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_cb58c521.slxc
+[I 2025-06-26 21:38:22,001] Trial 4 pruned.
+Tuning DQN:   8%|████████████▎                                                                                                                                             | 4/50 [1:50:10<11:51:37, 928.21s/it, best_val=–]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 6] ✘ Pruned by Halving at 20000 (reward 8.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_63d1e90e.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_63d1e90e.slxc
+[I 2025-06-26 23:23:08,117] Trial 6 pruned.
+Tuning DQN:  10%|███████████████▎                                                                                                                                         | 5/50 [3:34:56<35:45:13, 2860.31s/it, best_val=–]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 10] ✘ Pruned by Halving at 20000 (reward 7.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_38af58e3.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_38af58e3.slxc
+[I 2025-06-27 01:10:49,295] Trial 10 pruned.
+Tuning DQN:  12%|██████████████████▎                                                                                                                                      | 6/50 [5:22:37<49:55:22, 4084.61s/it, best_val=–]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 9] ✘ Pruned by Halving at 40000 (reward 10.4)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_0f1374f5.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_0f1374f5.slxc
+[I 2025-06-27 02:57:11,497] Trial 9 pruned.
+Tuning DQN:  14%|█████████████████████▍                                                                                                                                   | 7/50 [7:09:00<57:45:37, 4835.75s/it, best_val=–]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 8] ✘ Pruned by Halving at 40000 (reward 11.0)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_16578024.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_16578024.slxc
+[I 2025-06-27 03:04:10,951] Trial 8 pruned.
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_5a048cd0.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_5a048cd0.slxc
+[I 2025-06-27 03:21:27,322] Trial 3 finished with value: 19.39653847689903 and parameters: {'learning_rate': 0.0012647914953182922, 'buffer_size': 59096, 'batch_size': 96, 'gamma': 0.9904162050042967, 'tau': 0.03658403810210578, 'exploration_fraction': 0.17165493027368112, 'exploration_final_eps': 0.08937352030255478, 'target_update_interval': 3858, 'train_freq': 4, 'n_layers': 4, 'layer_size': 128, 'activation_fn': 'relu'}. Best is trial 3 with value: 19.39653847689903.
+Tuning DQN:  18%|███████████████████████████                                                                                                                           | 9/50 [7:33:15<30:32:24, 2681.58s/it, best_val=19.4]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d13e9de0.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_d13e9de0.slxc
+[I 2025-06-27 03:25:07,415] Trial 1 finished with value: 52.056888550518146 and parameters: {'learning_rate': 0.0012805995039735895, 'buffer_size': 68849, 'batch_size': 256, 'gamma': 0.9894888713391942, 'tau': 0.028664447888187623, 'exploration_fraction': 0.21962798543327916, 'exploration_final_eps': 0.010478575512627718, 'target_update_interval': 3936, 'train_freq': 5, 'n_layers': 3, 'layer_size': 384, 'activation_fn': 'tanh'}. Best is trial 1 with value: 52.056888550518146.
+Tuning DQN:  20%|█████████████████████████████▊                                                                                                                       | 10/50 [7:36:56<21:21:06, 1921.67s/it, best_val=52.1]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 13] ✘ Pruned by Halving at 20000 (reward 11.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_bfb87350.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_bfb87350.slxc
+[I 2025-06-27 04:56:57,622] Trial 13 pruned.
+Tuning DQN:  22%|████████████████████████████████▊                                                                                                                    | 11/50 [9:08:46<32:42:58, 3019.95s/it, best_val=52.1]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 14] ✘ Pruned by Halving at 20000 (reward 10.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_5b8cb6a1.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_5b8cb6a1.slxc
+[I 2025-06-27 05:11:58,574] Trial 14 pruned.
+Tuning DQN:  24%|███████████████████████████████████▊                                                                                                                 | 12/50 [9:23:47<25:04:22, 2375.33s/it, best_val=52.1]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_2862a2d9.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_2862a2d9.slxc
+[I 2025-06-27 06:57:18,315] Trial 7 finished with value: 284.8227115686467 and parameters: {'learning_rate': 0.0012759877769533416, 'buffer_size': 117924, 'batch_size': 288, 'gamma': 0.9709427926353651, 'tau': 0.013895401885109964, 'exploration_fraction': 0.21928780512363358, 'exploration_final_eps': 0.08036111994665117, 'target_update_interval': 1475, 'train_freq': 6, 'n_layers': 5, 'layer_size': 128, 'activation_fn': 'leaky_relu'}. Best is trial 7 with value: 284.8227115686467.
+Tuning DQN:  26%|██████████████████████████████████████▏                                                                                                            | 13/50 [11:09:06<36:41:38, 3570.23s/it, best_val=284.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_cb4b4c01.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_cb4b4c01.slxc
+[I 2025-06-27 08:42:07,791] Trial 11 finished with value: 121.45269430108837 and parameters: {'learning_rate': 0.00045809024945212587, 'buffer_size': 126826, 'batch_size': 96, 'gamma': 0.979785357148814, 'tau': 0.030387703944324523, 'exploration_fraction': 0.3789581074311895, 'exploration_final_eps': 0.03373433836440566, 'target_update_interval': 1197, 'train_freq': 4, 'n_layers': 5, 'layer_size': 128, 'activation_fn': 'tanh'}. Best is trial 7 with value: 284.8227115686467.
+Tuning DQN:  28%|█████████████████████████████████████████▏                                                                                                         | 14/50 [12:53:56<43:54:56, 4391.57s/it, best_val=284.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_c23c1991.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_c23c1991.slxc
+[I 2025-06-27 10:22:41,197] Trial 12 finished with value: 29.92166778408365 and parameters: {'learning_rate': 0.000690764826891545, 'buffer_size': 115181, 'batch_size': 128, 'gamma': 0.9944507797750602, 'tau': 0.030025394592257768, 'exploration_fraction': 0.34597181768103014, 'exploration_final_eps': 0.012565060624928705, 'target_update_interval': 4073, 'train_freq': 2, 'n_layers': 5, 'layer_size': 448, 'activation_fn': 'relu'}. Best is trial 7 with value: 284.8227115686467.
+Tuning DQN:  30%|████████████████████████████████████████████                                                                                                       | 15/50 [14:34:29<47:30:26, 4886.47s/it, best_val=284.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6502ce5b.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6502ce5b.slxc
+[I 2025-06-27 11:21:14,638] Trial 15 finished with value: 25.570587713953536 and parameters: {'learning_rate': 0.001867463472779555, 'buffer_size': 55817, 'batch_size': 32, 'gamma': 0.9804192217667047, 'tau': 0.03208014856489469, 'exploration_fraction': 0.2047367221752449, 'exploration_final_eps': 0.01030044123639955, 'target_update_interval': 3733, 'train_freq': 1, 'n_layers': 4, 'layer_size': 512, 'activation_fn': 'tanh'}. Best is trial 7 with value: 284.8227115686467.
+Tuning DQN:  32%|████████████████████████████████████████████████████████████▏                                                                                                                               | 16/50 [15:33:03<42:14:48, 4473.19s/it, best_val=284.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8e52e96b.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8e52e96b.slxc
+[I 2025-06-27 12:27:31,340] Trial 16 finished with value: 30.76681056087701 and parameters: {'learning_rate': 0.0017419754084676354, 'buffer_size': 51062, 'batch_size': 32, 'gamma': 0.9803613244371024, 'tau': 0.03997983879153925, 'exploration_fraction': 0.18095243549226767, 'exploration_final_eps': 0.015625063333772643, 'target_update_interval': 3791, 'train_freq': 6, 'n_layers': 4, 'layer_size': 448, 'activation_fn': 'tanh'}. Best is trial 7 with value: 284.8227115686467.
+Tuning DQN:  34%|███████████████████████████████████████████████████████████████▉                                                                                                                            | 17/50 [16:39:19<39:38:08, 4323.90s/it, best_val=284.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_39ea345f.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_39ea345f.slxc
+[I 2025-06-27 12:40:17,605] Trial 17 finished with value: 20.97058659840114 and parameters: {'learning_rate': 0.0018481587482305174, 'buffer_size': 50121, 'batch_size': 32, 'gamma': 0.9818875322049396, 'tau': 0.03994391040582258, 'exploration_fraction': 0.1739627552718302, 'exploration_final_eps': 0.01269329350233808, 'target_update_interval': 3676, 'train_freq': 6, 'n_layers': 4, 'layer_size': 384, 'activation_fn': 'tanh'}. Best is trial 7 with value: 284.8227115686467.
+Tuning DQN:  36%|███████████████████████████████████████████████████████████████████▋                                                                                                                        | 18/50 [16:52:06<28:55:55, 3254.87s/it, best_val=284.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 18] ✘ Pruned by Halving at 40000 (reward 13.8)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d9d3d6b1.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_d9d3d6b1.slxc
+[I 2025-06-27 12:59:12,436] Trial 18 pruned.
+Tuning DQN:  38%|███████████████████████████████████████████████████████████████████████▍                                                                                                                    | 19/50 [17:11:01<22:32:42, 2618.13s/it, best_val=284.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 22] ✘ Pruned by Halving at 20000 (reward 15.0)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a919e383.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a919e383.slxc
+[I 2025-06-27 14:12:27,319] Trial 22 pruned.
+Tuning DQN:  40%|███████████████████████████████████████████████████████████████████████████▏                                                                                                                | 20/50 [18:24:15<26:15:47, 3151.58s/it, best_val=284.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_0dbe213d.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_0dbe213d.slxc
+[I 2025-06-27 17:49:23,419] Trial 19 finished with value: 334.97640132226604 and parameters: {'learning_rate': 0.0007499392769020239, 'buffer_size': 124523, 'batch_size': 160, 'gamma': 0.9804400533527574, 'tau': 0.025936226938338983, 'exploration_fraction': 0.31311830438986743, 'exploration_final_eps': 0.03006506966737764, 'target_update_interval': 1845, 'train_freq': 1, 'n_layers': 5, 'layer_size': 192, 'activation_fn': 'tanh'}. Best is trial 19 with value: 334.97640132226604.
+Tuning DQN:  42%|██████████████████████████████████████████████████████████████████████████████▉                                                                                                             | 21/50 [22:01:12<49:14:25, 6112.59s/it, best_val=335.0]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 24] ✘ Pruned by Halving at 40000 (reward 10.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8baea07a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8baea07a.slxc
+[I 2025-06-27 18:21:54,556] Trial 24 pruned.
+Tuning DQN:  44%|██████████████████████████████████████████████████████████████████████████████████▋                                                                                                         | 22/50 [22:33:43<37:49:42, 4863.67s/it, best_val=335.0]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_0ed9597c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_0ed9597c.slxc
+[I 2025-06-27 18:50:55,160] Trial 21 finished with value: 29.036951711804488 and parameters: {'learning_rate': 0.00028911768501438504, 'buffer_size': 126061, 'batch_size': 288, 'gamma': 0.9664210294842036, 'tau': 0.025729582566910724, 'exploration_fraction': 0.31131835753523285, 'exploration_final_eps': 0.031732616700812684, 'target_update_interval': 1733, 'train_freq': 6, 'n_layers': 6, 'layer_size': 192, 'activation_fn': 'leaky_relu'}. Best is trial 19 with value: 334.97640132226604.
+Tuning DQN:  46%|██████████████████████████████████████████████████████████████████████████████████████▍                                                                                                     | 23/50 [23:02:43<29:26:55, 3926.49s/it, best_val=335.0]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8da1870b.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8da1870b.slxc
+[I 2025-06-27 19:06:03,516] Trial 20 finished with value: 354.6540971570381 and parameters: {'learning_rate': 0.00020647202336958475, 'buffer_size': 126119, 'batch_size': 64, 'gamma': 0.9802516345111106, 'tau': 0.02461506434450068, 'exploration_fraction': 0.3099069443269377, 'exploration_final_eps': 0.029407079724307273, 'target_update_interval': 1859, 'train_freq': 6, 'n_layers': 6, 'layer_size': 192, 'activation_fn': 'tanh'}. Best is trial 20 with value: 354.6540971570381.
+Tuning DQN:  48%|██████████████████████████████████████████████████████████████████████████████████████████▏                                                                                                 | 24/50 [23:17:52<21:49:02, 3020.88s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 25] ✘ Pruned by Halving at 40000 (reward 11.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7e0b59d1.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_7e0b59d1.slxc
+[I 2025-06-27 19:32:17,979] Trial 25 pruned.
+Tuning DQN:  50%|██████████████████████████████████████████████████████████████████████████████████████████████                                                                                              | 25/50 [23:44:06<17:57:52, 2586.89s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 27] ✘ Pruned by Halving at 20000 (reward 16.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a072cd2c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a072cd2c.slxc
+[I 2025-06-27 20:15:46,379] Trial 27 pruned.
+Tuning DQN:  52%|█████████████████████████████████████████████████████████████████████████████████████████████████▊                                                                                          | 26/50 [24:27:34<17:17:20, 2593.35s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d69c4907.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_d69c4907.slxc
+[I 2025-06-27 20:27:04,092] Trial 23 finished with value: 50.23550631763502 and parameters: {'learning_rate': 0.0002503297199395269, 'buffer_size': 129496, 'batch_size': 288, 'gamma': 0.9670632090781076, 'tau': 0.024672651320904355, 'exploration_fraction': 0.3131733252202853, 'exploration_final_eps': 0.07047148898641328, 'target_update_interval': 1769, 'train_freq': 5, 'n_layers': 6, 'layer_size': 192, 'activation_fn': 'leaky_relu'}. Best is trial 20 with value: 354.6540971570381.
+Tuning DQN:  54%|█████████████████████████████████████████████████████████████████████████████████████████████████████▌                                                                                      | 27/50 [24:38:52<12:53:48, 2018.62s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_df83b168.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_df83b168.slxc
+[I 2025-06-28 01:51:59,546] Trial 26 finished with value: 112.04986257054252 and parameters: {'learning_rate': 0.0007586400182445802, 'buffer_size': 125274, 'batch_size': 160, 'gamma': 0.9685617484579946, 'tau': 0.022898567312119145, 'exploration_fraction': 0.3080845124234014, 'exploration_final_eps': 0.06733157193322509, 'target_update_interval': 1594, 'train_freq': 1, 'n_layers': 5, 'layer_size': 128, 'activation_fn': 'tanh'}. Best is trial 20 with value: 354.6540971570381.
+Tuning DQN:  56%|█████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                                                                  | 28/50 [30:03:48<44:22:42, 7261.91s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 31] ✘ Pruned by Halving at 40000 (reward 12.2)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b3301c0d.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_b3301c0d.slxc
+[I 2025-06-28 02:05:59,938] Trial 31 pruned.
+Tuning DQN:  58%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████                                                                               | 29/50 [30:17:48<31:07:23, 5335.39s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 33] ✘ Pruned by Halving at 20000 (reward 19.9)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_42ce3813.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_42ce3813.slxc
+[I 2025-06-28 03:39:49,312] Trial 33 pruned.
+Tuning DQN:  60%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                                                           | 30/50 [31:51:37<30:07:51, 5423.59s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 34] ✘ Pruned by Halving at 20000 (reward 10.2)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_df422557.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_df422557.slxc
+[I 2025-06-28 03:51:18,435] Trial 34 pruned.
+Tuning DQN:  62%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                                                                       | 31/50 [32:03:07<21:07:41, 4003.23s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_8af9f735.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_8af9f735.slxc
+[I 2025-06-28 04:03:12,286] Trial 32 finished with value: 50.707776463678044 and parameters: {'learning_rate': 0.00035046201085254744, 'buffer_size': 144974, 'batch_size': 96, 'gamma': 0.9841834065416557, 'tau': 0.020597824745561936, 'exploration_fraction': 0.2565628174985175, 'exploration_final_eps': 0.022352229557711305, 'target_update_interval': 2601, 'train_freq': 2, 'n_layers': 3, 'layer_size': 256, 'activation_fn': 'tanh'}. Best is trial 20 with value: 354.6540971570381.
+Tuning DQN:  64%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                                                   | 32/50 [32:15:00<15:04:55, 3016.40s/it, best_val=354.7]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_749b3876.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_749b3876.slxc
+[I 2025-06-28 04:54:56,866] Trial 29 finished with value: 398.75100428708095 and parameters: {'learning_rate': 0.0007840777469401202, 'buffer_size': 149270, 'batch_size': 160, 'gamma': 0.9702197223635487, 'tau': 0.02200841749746698, 'exploration_fraction': 0.2997210997532054, 'exploration_final_eps': 0.02303930929841272, 'target_update_interval': 2607, 'train_freq': 1, 'n_layers': 5, 'layer_size': 256, 'activation_fn': 'tanh'}. Best is trial 29 with value: 398.75100428708095.
+Tuning DQN:  66%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                                                | 33/50 [33:06:45<14:22:08, 3042.86s/it, best_val=398.8]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_0cee7ddc.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_0cee7ddc.slxc
+[I 2025-06-28 05:02:19,710] Trial 28 finished with value: 439.0499902533281 and parameters: {'learning_rate': 0.0007975224079134441, 'buffer_size': 148614, 'batch_size': 128, 'gamma': 0.9849864046018536, 'tau': 0.0215924030983819, 'exploration_fraction': 0.37182355091417596, 'exploration_final_eps': 0.0717230824249314, 'target_update_interval': 1470, 'train_freq': 1, 'n_layers': 5, 'layer_size': 128, 'activation_fn': 'tanh'}. Best is trial 28 with value: 439.0499902533281.
+Tuning DQN:  68%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                                            | 34/50 [33:14:08<10:03:25, 2262.85s/it, best_val=439.0]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 35] ✘ Pruned by Halving at 20000 (reward 16.2)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b39b872f.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_b39b872f.slxc
+[I 2025-06-28 05:27:07,924] Trial 35 pruned.
+Tuning DQN:  70%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                                        | 35/50 [33:38:56<8:27:36, 2030.46s/it, best_val=439.0]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 36] ✘ Pruned by Halving at 20000 (reward 14.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_479529aa.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_479529aa.slxc
+[I 2025-06-28 05:38:45,155] Trial 36 pruned.
+Tuning DQN:  72%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                                     | 36/50 [33:50:33<6:20:26, 1630.49s/it, best_val=439.0]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 37] ✘ Pruned by Halving at 20000 (reward 17.9)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_3f8bbc61.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_3f8bbc61.slxc
+[I 2025-06-28 05:49:52,605] Trial 37 pruned.
+Tuning DQN:  74%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                                 | 37/50 [34:01:41<4:50:40, 1341.58s/it, best_val=439.0]Starting MATLAB engine...
+[DQN] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_45473113.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_45473113.slxc
+[I 2025-06-28 06:47:44,901] Trial 30 finished with value: 445.53035252593855 and parameters: {'learning_rate': 0.0007932736361202702, 'buffer_size': 149542, 'batch_size': 160, 'gamma': 0.9837425057320124, 'tau': 0.019599990379977943, 'exploration_fraction': 0.2891246310035712, 'exploration_final_eps': 0.022754873912448813, 'target_update_interval': 2401, 'train_freq': 1, 'n_layers': 5, 'layer_size': 256, 'activation_fn': 'tanh'}. Best is trial 30 with value: 445.53035252593855.
+Tuning DQN:  76%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▋                                             | 38/50 [34:59:33<6:36:09, 1980.79s/it, best_val=445.5]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 39] ✘ Pruned by Halving at 20000 (reward 13.9)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_5b61e65c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_5b61e65c.slxc
+[I 2025-06-28 06:53:46,094] Trial 39 pruned.
+Tuning DQN:  78%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▍                                         | 39/50 [35:05:34<4:34:04, 1494.91s/it, best_val=445.5]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 42] ✘ Pruned by Halving at 20000 (reward 17.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_5c6f4dc0.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_5c6f4dc0.slxc
+[I 2025-06-28 07:42:07,017] Trial 42 pruned.
+Tuning DQN:  80%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                                     | 40/50 [35:53:55<5:19:27, 1916.72s/it, best_val=445.5]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 43] ✘ Pruned by Halving at 20000 (reward 11.9)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d3ba3dfd.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_d3ba3dfd.slxc
+[I 2025-06-28 08:38:15,342] Trial 43 pruned. 
+Tuning DQN:  82%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                                  | 41/50 [36:50:03<5:52:49, 2352.20s/it, best_val=445.5]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 45] ✘ Pruned by Halving at 20000 (reward 14.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_ab6b0d6d.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_ab6b0d6d.slxc
+[I 2025-06-28 09:30:13,770] Trial 45 pruned. 
+Tuning DQN:  84%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                              | 42/50 [37:42:02<5:44:16, 2582.07s/it, best_val=445.5]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 41] ✘ Pruned by Halving at 40000 (reward 12.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_c9f65af4.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_c9f65af4.slxc
+[I 2025-06-28 12:28:43,705] Trial 41 pruned.
+Tuning DQN:  86%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                          | 43/50 [40:40:32<9:45:43, 5020.43s/it, best_val=445.5]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 44] ✘ Pruned by Halving at 40000 (reward 12.0)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a85f3c50.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a85f3c50.slxc
+[I 2025-06-28 12:46:53,547] Trial 44 pruned.
+Tuning DQN:  88%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                      | 44/50 [40:58:42<6:24:07, 3841.25s/it, best_val=445.5]Starting MATLAB engine...
+[DQN] Using device: cuda
+[DQN|Trial 46] ✘ Pruned by Halving at 40000 (reward 11.0)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_09881a45.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_09881a45.slxc
+[I 2025-06-28 14:14:18,849] Trial 46 pruned.
+Tuning DQN:  90%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                   | 45/50 [42:26:07<5:55:12, 4262.47s/it, best_val=445.5]Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b2169f1a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_b2169f1a.slxc
+[I 2025-06-28 14:18:57,440] Trial 40 finished with value: 319.6601881724299 and parameters: {'learning_rate': 0.0005846924795274617, 'buffer_size': 137047, 'batch_size': 224, 'gamma': 0.9778630861008312, 'tau': 0.02792536882366833, 'exploration_fraction': 0.3968303671107859, 'exploration_final_eps': 0.03964778190512544, 'target_update_interval': 2155, 'train_freq': 1, 'n_layers': 5, 'layer_size': 192, 'activation_fn': 'tanh'}. Best is trial 30 with value: 445.53035252593855.
+Tuning DQN:  92%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉               | 46/50 [42:30:46<3:24:29, 3067.30s/it, best_val=445.5][DQN|Trial 48] ✘ Pruned by Halving at 20000 (reward 17.9)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a9b3e7b4.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a9b3e7b4.slxc
+[I 2025-06-28 14:21:28,461] Trial 48 pruned.
+Tuning DQN:  94%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▋           | 47/50 [42:33:17<1:49:37, 2192.42s/it, best_val=445.5]Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_57af303a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_57af303a.slxc
+[I 2025-06-28 14:26:46,327] Trial 38 finished with value: 342.7680047232392 and parameters: {'learning_rate': 0.0014769174091299327, 'buffer_size': 105965, 'batch_size': 224, 'gamma': 0.9771072973589893, 'tau': 0.027312847726902748, 'exploration_fraction': 0.3345954119663452, 'exploration_final_eps': 0.04069541904853815, 'target_update_interval': 2075, 'train_freq': 1, 'n_layers': 5, 'layer_size': 128, 'activation_fn': 'tanh'}. Best is trial 30 with value: 445.53035252593855.
+Tuning DQN:  96%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎       | 48/50 [42:38:34<54:20, 1630.05s/it, best_val=445.5][DQN|Trial 49] ✘ Pruned by Halving at 20000 (reward 14.6)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6d5fe7b8.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6d5fe7b8.slxc
+[I 2025-06-28 14:32:20,662] Trial 49 pruned.
+Tuning DQN:  98%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏   | 49/50 [42:44:09<20:41, 1241.34s/it, best_val=445.5][DQN|Trial 47] ✘ Pruned by Halving at 40000 (reward 12.6)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_901cc181.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_901cc181.slxc
+[I 2025-06-28 15:22:15,445] Trial 47 pruned.
+Tuning DQN: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [43:34:04<00:00, 3136.88s/it, best_val=445.5]
+
+Best for DQN: reward=445.53
+  learning_rate: 0.0007932736361202702
+  buffer_size: 149542
+  batch_size: 160
+  gamma: 0.9837425057320124
+  tau: 0.019599990379977943
+  exploration_fraction: 0.2891246310035712
+  exploration_final_eps: 0.022754873912448813
+  target_update_interval: 2401
+  train_freq: 1
+  n_layers: 5
+  layer_size: 256
+  activation_fn: tanh

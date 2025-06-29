@@ -5,6 +5,22 @@ import matlab.engine
 import matplotlib.pyplot as plt
 
 
+# >>> ADDED FOR DQN --------------------------------------------------------------
+class DiscretizedActionWrapper(gym.ActionWrapper):
+    """
+    Wraps a continuous-action env so a discrete index is mapped to a pre-defined
+    force value.  Suitable for running SB3-DQN on SimulinkEnv.
+    """
+    def __init__(self, env, force_values):
+        super().__init__(env)
+        self.force_values = np.asarray(force_values, dtype=np.float32)
+        self.action_space = spaces.Discrete(len(self.force_values))
+
+    def action(self, act_idx):
+        """Convert the integer chosen by DQN into the continuous force."""
+        return np.array([self.force_values[int(act_idx)]], dtype=np.float32)
+# ------------------------------------------------------------------------------
+
 class SimulinkEnv(gym.Env):
     metadata = {"render.modes": []}
 
