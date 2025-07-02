@@ -18,7 +18,7 @@ SOLVED_THRESHOLD  = 490           # “good enough” reward, end trial early
 HARD_FAIL_THRESHOLDS = {20_000: 20, 30_000: 50}
 
 
-TB_ROOT = "./hp_logs"
+TB_ROOT = "./hp1_logs"
 # --------------------------------------------------------------------- #
 os.makedirs(TB_ROOT, exist_ok=True)      # <<< 1. always create the folder
 # --------------------------------------------------------------------- #
@@ -125,7 +125,7 @@ def objective(trial, algo_name):
             batch_size = np.random.choice(valid_batch_sizes(n_steps)) \
                          if valid_batch_sizes(n_steps) else n_steps
             params = {
-                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "learning_rate": trial.suggest_float("learning_rate", 2e-4, 2e-3, log=True),
                 "n_steps": n_steps, "batch_size": batch_size,
                 "n_epochs": trial.suggest_int("n_epochs", 4, 20),
                 "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
@@ -134,8 +134,8 @@ def objective(trial, algo_name):
                 "vf_coef": trial.suggest_float("vf_coef", 0.1, 1.0),
                 "max_grad_norm": trial.suggest_float("max_grad_norm", 0.3, 5.0),
                 "gae_lambda": trial.suggest_float("gae_lambda", 0.8, 1.0),
-                "n_layers": trial.suggest_int("n_layers", 1, 3),
-                "layer_size": trial.suggest_int("layer_size", 32, 256),
+                "n_layers": trial.suggest_int("n_layers", 1, 6),
+                "layer_size": trial.suggest_int("layer_size", 32, 512),
                 "activation_fn": trial.suggest_categorical(
                     "activation_fn", ["tanh", "relu", "leaky_relu", "elu"]),
             }
@@ -146,6 +146,8 @@ def objective(trial, algo_name):
                              "activation_fn": activation_map[params["activation_fn"]]}
             model = PPO(
                 "MlpPolicy", base_env, device=device, verbose=0,
+                tensorboard_log = os.path.join(TB_ROOT, algo_name),
+                # Use in each model constructor
                 learning_rate=params["learning_rate"],
                 n_steps=params["n_steps"], batch_size=params["batch_size"],
                 n_epochs=params["n_epochs"], gamma=params["gamma"],
@@ -226,7 +228,7 @@ def objective(trial, algo_name):
                 "buffer_size": trial.suggest_int("buffer_size", 50_000, 150_000),
                 "batch_size": trial.suggest_int("batch_size", 32, 512, step = 32),
                 "gamma": trial.suggest_float("gamma", 0.95, 0.995),
-                "tau": trial.suggest_float("tau", 0.01, 0.04),
+                "tau": trial.suggest_float("tau", 0.01, 0.03),
                 "exploration_fraction": trial.suggest_float("exploration_fraction", 0.15, 0.4),
                 "exploration_final_eps": trial.suggest_float("exploration_final_eps", 0.01, 0.1),
                 "target_update_interval": trial.suggest_int("target_update_interval", 1_000, 5_000),
@@ -251,7 +253,7 @@ def objective(trial, algo_name):
                 train_freq=params["train_freq"],
                 policy_kwargs=dict(net_arch=net_arch,
                                    activation_fn=activation_map[params["activation_fn"]]),
-                learning_starts=5000,  # start training after 1000 steps
+                learning_starts=5000,  # start training after 5000 steps
             )
             env_for_eval = wrapped_env
 
@@ -262,7 +264,7 @@ def objective(trial, algo_name):
         # -------------  TRAIN–EVAL LOOP WITH PRUNING  -------------------- //
         # ================================================================= #
         timesteps = 0
-        best_mean = -np.inf
+        top8_means = []
 
         while timesteps < TOTAL_TIMESTEPS:
             model.learn(EVAL_INTERVAL, reset_num_timesteps=False, progress_bar=False, tb_log_name=f"T{trial.number}")
@@ -277,9 +279,19 @@ def objective(trial, algo_name):
                     obs, reward, done, _ = env_for_eval.step(action)
                     ep_rew += reward
                 rewards.append(ep_rew)
-            mean_reward = float(np.mean(rewards))
-            best_mean   = max(best_mean, mean_reward)
-            trial.report(mean_reward, timesteps)
+
+            # Take top 8 episode rewards out of the 10 and average them
+            top_k = 8
+            if len(rewards) >= top_k:
+                rewards_sorted = sorted(rewards, reverse=True)
+                top_k_avg = float(np.mean(rewards_sorted[:top_k]))
+            else:
+                top_k_avg = float(np.mean(rewards))  # fallback if less than 8 (shouldn’t happen)
+
+            mean_reward = top_k_avg
+
+            # >>> THIS LINE IS NEEDED <<<
+            top8_means.append(mean_reward)
 
             # # ---------- 1) Hard-fail gates ----------
             # if timesteps in HARD_FAIL_THRESHOLDS:
@@ -293,17 +305,17 @@ def objective(trial, algo_name):
             # ---------- 2) Early success ----------
             if mean_reward >= SOLVED_THRESHOLD:
                 print(f"[{algo_name.upper()}|Trial {trial.number}] ✔ "
-                      f"Solved at {timesteps} (reward {mean_reward:.1f})", flush=True)
+                    f"Solved at {timesteps} (reward {mean_reward:.1f})", flush=True)
                 break
 
             # ---------- 3) Successive-Halving pruner ----------
             if trial.should_prune():
                 print(f"[{algo_name.upper()}|Trial {trial.number}] ✘ "
-                      f"Pruned by Halving at {timesteps} "
-                      f"(reward {mean_reward:.1f})", flush=True)
+                    f"Pruned by Halving at {timesteps} "
+                    f"(reward {mean_reward:.1f})", flush=True)
                 raise optuna.TrialPruned()
 
-        return best_mean
+        return float(np.mean(top8_means))
 
     finally:
         base_env.close()
@@ -318,15 +330,15 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
     study = optuna.create_study(direction="maximize", pruner=pruner)
 
     # ---------- enqueue good baseline params ----------
-    if algo_name == "dqn":
-        study.enqueue_trial({
-            "learning_rate": 5e-4, "buffer_size": 100_000, "batch_size": 128,
-            "gamma": 0.99, "tau": 0.01, "exploration_fraction": 0.1,
-            "exploration_final_eps": 0.05, "target_update_interval": 1_000,
-            "train_freq": 4, "n_layers": 2, "layer_size": 128,
-            "activation_fn": "relu",
-        })
-    elif algo_name == "td3":
+    # if algo_name == "dqn":
+    #     study.enqueue_trial({
+    #         "learning_rate": 5e-4, "buffer_size": 100_000, "batch_size": 128,
+    #         "gamma": 0.99, "tau": 0.01, "exploration_fraction": 0.1,
+    #         "exploration_final_eps": 0.05, "target_update_interval": 1_000,
+    #         "train_freq": 4, "n_layers": 2, "layer_size": 128,
+    #         "activation_fn": "relu",
+    #     })
+    if algo_name == "td3":
         study.enqueue_trial({
             "learning_rate": 9.53e-4, "buffer_size": 127_040, "batch_size": 511,
             "tau": 0.0077, "gamma": 0.943, "policy_delay": 4,

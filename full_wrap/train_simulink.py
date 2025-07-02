@@ -59,6 +59,7 @@ class FancyTensorboardCallback(BaseCallback):
             base_dir = os.path.dirname(self.save_path_prefix)
             model_file = os.path.join(base_dir, f"best_model_{self.num_timesteps}.zip")
             buffer_file = os.path.join(base_dir, f"replay_buffer_{self.num_timesteps}.pkl")
+            self.writer.flush()
 
             self.model.save(model_file)
             if hasattr(self.model, "save_replay_buffer"):
@@ -98,8 +99,16 @@ class FancyTensorboardCallback(BaseCallback):
 def load_hyperparameters(algo_name):
     path = f"hyperparameter_results/{algo_name}_best_params.json"
     with open(path, "r") as f:
-        config = json.load(f)
-    return config["best_params"]
+        params = json.load(f)["best_params"]
+
+    # --- Reconstruct PPO batch-size if it was saved as an index ---
+    if algo_name == "ppo" and "batch_size" not in params:
+        n_steps = params["n_steps"]
+        valid = [i for i in range(32, min(n_steps + 1, 513)) if n_steps % i == 0]
+        idx = params.get("batch_size_idx", 0) % len(valid)    # fallback idx = 0
+        params["batch_size"] = valid[idx]
+
+    return params
 
 def create_policy_kwargs(params):
     return dict(
@@ -209,7 +218,8 @@ def main(algo_name="td3", timesteps=100000):
                 ent_coef=params["ent_coef"],
                 gae_lambda=params["gae_lambda"],
                 vf_coef=params["vf_coef"],
-                max_grad_norm=params["max_grad_norm"])
+                max_grad_norm=params["max_grad_norm"],
+                device="cpu")
         elif algo_name == "dqn":
             # force_values = np.linspace(-10.0, 10.0, 11, dtype=np.float32)
             # env = DiscretizedActionWrapper(env, force_values)
@@ -217,12 +227,12 @@ def main(algo_name="td3", timesteps=100000):
             model = Algo(**common_kwargs,
                 buffer_size=params["buffer_size"],
                 batch_size=params["batch_size"],
-                # gamma=params["gamma"],
                 tau=params["tau"],
                 train_freq=(params["train_freq"], "step"),
                 target_update_interval=params["target_update_interval"],
                 exploration_fraction=params["exploration_fraction"],
-                exploration_final_eps=params["exploration_final_eps"]
+                exploration_final_eps=params["exploration_final_eps"],
+                learning_starts=5000 #added because not saved in hyperparams
             )
 
     # Setup callback
@@ -250,7 +260,7 @@ def main(algo_name="td3", timesteps=100000):
 # === CLI Entry ===
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo", "dqn"], default="dqn")
-    parser.add_argument("--timesteps", type=int, default=1000)
+    parser.add_argument("--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo", "dqn"], default="ppo")
+    parser.add_argument("--timesteps", type=int, default=100_000)
     args = parser.parse_args()
     main(algo_name=args.algo, timesteps=args.timesteps)
