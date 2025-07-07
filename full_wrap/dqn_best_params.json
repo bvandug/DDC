@@ -1,0 +1,18 @@
+{
+    "best_params": {
+        "learning_rate": 4.405021063572677e-05,
+        "buffer_size": 52721,
+        "batch_size": 98,
+        "gamma": 0.9865129832478393,
+        "tau": 0.029400383124895832,
+        "exploration_fraction": 0.15855729403500768,
+        "exploration_final_eps": 0.0855257392020349,
+        "target_update_interval": 7928,
+        "train_freq": 4,
+        "n_layers": 2,
+        "layer_size": 192,
+        "activation_fn": "relu"
+    },
+    "best_value": 496.15445660826066,
+    "n_trials": 50
+}

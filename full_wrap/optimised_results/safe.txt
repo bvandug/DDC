@@ -1,0 +1,273 @@
+PS C:\Users\benva\OneDrive\Documents\MATLAB> myenv\Scripts\Activate.ps1
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB> cd .\full_wrap\
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap> python .\hyperparameter_tuning.py
+Starting hyperparameter tuning …
+
+============================================================
+Tuning PPO …
+============================================================
+
+
+Tuning PPO with 6 parallel workers
+[I 2025-07-03 15:45:19,113] A new study created in RDB with name: ppo_tuning
+Tuning PPO:   0%|                                                                                                                                                                                    | 0/50 [00:00<?, ?it/s]Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+Starting MATLAB engine...
+[PPO] Using device: cuda[PPO] Using device: cuda[PPO] Using device: cuda
+[PPO] Using device: cuda
+
+[PPO] Using device: cuda
+
+[PPO] Using device: cuda
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\vec_env\patch_gym.py:49: UserWarning: You provided an OpenAI Gym environment. We strongly recommend transitioning to Gymnasium environments. Stable-Baselines3 is automatically wrapping your environments in a compatibility layer, which could potentially cause issues.
+  warnings.warn(
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\on_policy_algorithm.py:150: UserWarning: You are trying to run PPO on the GPU, but it is primarily intended to run on the CPU when not using a CNN policy (you are using ActorCriticPolicy which should be a MlpPolicy). See https://github.com/DLR-RM/stable-baselines3/issues/1245 for more info. You can pass `device='cpu'` or `export CUDA_VISIBLE_DEVICES=` to force using the CPU.Note: The model will train, but the GPU utilization will be poor and the training might take longer than on CPU.
+  warnings.warn(
+[PPO|Trial 0] ✘ Pruned by Halving at 20000 (reward 23.4)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b5039a0e.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_b5039a0e.slxc
+[I 2025-07-03 18:13:20,903] Trial 0 pruned. 
+Tuning PPO:   2%|███                                                                                                                                                     | 1/50 [2:28:01<120:53:27, 8881.79s/it, best_val=–]Starting MATLAB engine...
+[PPO] Using device: cuda
+C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\vec_env\patch_gym.py:49: UserWarning: You provided an OpenAI Gym environment. We strongly recommend transitioning to Gymnasium environments. Stable-Baselines3 is automatically wrapping your environments in a compatibility layer, which could potentially cause issues.
+  warnings.warn(
+[PPO|Trial 5] ✘ Pruned by Halving at 40000 (reward 258.9)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7c4928a1.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_7c4928a1.slxc
+[I 2025-07-04 00:21:18,982] Trial 5 pruned. 
+Tuning PPO:   4%|██████                                                                                                                                                 | 2/50 [8:35:59<221:55:26, 16644.31s/it, best_val=–]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_cd98fef1.slx
+[I 2025-07-04 00:22:16,360] Trial 7 pruned. 
+Tuning PPO:   6%|█████████                                                                                                                                               | 3/50 [8:36:57<118:25:07, 9070.37s/it, best_val=–]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_efe1a6e7.slx
+[I 2025-07-04 00:22:33,367] Trial 8 pruned. 
+Tuning PPO:   8%|████████████▏                                                                                                                                            | 4/50 [8:37:14<70:13:45, 5496.20s/it, best_val=–]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_7461d7d6.slx
+[I 2025-07-04 00:22:49,834] Trial 9 pruned. 
+Tuning PPO:  10%|███████████████▎                                                                                                                                         | 5/50 [8:37:30<44:00:07, 3520.17s/it, best_val=–]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 6] ✘ Pruned by Halving at 40000 (reward 236.2)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_104a059c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_104a059c.slxc
+[I 2025-07-04 03:05:15,997] Trial 6 pruned. 
+Tuning PPO:  12%|██████████████████▏                                                                                                                                     | 6/50 [11:19:56<68:53:48, 5637.01s/it, best_val=–]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a8b489fe.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a8b489fe.slxc
+[I 2025-07-04 04:46:27,959] Trial 3 finished with value: 497.9433970634521 and parameters: {'n_steps': 2048, 'batch_size': 32, 'learning_rate': 0.0013215378506816985, 'n_epochs': 7, 'gamma': 0.9670892624790915, 'clip_range': 0.19190621374863637, 'ent_coef': 8.176031498679612e-06, 'vf_coef': 0.6897155130556497, 'max_grad_norm': 3.486856692860951, 'gae_lambda': 0.8910814136334159, 'n_layers': 2, 'layer_size': 252, 'activation_fn': 'leaky_relu'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  14%|████████████████████▋                                                                                                                               | 7/50 [13:01:08<69:01:45, 5779.21s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6addc685.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6addc685.slxc
+[I 2025-07-04 04:49:29,001] Trial 1 finished with value: 16.91374258122816 and parameters: {'n_steps': 1024, 'batch_size': 64, 'learning_rate': 0.0005769719630168395, 'n_epochs': 10, 'gamma': 0.9016270344059406, 'clip_range': 0.2324084969167467, 'ent_coef': 8.796799421910465e-05, 'vf_coef': 0.5081677528771922, 'max_grad_norm': 2.4673865666667973, 'gae_lambda': 0.9070631327538027, 'n_layers': 4, 'layer_size': 433, 'activation_fn': 'elu'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  16%|███████████████████████▋                                                                                                                            | 8/50 [13:04:09<46:37:54, 3997.02s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6b11c103.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6b11c103.slxc
+[I 2025-07-04 04:54:35,402] Trial 2 finished with value: 211.28084088983283 and parameters: {'n_steps': 1024, 'batch_size': 64, 'learning_rate': 0.0007025126695210978, 'n_epochs': 9, 'gamma': 0.9003199542777182, 'clip_range': 0.12418036763139698, 'ent_coef': 7.594693359473579e-08, 'vf_coef': 0.9652401608658152, 'max_grad_norm': 1.8792551528708954, 'gae_lambda': 0.9565084930200418, 'n_layers': 6, 'layer_size': 487, 'activation_fn': 'relu'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  18%|██████████████████████████▋                                                                                                                         | 9/50 [13:09:16<32:22:54, 2843.28s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 13] ✘ Pruned by Halving at 20000 (reward 76.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_39c36cfa.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_39c36cfa.slxc
+[I 2025-07-04 07:20:47,630] Trial 13 pruned. 
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6ec829aa.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6ec829aa.slxc
+[I 2025-07-04 07:51:49,998] Trial 4 finished with value: 369.86174440298635 and parameters: {'n_steps': 1024, 'batch_size': 64, 'learning_rate': 0.00032174498230250285, 'n_epochs': 12, 'gamma': 0.915076171801803, 'clip_range': 0.3995667661452781, 'ent_coef': 4.2358396893888846e-08, 'vf_coef': 0.40891433860655213, 'max_grad_norm': 1.9922849805703233, 'gae_lambda': 0.9552841436117329, 'n_layers': 6, 'layer_size': 356, 'activation_fn': 'relu'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  22%|████████████████████████████████▎                                                                                                                  | 11/50 [16:06:30<41:18:37, 3813.26s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 15] ✘ Pruned by Halving at 20000 (reward 81.6)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6d7cc890.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6d7cc890.slxc
+[I 2025-07-04 09:54:26,692] Trial 15 pruned.
+Tuning PPO:  24%|███████████████████████████████████▎                                                                                                               | 12/50 [18:09:07<51:37:46, 4891.21s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 16] ✘ Pruned by Halving at 20000 (reward 133.4)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_c4fe9170.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_c4fe9170.slxc
+[I 2025-07-04 10:27:21,919] Trial 16 pruned.
+Tuning PPO:  26%|██████████████████████████████████████▏                                                                                                            | 13/50 [18:42:02<41:11:30, 4007.86s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 11] ✘ Pruned by Halving at 40000 (reward 268.2)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_ff901091.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_ff901091.slxc
+[I 2025-07-04 12:26:47,619] Trial 11 pruned.
+Tuning PPO:  28%|█████████████████████████████████████████▏                                                                                                         | 14/50 [20:41:28<49:37:00, 4961.68s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 17] ✘ Pruned by Halving at 20000 (reward 92.8)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d33dfa7c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_d33dfa7c.slxc
+[I 2025-07-04 13:17:48,998] Trial 17 pruned.
+Tuning PPO:  30%|████████████████████████████████████████████                                                                                                       | 15/50 [21:32:29<42:40:10, 4388.87s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 18] ✘ Pruned by Halving at 20000 (reward 82.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a89de1c5.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a89de1c5.slxc
+[I 2025-07-04 13:35:51,565] Trial 18 pruned.
+Tuning PPO:  32%|███████████████████████████████████████████████                                                                                                    | 16/50 [21:50:32<32:03:04, 3393.67s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 19] ✘ Pruned by Halving at 20000 (reward 83.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_9f410e31.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_9f410e31.slxc
+[I 2025-07-04 17:21:25,445] Trial 19 pruned. 
+Tuning PPO:  34%|███████████████████████████████████████████████████████████████▉                                                                                                                            | 17/50 [25:36:06<59:03:33, 6442.83s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a8b52895.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a8b52895.slxc
+[I 2025-07-04 17:38:50,868] Trial 10 finished with value: 317.13319302767724 and parameters: {'n_steps': 1024, 'batch_size': 32, 'learning_rate': 0.0004688234455466452, 'n_epochs': 15, 'gamma': 0.989750383758745, 'clip_range': 0.1589285841863026, 'ent_coef': 0.005725679950980862, 'vf_coef': 0.9105885177484002, 'max_grad_norm': 3.8161227073498094, 'gae_lambda': 0.8587046420865, 'n_layers': 2, 'layer_size': 58, 'activation_fn': 'elu'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  36%|███████████████████████████████████████████████████████████████████▋                                                                                                                        | 18/50 [25:53:31<42:51:10, 4820.97s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_ebecaffa.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_ebecaffa.slxc
+[I 2025-07-04 21:09:08,777] Trial 14 finished with value: 317.75620480602583 and parameters: {'n_steps': 1024, 'batch_size': 128, 'learning_rate': 0.000493305185483086, 'n_epochs': 17, 'gamma': 0.9834287804160335, 'clip_range': 0.2658212875901058, 'ent_coef': 5.6004750641200736e-08, 'vf_coef': 0.40449372676457096, 'max_grad_norm': 2.4092907467950346, 'gae_lambda': 0.9959412637039948, 'n_layers': 2, 'layer_size': 60, 'activation_fn': 'leaky_relu'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  38%|███████████████████████████████████████████████████████████████████████▍                                                                                                                    | 19/50 [29:23:49<61:40:44, 7162.72s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 20] ✘ Pruned by Halving at 40000 (reward 199.5)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_517cdf0a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_517cdf0a.slxc
+[I 2025-07-04 23:51:50,131] Trial 20 pruned.
+Tuning PPO:  40%|███████████████████████████████████████████████████████████████████████████▏                                                                                                                | 20/50 [32:06:31<66:11:27, 7942.93s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_e0c28a5d.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_e0c28a5d.slxc
+[I 2025-07-05 00:53:42,533] Trial 12 finished with value: 495.3869155737032 and parameters: {'n_steps': 256, 'batch_size': 64, 'learning_rate': 0.00033541432916522483, 'n_epochs': 7, 'gamma': 0.9605038898390789, 'clip_range': 0.35898215873840167, 'ent_coef': 1.0080725661820792e-08, 'vf_coef': 0.1490161995596459, 'max_grad_norm': 1.0502012191280075, 'gae_lambda': 0.9539539764962024, 'n_layers': 3, 'layer_size': 119, 'activation_fn': 'tanh'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  42%|██████████████████████████████████████████████████████████████████████████████▉                                                                                                             | 21/50 [33:08:23<53:45:18, 6673.07s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 21] ✘ Pruned by Halving at 40000 (reward 256.4)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_159bfa42.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_159bfa42.slxc
+[I 2025-07-05 00:55:08,623] Trial 21 pruned. 
+Tuning PPO:  44%|██████████████████████████████████████████████████████████████████████████████████▋                                                                                                         | 22/50 [33:09:49<36:31:33, 4696.20s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 23] ✘ Pruned by Halving at 40000 (reward 315.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_f188e067.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_f188e067.slxc
+[I 2025-07-05 03:23:12,570] Trial 23 pruned. 
+Tuning PPO:  46%|██████████████████████████████████████████████████████████████████████████████████████▍                                                                                                     | 23/50 [35:37:53<44:38:47, 5952.87s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 24] ✘ Pruned by Halving at 40000 (reward 318.5)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_50a01421.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_50a01421.slxc
+[I 2025-07-05 06:09:31,869] Trial 24 pruned. 
+Tuning PPO:  48%|██████████████████████████████████████████████████████████████████████████████████████████▏                                                                                                 | 24/50 [38:24:12<51:43:06, 7161.03s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 25] ✘ Pruned by Halving at 40000 (reward 260.7)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_2c5cf270.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_2c5cf270.slxc
+[I 2025-07-05 09:47:39,256] Trial 25 pruned. 
+Tuning PPO:  50%|██████████████████████████████████████████████████████████████████████████████████████████████                                                                                              | 25/50 [42:02:20<62:04:39, 8939.17s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_5762248e.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_5762248e.slxc
+[I 2025-07-05 10:25:17,242] Trial 22 finished with value: 473.31590749097506 and parameters: {'n_steps': 256, 'batch_size': 64, 'learning_rate': 0.00033576526801351884, 'n_epochs': 8, 'gamma': 0.9168328414853454, 'clip_range': 0.1864193573186688, 'ent_coef': 0.003062771633349497, 'vf_coef': 0.5528092962925252, 'max_grad_norm': 1.0310783024404173, 'gae_lambda': 0.9339495317147897, 'n_layers': 3, 'layer_size': 187, 'activation_fn': 'tanh'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  52%|█████████████████████████████████████████████████████████████████████████████████████████████████▊                                                                                          | 26/50 [42:39:58<46:13:51, 6934.63s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 26] ✘ Pruned by Halving at 40000 (reward 317.3)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_72a0e326.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_72a0e326.slxc
+[I 2025-07-05 10:30:37,909] Trial 26 pruned. 
+Tuning PPO:  54%|█████████████████████████████████████████████████████████████████████████████████████████████████████▌                                                                                      | 27/50 [42:45:18<31:37:37, 4950.31s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 27] ✘ Pruned by Halving at 40000 (reward 309.8)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_2b10bc29.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_2b10bc29.slxc
+[I 2025-07-05 11:07:54,321] Trial 27 pruned. 
+Tuning PPO:  56%|█████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                                                                  | 28/50 [43:22:35<25:16:34, 4136.10s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 28] ✘ Pruned by Halving at 40000 (reward 256.5)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_9c336575.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_9c336575.slxc
+[I 2025-07-05 13:25:58,619] Trial 28 pruned. 
+Tuning PPO:  58%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████                                                                               | 29/50 [45:40:39<31:23:12, 5380.60s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 32] ✘ Pruned by Halving at 40000 (reward 161.5)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_d660b67c.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_d660b67c.slxc
+[I 2025-07-05 19:24:56,041] Trial 32 pruned. 
+Tuning PPO:  60%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                                                                          | 30/50 [51:39:36<56:49:15, 10227.76s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 35] ✘ Hard-fail (<20) at 20000 (reward 20.0)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b7c22a08.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_b7c22a08.slxc
+[I 2025-07-05 21:56:44,202] Trial 35 pruned. 
+Tuning PPO:  62%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                                                                       | 31/50 [54:11:25<52:12:25, 9891.87s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_a1b8a04e.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_a1b8a04e.slxc
+[I 2025-07-06 01:15:43,585] Trial 29 finished with value: 492.9924441643192 and parameters: {'n_steps': 256, 'batch_size': 64, 'learning_rate': 0.00020921007773977475, 'n_epochs': 12, 'gamma': 0.973916055091555, 'clip_range': 0.33250192185454064, 'ent_coef': 1.054070635541296e-08, 'vf_coef': 0.8013402307840085, 'max_grad_norm': 1.7314788803848933, 'gae_lambda': 0.965324279181112, 'n_layers': 3, 'layer_size': 120, 'activation_fn': 'tanh'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  64%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▋                                                                   | 32/50 [57:30:24<52:31:50, 10506.14s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_4cf5518d.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_4cf5518d.slxc
+[I 2025-07-06 02:21:52,150] Trial 33 finished with value: 381.4518726495082 and parameters: {'n_steps': 256, 'batch_size': 32, 'learning_rate': 0.0007664112447523621, 'n_epochs': 4, 'gamma': 0.9715559922870967, 'clip_range': 0.1528762526157214, 'ent_coef': 0.04127269122701644, 'vf_coef': 0.7704462039517431, 'max_grad_norm': 4.305639712096438, 'gae_lambda': 0.8602401437577786, 'n_layers': 3, 'layer_size': 128, 'activation_fn': 'tanh'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  66%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                                                | 33/50 [58:36:33<40:21:02, 8544.85s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6da3dce5.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6da3dce5.slxc
+[I 2025-07-06 02:24:30,604] Trial 30 finished with value: 434.3702763037579 and parameters: {'n_steps': 256, 'batch_size': 64, 'learning_rate': 0.0002005782770274963, 'n_epochs': 12, 'gamma': 0.972724548487803, 'clip_range': 0.3415766853393904, 'ent_coef': 1.6787301230129713e-08, 'vf_coef': 0.830127428917786, 'max_grad_norm': 0.45302631006861516, 'gae_lambda': 0.9661622474521756, 'n_layers': 3, 'layer_size': 122, 'activation_fn': 'tanh'}. Best is trial 3 with value: 497.9433970634521.
+Tuning PPO:  68%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                                            | 34/50 [58:39:11<26:47:42, 6028.92s/it, best_val=497.9]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_b59d9443.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_b59d9443.slxc
+[I 2025-07-06 03:15:39,590] Trial 31 finished with value: 498.17554663009855 and parameters: {'n_steps': 256, 'batch_size': 64, 'learning_rate': 0.0008713461063969535, 'n_epochs': 6, 'gamma': 0.9712855407850021, 'clip_range': 0.214787640685994, 'ent_coef': 0.08475074762856749, 'vf_coef': 0.8033012425766726, 'max_grad_norm': 0.3108620374755726, 'gae_lambda': 0.8563106168425115, 'n_layers': 3, 'layer_size': 128, 'activation_fn': 'tanh'}. Best is trial 31 with value: 498.17554663009855.
+Tuning PPO:  70%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                                                        | 35/50 [59:30:20<21:25:14, 5140.93s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 39] ✘ Pruned by Halving at 20000 (reward 192.4)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_dbf0008a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_dbf0008a.slxc
+[I 2025-07-06 05:05:55,312] Trial 39 pruned. 
+Tuning PPO:  72%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                                    | 36/50 [61:20:36<21:42:47, 5583.37s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6db84440.slx
+[I 2025-07-06 05:06:53,102] Trial 41 pruned. 
+Tuning PPO:  74%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                                 | 37/50 [61:21:33<14:10:33, 3925.69s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_ef9a1d83.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_ef9a1d83.slxc
+[I 2025-07-06 06:13:26,831] Trial 34 finished with value: 418.4618398108693 and parameters: {'n_steps': 256, 'batch_size': 32, 'learning_rate': 0.0007674630242869708, 'n_epochs': 6, 'gamma': 0.9722804695103076, 'clip_range': 0.1538683664092955, 'ent_coef': 0.049597431079342905, 'vf_coef': 0.24867287215572537, 'max_grad_norm': 4.270333620775322, 'gae_lambda': 0.8671910248367474, 'n_layers': 3, 'layer_size': 129, 'activation_fn': 'tanh'}. Best is trial 31 with value: 498.17554663009855.
+Tuning PPO:  76%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                                             | 38/50 [62:28:07<13:09:13, 3946.11s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_9c5398e7.slx
+[I 2025-07-06 06:14:04,082] Trial 43 pruned. 
+Tuning PPO:  78%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▍                                         | 39/50 [62:28:44<8:28:27, 2773.44s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 44] ✘ Pruned by Halving at 20000 (reward 75.9)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_6138e86a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_6138e86a.slxc
+[I 2025-07-06 08:47:49,629] Trial 44 pruned. 
+Tuning PPO:  80%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▍                                     | 40/50 [65:02:30<13:04:50, 4709.08s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 45] ✘ Pruned by Halving at 20000 (reward 198.4)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_dd21678f.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_dd21678f.slxc
+[I 2025-07-06 11:31:30,004] Trial 45 pruned. 
+Tuning PPO:  82%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                                 | 41/50 [67:46:10<15:36:22, 6242.47s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_f09e31d0.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_f09e31d0.slxc
+[I 2025-07-06 12:36:51,660] Trial 36 finished with value: 229.83799561641362 and parameters: {'n_steps': 256, 'batch_size': 64, 'learning_rate': 0.00022600346315055918, 'n_epochs': 4, 'gamma': 0.9673553589339258, 'clip_range': 0.38990282927046155, 'ent_coef': 1.9439540495647565e-05, 'vf_coef': 0.4592912948249079, 'max_grad_norm': 4.280125017763282, 'gae_lambda': 0.9466286274549952, 'n_layers': 3, 'layer_size': 298, 'activation_fn': 'relu'}. Best is trial 31 with value: 498.17554663009855.
+Tuning PPO:  84%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                              | 42/50 [68:51:32<12:19:29, 5546.23s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 40] ✘ Pruned by Halving at 40000 (reward 150.8)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_de1c2cf3.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_de1c2cf3.slxc
+[I 2025-07-06 12:59:19,737] Trial 40 pruned. 
+Tuning PPO:  86%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                          | 43/50 [69:14:00<8:20:07, 4286.78s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+[PPO|Trial 42] ✘ Pruned by Halving at 40000 (reward 269.5)
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_dc280464.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_dc280464.slxc
+[I 2025-07-06 14:50:43,583] Trial 42 pruned. 
+Tuning PPO:  88%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                      | 44/50 [71:05:24<8:20:35, 5005.90s/it, best_val=498.2]Starting MATLAB engine...
+[PPO] Using device: cuda
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_11eb3b8f.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_11eb3b8f.slxc
+[I 2025-07-06 16:07:43,729] Trial 37 finished with value: 441.20683558738506 and parameters: {'n_steps': 256, 'batch_size': 64, 'learning_rate': 0.00020276360332576737, 'n_epochs': 4, 'gamma': 0.9724646320957013, 'clip_range': 0.33131667136273113, 'ent_coef': 1.614825455289538e-05, 'vf_coef': 0.6578433257488017, 'max_grad_norm': 1.5962749941787382, 'gae_lambda': 0.9763457648865558, 'n_layers': 3, 'layer_size': 136, 'activation_fn': 'tanh'}. Best is trial 31 with value: 498.17554663009855.
+Tuning PPO:  90%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                   | 45/50 [72:22:24<6:47:30, 4890.18s/it, best_val=498.2]

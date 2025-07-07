@@ -32,30 +32,30 @@ def evaluate_full_metrics(
         episode_us = []
         t_vals = []
 
-        # # === Live Plot Setup ===
-        # plt.ion()
-        # fig, axs = plt.subplots(4, 1, figsize=(8, 10))
-        # theta_line, = axs[0].plot([], [], label="theta (deg)")
-        # theta_v_line, = axs[1].plot([], [], label="theta_v (deg/s)")
-        # u_line, = axs[2].plot([], [], label="u (N)")
+        # === Live Plot Setup ===
+        plt.ion()
+        fig, axs = plt.subplots(4, 1, figsize=(8, 10))
+        theta_line, = axs[0].plot([], [], label="theta (deg)")
+        theta_v_line, = axs[1].plot([], [], label="theta_v (deg/s)")
+        u_line, = axs[2].plot([], [], label="u (N)")
 
-        # for ax, title, ylabel in zip(
-        #     axs[:3],
-        #     ["Theta (deg)", "Theta Velocity (deg/s)", "Control Input (N)"],
-        #     ["°", "°/s", "N"]
-        # ):
-        #     ax.set_title(title)
-        #     ax.set_xlabel("Time (s)")
-        #     ax.set_ylabel(ylabel)
-        #     ax.grid(True)
-        #     ax.legend()
+        for ax, title, ylabel in zip(
+            axs[:3],
+            ["Theta (deg)", "Theta Velocity (deg/s)", "Control Input (N)"],
+            ["°", "°/s", "N"]
+        ):
+            ax.set_title(title)
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel(ylabel)
+            ax.grid(True)
+            ax.legend()
 
-        # # === Pendulum Drawing ===
-        # ax_pendulum = axs[3]
-        # ax_pendulum.set_xlim(-1.5, 1.5)
-        # ax_pendulum.set_ylim(-1.5, 1.5)
-        # ax_pendulum.set_aspect("equal")
-        # pendulum_line, = ax_pendulum.plot([], [], lw=4)
+        # === Pendulum Drawing ===
+        ax_pendulum = axs[3]
+        ax_pendulum.set_xlim(-1.5, 1.5)
+        ax_pendulum.set_ylim(-1.5, 1.5)
+        ax_pendulum.set_aspect("equal")
+        pendulum_line, = ax_pendulum.plot([], [], lw=4)
 
         while not done:
             action, _ = model.predict(obs, deterministic=True)
@@ -74,24 +74,24 @@ def evaluate_full_metrics(
             episode_us.append(u)
             t_vals.append(t)
 
-            # # === Update Plots ===
-            # theta_line.set_data(t_vals, episode_thetas)
-            # theta_v_line.set_data(t_vals, episode_theta_vs)
-            # u_line.set_data(t_vals, episode_us)
+            # === Update Plots ===
+            theta_line.set_data(t_vals, episode_thetas)
+            theta_v_line.set_data(t_vals, episode_theta_vs)
+            u_line.set_data(t_vals, episode_us)
 
-            # for ax in axs[:3]:
-            #     ax.relim()
-            #     ax.autoscale_view()
+            for ax in axs[:3]:
+                ax.relim()
+                ax.autoscale_view()
 
-            # # === Update Pendulum Animation ===
-            # cart_x = 0.0
-            # L = 1.0
-            # pend_x = cart_x + L * np.sin(theta)
-            # pend_y = -L * np.cos(theta)
-            # pendulum_line.set_data([cart_x, pend_x], [0.0, pend_y])
-            # ax_pendulum.set_title(f"Pendulum Angle: {theta_deg:.1f}°")
+            # === Update Pendulum Animation ===
+            cart_x = 0.0
+            L = 1.0
+            pend_x = cart_x + L * np.sin(theta)
+            pend_y = -L * np.cos(theta)
+            pendulum_line.set_data([cart_x, pend_x], [0.0, pend_y])
+            ax_pendulum.set_title(f"Pendulum Angle: {theta_deg:.1f}°")
 
-            # plt.pause(0.001)
+            plt.pause(0.001)
 
             # === Stability check ===
             if abs(theta - target_value) < tolerance:
@@ -120,12 +120,12 @@ def evaluate_full_metrics(
         print(f"  Steady-state error     : {steady_error:.2f}°")
         print(f"  Total stable time      : {total_stable_time:.2f} s")
 
-        # # === Save and close figure ===
-        # plt.ioff()
-        # filename = f"episode_{ep+1:02d}_plot1.png"
-        # # plt.savefig(filename)
-        # # print(f"Saved plot to {filename}")
-        # plt.close(fig)
+        # === Save and close figure ===
+        plt.ioff()
+        filename = f"episode_{ep+1:02d}_plot1.png"
+        # plt.savefig(filename)
+        # print(f"Saved plot to {filename}")
+        plt.close(fig)
 
     # === Summary ===
     episode_length = env.max_episode_time
@@ -156,7 +156,7 @@ def evaluate_full_metrics(
 
 if __name__ == "__main__":
     env = SimulinkEnv()
-    name = "best_model_td3.zip"  # Replace with your model name
+    name = "old_50k_models/td3_simulinker.zip"  # Replace with your model name
     print(f"Loading model {name}...")
     model = TD3.load(name)
 

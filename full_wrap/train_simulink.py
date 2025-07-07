@@ -6,8 +6,8 @@ import torch.nn as nn
 import time
 from tqdm import tqdm
 
-from simulink_env import SimulinkEnv
-from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO
+from simulink_env import SimulinkEnv, DiscretizedActionWrapper
+from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO, DQN
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.callbacks import BaseCallback
 from torch.utils.tensorboard import SummaryWriter
@@ -25,7 +25,8 @@ algo_map = {
     "a2c": A2C,
     "sac": SAC,
     "ddpg": DDPG,
-    "ppo": PPO
+    "ppo": PPO,
+    "dqn" : DQN
 }
 
 OFF_POLICY_ALGOS = ["td3", "sac", "ddpg"]
@@ -37,7 +38,7 @@ class FancyTensorboardCallback(BaseCallback):
         self.save_steps = sorted(save_steps)
         self.save_path_prefix = save_path_prefix
         self.saved_steps = set()
-        self.writer = SummaryWriter(log_dir=log_dir)
+        self.writer = SummaryWriter(log_dir=log_dir, flush_secs=60)
         self.timings = {}
         self.start_time = None
         self.pbar = None
@@ -54,9 +55,11 @@ class FancyTensorboardCallback(BaseCallback):
 
         # Checkpoint saving
         if self.num_timesteps in self.save_steps and self.num_timesteps not in self.saved_steps:
+            self.model.logger.dump(self.num_timesteps)
             base_dir = os.path.dirname(self.save_path_prefix)
             model_file = os.path.join(base_dir, f"best_model_{self.num_timesteps}.zip")
             buffer_file = os.path.join(base_dir, f"replay_buffer_{self.num_timesteps}.pkl")
+            self.writer.flush()
 
             self.model.save(model_file)
             if hasattr(self.model, "save_replay_buffer"):
@@ -96,8 +99,16 @@ class FancyTensorboardCallback(BaseCallback):
 def load_hyperparameters(algo_name):
     path = f"hyperparameter_results/{algo_name}_best_params.json"
     with open(path, "r") as f:
-        config = json.load(f)
-    return config["best_params"]
+        params = json.load(f)["best_params"]
+
+    # --- Reconstruct PPO batch-size if it was saved as an index ---
+    if algo_name == "ppo" and "batch_size" not in params:
+        n_steps = params["n_steps"]
+        valid = [i for i in range(32, min(n_steps + 1, 513)) if n_steps % i == 0]
+        idx = params.get("batch_size_idx", 0) % len(valid)    # fallback idx = 0
+        params["batch_size"] = valid[idx]
+
+    return params
 
 def create_policy_kwargs(params):
     return dict(
@@ -107,6 +118,19 @@ def create_policy_kwargs(params):
 
 # === Main ===
 def main(algo_name="td3", timesteps=100000):
+
+    # create the raw Simulink env
+    base_env = SimulinkEnv(model_name="PendCart", agent_block="PendCart/RL Agent", dt=0.01)
+
+    if algo_name == "dqn":
+        # define the discrete force‐levels you tuned
+        force_values = np.linspace(-10.0, 10.0, 11, dtype=np.float32)
+        # wrap it!
+        env = DiscretizedActionWrapper(base_env, force_values)
+        print("WRAPPED!")
+    else:
+        env = base_env
+
     assert algo_name in algo_map, f"Algorithm must be one of: {list(algo_map.keys())}"
 
     model_base_dir = os.path.join("models", algo_name)
@@ -118,7 +142,7 @@ def main(algo_name="td3", timesteps=100000):
     print(f"📁 Saving models to: {model_base_dir}")
     print(f"📊 TensorBoard logs to: {tensorboard_log_dir}")
 
-    env = SimulinkEnv(model_name="PendCart", agent_block="PendCart/RL Agent", dt=0.01)
+    # env = SimulinkEnv(model_name="PendCart", agent_block="PendCart/RL Agent", dt=0.01)
     params = load_hyperparameters(algo_name)
     policy_kwargs = create_policy_kwargs(params)
     Algo = algo_map[algo_name]
@@ -194,7 +218,22 @@ def main(algo_name="td3", timesteps=100000):
                 ent_coef=params["ent_coef"],
                 gae_lambda=params["gae_lambda"],
                 vf_coef=params["vf_coef"],
-                max_grad_norm=params["max_grad_norm"])
+                max_grad_norm=params["max_grad_norm"],
+                device="cpu")
+        elif algo_name == "dqn":
+            # force_values = np.linspace(-10.0, 10.0, 11, dtype=np.float32)
+            # env = DiscretizedActionWrapper(env, force_values)
+            # Off-policy DQN with replay & epsilon-greedy schedule
+            model = Algo(**common_kwargs,
+                buffer_size=params["buffer_size"],
+                batch_size=params["batch_size"],
+                tau=params["tau"],
+                train_freq=(params["train_freq"], "step"),
+                target_update_interval=params["target_update_interval"],
+                exploration_fraction=params["exploration_fraction"],
+                exploration_final_eps=params["exploration_final_eps"],
+                learning_starts=5000 #added because not saved in hyperparams
+            )
 
     # Setup callback
     checkpoint_steps = {10_000, 25_000, 50_000, 75_000, 100_000}
@@ -221,7 +260,7 @@ def main(algo_name="td3", timesteps=100000):
 # === CLI Entry ===
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo"], default="ddpg")
-    parser.add_argument("--timesteps", type=int, default=100000)
+    parser.add_argument("--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo", "dqn"], default="ppo")
+    parser.add_argument("--timesteps", type=int, default=100_000)
     args = parser.parse_args()
     main(algo_name=args.algo, timesteps=args.timesteps)
