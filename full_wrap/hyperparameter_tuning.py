@@ -118,12 +118,17 @@ def objective(trial, algo_name):
 
         # ------------------------------------------------------------------ #
         elif algo_name == "ppo":
-            def valid_batch_sizes(n, lo=32, hi=512):
-                return [i for i in range(lo, min(n+1, hi+1)) if n % i == 0]
+            # Define the allowed options for both parameters (powers of two are recommended)
+            possible_n_steps = [64, 128, 256, 512, 1024, 2048]
+            possible_batch_sizes = [32, 64, 128, 256, 512]
 
-            n_steps = trial.suggest_int("n_steps", 64, 2048, log=True)
-            batch_size = np.random.choice(valid_batch_sizes(n_steps)) \
-                         if valid_batch_sizes(n_steps) else n_steps
+            n_steps = trial.suggest_categorical("n_steps", possible_n_steps)
+            batch_size = trial.suggest_categorical("batch_size", possible_batch_sizes)
+
+            # Immediately prune invalid combinations:
+            if batch_size > n_steps or n_steps % batch_size != 0:
+                raise optuna.TrialPruned()  # This trial won't be counted, Optuna will try another
+
             params = {
                 "learning_rate": trial.suggest_float("learning_rate", 2e-4, 2e-3, log=True),
                 "n_steps": n_steps, "batch_size": batch_size,
@@ -264,7 +269,6 @@ def objective(trial, algo_name):
         # -------------  TRAIN–EVAL LOOP WITH PRUNING  -------------------- //
         # ================================================================= #
         timesteps = 0
-        top8_means = []
 
         while timesteps < TOTAL_TIMESTEPS:
             model.learn(EVAL_INTERVAL, reset_num_timesteps=False, progress_bar=False, tb_log_name=f"T{trial.number}")
@@ -290,32 +294,38 @@ def objective(trial, algo_name):
 
             mean_reward = top_k_avg
 
-            # >>> THIS LINE IS NEEDED <<<
-            top8_means.append(mean_reward)
+            # Log to TensorBoard manually
+            model.logger.record("eval/mean_all10", float(np.mean(rewards)))
+            model.logger.record("eval/top8_avg", mean_reward)
+            model.logger.dump(timesteps)
 
-            # # ---------- 1) Hard-fail gates ----------
-            # if timesteps in HARD_FAIL_THRESHOLDS:
-            #     threshold = HARD_FAIL_THRESHOLDS[timesteps]
-            #     if mean_reward < threshold:
-            #         print(f"[{algo_name.upper()}|Trial {trial.number}] ✘ "
-            #               f"Hard-fail (<{threshold}) at {timesteps} "
-            #               f"(reward {mean_reward:.1f})", flush=True)
-            #         raise optuna.TrialPruned()
+            # >>> THIS LINE IS NEEDED <<<
+            # top8_means.append(mean_reward)
+
+            # ---------- 1) Hard-fail gates ----------
+            if timesteps in HARD_FAIL_THRESHOLDS:
+                threshold = HARD_FAIL_THRESHOLDS[timesteps]
+                if mean_reward < threshold:
+                    print(f"[{algo_name.upper()}|Trial {trial.number}] ✘ "
+                          f"Hard-fail (<{threshold}) at {timesteps} "
+                          f"(reward {mean_reward:.1f})", flush=True)
+                    raise optuna.TrialPruned()
 
             # ---------- 2) Early success ----------
-            if mean_reward >= SOLVED_THRESHOLD:
-                print(f"[{algo_name.upper()}|Trial {trial.number}] ✔ "
-                    f"Solved at {timesteps} (reward {mean_reward:.1f})", flush=True)
-                break
+            # if mean_reward >= SOLVED_THRESHOLD:
+            #     print(f"[{algo_name.upper()}|Trial {trial.number}] ✔ "
+            #         f"Solved at {timesteps} (reward {mean_reward:.1f})", flush=True)
+            #     break
 
             # ---------- 3) Successive-Halving pruner ----------
+            trial.report(mean_reward, step=timesteps)
             if trial.should_prune():
                 print(f"[{algo_name.upper()}|Trial {trial.number}] ✘ "
                     f"Pruned by Halving at {timesteps} "
                     f"(reward {mean_reward:.1f})", flush=True)
                 raise optuna.TrialPruned()
-
-        return float(np.mean(top8_means))
+            
+        return mean_reward
 
     finally:
         base_env.close()
@@ -327,7 +337,16 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
     pruner = optuna.pruners.SuccessiveHalvingPruner(
         min_resource=MIN_RESOURCES, reduction_factor=REDUCTION_FACTOR, min_early_stopping_rate=MIN_EARLY_STOPPING_RATE)
 
-    study = optuna.create_study(direction="maximize", pruner=pruner)
+    # Use persistent SQLite storage so the study can be resumed later
+    storage_path = f"sqlite:///optuna_{algo_name}.db"
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=pruner,
+        study_name=f"{algo_name}_tuning",
+        storage=storage_path,
+        load_if_exists=True,
+    )
+
 
     # ---------- enqueue good baseline params ----------
     # if algo_name == "dqn":
@@ -338,22 +357,22 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
     #         "train_freq": 4, "n_layers": 2, "layer_size": 128,
     #         "activation_fn": "relu",
     #     })
-    if algo_name == "td3":
-        study.enqueue_trial({
-            "learning_rate": 9.53e-4, "buffer_size": 127_040, "batch_size": 511,
-            "tau": 0.0077, "gamma": 0.943, "policy_delay": 4,
-            "action_noise_sigma": 0.102, "target_policy_noise": 0.105,
-            "target_noise_clip": 0.564, "n_layers": 2, "layer_size": 64,
-            "activation_fn": "relu",
-        })
-    elif algo_name == "ppo":
-        study.enqueue_trial({
-            "n_steps": 68, "batch_size": 34, "learning_rate": 3.45e-4,
-            "n_epochs": 4, "gamma": 0.948, "clip_range": 0.132,
-            "ent_coef": 1.1e-5, "vf_coef": 0.625, "max_grad_norm": 2.499,
-            "gae_lambda": 0.938, "n_layers": 3, "layer_size": 249,
-            "activation_fn": "tanh",
-        })
+    # if algo_name == "td3":
+    #     study.enqueue_trial({
+    #         "learning_rate": 9.53e-4, "buffer_size": 127_040, "batch_size": 511,
+    #         "tau": 0.0077, "gamma": 0.943, "policy_delay": 4,
+    #         "action_noise_sigma": 0.102, "target_policy_noise": 0.105,
+    #         "target_noise_clip": 0.564, "n_layers": 2, "layer_size": 64,
+    #         "activation_fn": "relu",
+    #     })
+    # elif algo_name == "ppo":
+    #     study.enqueue_trial({
+    #         "n_steps": 68, "batch_size": 34, "learning_rate": 3.45e-4,
+    #         "n_epochs": 4, "gamma": 0.948, "clip_range": 0.132,
+    #         "ent_coef": 1.1e-5, "vf_coef": 0.625, "max_grad_norm": 2.499,
+    #         "gae_lambda": 0.938, "n_layers": 3, "layer_size": 249,
+    #         "activation_fn": "tanh",
+    #     })
 
     pbar = tqdm(total=n_trials, desc=f"Tuning {algo_name.upper()}",
                 file=sys.stdout, dynamic_ncols=True, leave=True)
@@ -373,8 +392,8 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
     pbar.close()
 
     # -------- save results --------
-    os.makedirs("hyperparameter_results", exist_ok=True)
-    with open(f"hyperparameter_results/{algo_name}_best_params.json", "w") as fh:
+    os.makedirs("hyperparameter_results_1", exist_ok=True)
+    with open(f"hyperparameter_results_1/{algo_name}_best_params.json", "w") as fh:
         json.dump({
             "best_params": study.best_params,
             "best_value": study.best_value,
@@ -389,7 +408,7 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
 
 # --------------------------------------------------------------------------- #
 if __name__ == "__main__":
-    algorithms = ["dqn"]           # change this list to tune other algos
+    algorithms = ["ppo"]           # change this list to tune other algos
     print("Starting hyperparameter tuning …")
     for algo in algorithms:
         print("\n" + "="*60)
