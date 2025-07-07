@@ -1,6 +1,6 @@
 import optuna
 import numpy as np
-from stable_baselines3 import SAC, A2C, TD3
+from stable_baselines3 import PPO, SAC, A2C, TD3, DDPG
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from BCSimulinkEnv import BCSimulinkEnv # Use your primary training environment
@@ -20,9 +20,13 @@ EVAL_INTERVAL = 10000
 N_EVAL_EPISODES = 5
 # If a trial's reward is below this at a certain timestep, it's a hard fail.
 # Format: {timestep: min_reward_required}
-HARD_FAIL_THRESHOLDS = {20000: 150, 30000: 300}
+HARD_FAIL_THRESHOLDS = {10000: 50, 20000: 200}
 # Pruning configuration
 MIN_RESOURCES = 10000  # The first check happens at 10k steps.
+# TensorBoard log directory
+TB_ROOT = "./buck_converter_tuning_logs/"
+os.makedirs(TB_ROOT, exist_ok=True)
+
 
 def objective(trial, algo_name: str):
     """
@@ -54,7 +58,8 @@ def objective(trial, algo_name: str):
             policy_kwargs = {"net_arch": dict(pi=net_arch, qf=net_arch)}
             model = SAC("MlpPolicy", env, verbose=0, device=device,
                         learning_rate=params["learning_rate"], gamma=params["gamma"], 
-                        tau=params["tau"], policy_kwargs=policy_kwargs)
+                        tau=params["tau"], policy_kwargs=policy_kwargs,
+                        tensorboard_log=os.path.join(TB_ROOT, algo_name))
 
         elif algo_name.lower() == "a2c":
             params = {
@@ -71,7 +76,8 @@ def objective(trial, algo_name: str):
             model = A2C("MlpPolicy", env, verbose=0, device=device,
                         learning_rate=params["learning_rate"], gamma=params["gamma"], 
                         n_steps=params["n_steps"], ent_coef=params["ent_coef"], 
-                        vf_coef=params["vf_coef"], policy_kwargs=policy_kwargs)
+                        vf_coef=params["vf_coef"], policy_kwargs=policy_kwargs,
+                        tensorboard_log=os.path.join(TB_ROOT, algo_name))
 
         elif algo_name.lower() == "td3":
             params = {
@@ -88,7 +94,52 @@ def objective(trial, algo_name: str):
                         learning_rate=params["learning_rate"], tau=params["tau"], 
                         gamma=params["gamma"],
                         action_noise=NormalActionNoise(mean=np.zeros(1), sigma=params["action_noise_sigma"] * np.ones(1)),
-                        policy_kwargs=policy_kwargs)
+                        policy_kwargs=policy_kwargs,
+                        tensorboard_log=os.path.join(TB_ROOT, algo_name))
+                        
+        elif algo_name.lower() == "ddpg":
+            params = {
+                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "tau": trial.suggest_float("tau", 0.001, 0.02),
+                "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+                "action_noise_sigma": trial.suggest_float("action_noise_sigma", 0.05, 0.5),
+                "n_layers": trial.suggest_int("n_layers", 2, 4),
+                "layer_size": trial.suggest_int("layer_size", 64, 256),
+            }
+            net_arch = [params["layer_size"]] * params["n_layers"]
+            policy_kwargs = {"net_arch": net_arch}
+            model = DDPG("MlpPolicy", env, verbose=0, device=device,
+                         learning_rate=params["learning_rate"], tau=params["tau"],
+                         gamma=params["gamma"],
+                         action_noise=NormalActionNoise(mean=np.zeros(1), sigma=params["action_noise_sigma"] * np.ones(1)),
+                         policy_kwargs=policy_kwargs,
+                         tensorboard_log=os.path.join(TB_ROOT, algo_name))
+
+        elif algo_name.lower() == "ppo":
+            n_steps = trial.suggest_categorical("n_steps", [64, 128, 256, 512, 1024, 2048])
+            batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
+            if batch_size > n_steps: raise optuna.TrialPruned()
+
+            params = {
+                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "n_steps": n_steps, "batch_size": batch_size,
+                "n_epochs": trial.suggest_int("n_epochs", 4, 20),
+                "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+                "clip_range": trial.suggest_float("clip_range", 0.1, 0.4),
+                "ent_coef": trial.suggest_float("ent_coef", 1e-8, 0.01, log=True),
+                "vf_coef": trial.suggest_float("vf_coef", 0.2, 0.8),
+                "n_layers": trial.suggest_int("n_layers", 2, 4),
+                "layer_size": trial.suggest_int("layer_size", 64, 256),
+            }
+            net_arch = [params["layer_size"]] * params["n_layers"]
+            policy_kwargs = {"net_arch": [dict(pi=net_arch, vf=net_arch)]}
+            model = PPO("MlpPolicy", env, verbose=0, device=device,
+                        learning_rate=params["learning_rate"], n_steps=params["n_steps"],
+                        batch_size=params["batch_size"], n_epochs=params["n_epochs"],
+                        gamma=params["gamma"], clip_range=params["clip_range"],
+                        ent_coef=params["ent_coef"], vf_coef=params["vf_coef"],
+                        policy_kwargs=policy_kwargs,
+                        tensorboard_log=os.path.join(TB_ROOT, algo_name))
         else:
             raise ValueError(f"Unsupported algorithm: {algo_name}")
 
@@ -96,7 +147,8 @@ def objective(trial, algo_name: str):
         timesteps = 0
         final_reward = 0
         while timesteps < TOTAL_TIMESTEPS_PER_TRIAL:
-            model.learn(EVAL_INTERVAL, reset_num_timesteps=False, progress_bar=False)
+            # Use the trial number to give each run a unique TensorBoard log name
+            model.learn(EVAL_INTERVAL, reset_num_timesteps=False, progress_bar=False, tb_log_name=f"trial_{trial.number}")
             timesteps += EVAL_INTERVAL
 
             # Evaluate the model
@@ -110,6 +162,10 @@ def objective(trial, algo_name: str):
                 mean_reward += ep_rew
             mean_reward /= N_EVAL_EPISODES
             final_reward = mean_reward
+            
+            # Manually log the evaluation score to TensorBoard
+            model.logger.record("eval/mean_reward", mean_reward)
+            model.logger.dump(step=timesteps)
 
             # 1. Hard-fail gate
             if timesteps in HARD_FAIL_THRESHOLDS and mean_reward < HARD_FAIL_THRESHOLDS[timesteps]:
@@ -181,7 +237,7 @@ def tune_hyperparameters(algo_name, n_trials=50):
 
 if __name__ == "__main__":
     # --- CHOOSE THE MODEL TO TUNE ---
-    # Options: "SAC", "A2C", "TD3"
+    # Options: "SAC", "A2C", "TD3", "PPO", "DDPG"
     ALGORITHM_TO_TUNE = "A2C" 
     
     print(f"{'=' * 50}")
