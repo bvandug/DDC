@@ -36,7 +36,7 @@ def objective(trial, algo_name: str):
     """
     
     # Use a shorter episode time for faster trials
-    env_fn = lambda: BCSimulinkEnv(model_name="bcSim", enable_plotting=False, max_episode_time=0.1)
+    env_fn = lambda: BCSimulinkEnv(model_name="bcSim", enable_plotting=False, max_episode_time=0.02)
     
     # Each trial needs its own environment
     env = DummyVecEnv([env_fn])
