@@ -1,9 +1,9 @@
 import optuna
 import numpy as np
-from stable_baselines3 import PPO, SAC, TD3, A2C, DDPG
+from stable_baselines3 import PPO, SAC, A2C, TD3, DDPG
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from BCSimTestEnv import BCSimulinkEnv  # <-- 1. IMPORT YOUR BC ENVIRONMENT
+from BCSimulinkEnv import BCSimulinkEnv # Use your primary training environment
 import json
 import os
 import torch
@@ -11,108 +11,174 @@ from torch import nn
 from tqdm import tqdm
 import sys
 
-# This is the objective function that Optuna will try to maximize.
-# It takes a 'trial' object, which it uses to sample hyperparameters.
-def objective(trial, algo_name):
+# --- CONSTANTS FOR TUNING ---
+# Total timesteps per trial. A trial is one full run with a set of hyperparameters.
+TOTAL_TIMESTEPS_PER_TRIAL = 40000
+# How often to check the performance and potentially prune the trial.
+EVAL_INTERVAL = 10000
+# Number of episodes to average over for each evaluation check.
+N_EVAL_EPISODES = 5
+# If a trial's reward is below this at a certain timestep, it's a hard fail.
+# Format: {timestep: min_reward_required}
+HARD_FAIL_THRESHOLDS = {10000: 50, 20000: 200}
+# Pruning configuration
+MIN_RESOURCES = 10000  # The first check happens at 10k steps.
+# TensorBoard log directory
+TB_ROOT = "./buck_converter_tuning_logs/"
+os.makedirs(TB_ROOT, exist_ok=True)
+
+
+def objective(trial, algo_name: str):
+    """
+    The objective function for one Optuna trial.
+    It samples hyperparameters, creates an agent, trains it in chunks,
+    evaluates its performance, and allows for early stopping (pruning).
+    """
     
-    # --- Environment Setup ---
-    # We create a function to instantiate the environment.
-    # We disable plotting and any extra features for speed during tuning.
-    env_fn = lambda: BCSimulinkEnv(
-        model_name="bcSim",         # <-- 2. USE YOUR BC MODEL
-        enable_plotting=False,
-        max_episode_time=0.01       # Use a shorter time for faster tuning trials
-    )
+    # Use a shorter episode time for faster trials
+    env_fn = lambda: BCSimulinkEnv(model_name="bcSim", enable_plotting=False, max_episode_time=0.02)
     
-    # Wrap the environment in DummyVecEnv and VecNormalize, just like in training/testing
+    # Each trial needs its own environment
     env = DummyVecEnv([env_fn])
     env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.0)
 
     try:
         device = "cuda" if torch.cuda.is_available() else "cpu"
-
-        # --- Hyperparameter Sampling ---
-        # The structure is the same as your pendulum script, but adapted for the BC problem.
-        # We can reuse most of the parameter ranges as they are generally good starting points.
         
-        if algo_name.lower() == "td3":
-            # Suggest hyperparameters for the TD3 algorithm
+        # --- HYPERPARAMETER SAMPLING ---
+        if algo_name.lower() == "sac":
             params = {
                 "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
-                "buffer_size": trial.suggest_int("buffer_size", 20000, 100000),
-                "batch_size": trial.suggest_categorical("batch_size", [64, 128, 256, 512]),
-                "tau": trial.suggest_float("tau", 0.005, 0.02),
                 "gamma": trial.suggest_float("gamma", 0.95, 0.999),
-                "action_noise_sigma": trial.suggest_float("action_noise_sigma", 0.05, 0.2),
+                "tau": trial.suggest_float("tau", 0.005, 0.02),
                 "n_layers": trial.suggest_int("n_layers", 2, 4),
                 "layer_size": trial.suggest_int("layer_size", 64, 256),
-                "activation_fn": trial.suggest_categorical("activation_fn", ["tanh", "relu"]),
             }
             net_arch = [params["layer_size"]] * params["n_layers"]
-            activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[params["activation_fn"]]
-            policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
-
-            model = TD3(
-                "MlpPolicy", env, verbose=0, device=device,
-                learning_rate=params["learning_rate"],
-                buffer_size=params["buffer_size"],
-                batch_size=params["batch_size"],
-                tau=params["tau"],
-                gamma=params["gamma"],
-                action_noise=NormalActionNoise(mean=np.zeros(1), sigma=params["action_noise_sigma"] * np.ones(1)),
-                policy_kwargs=policy_kwargs,
-            )
+            policy_kwargs = {"net_arch": dict(pi=net_arch, qf=net_arch)}
+            model = SAC("MlpPolicy", env, verbose=0, device=device,
+                        learning_rate=params["learning_rate"], gamma=params["gamma"], 
+                        tau=params["tau"], policy_kwargs=policy_kwargs,
+                        tensorboard_log=os.path.join(TB_ROOT, algo_name))
 
         elif algo_name.lower() == "a2c":
-            # Suggest hyperparameters for the A2C algorithm
             params = {
                 "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
                 "gamma": trial.suggest_float("gamma", 0.90, 0.999),
                 "n_steps": trial.suggest_int("n_steps", 8, 2048, log=True),
                 "ent_coef": trial.suggest_float("ent_coef", 1e-8, 0.01, log=True),
                 "vf_coef": trial.suggest_float("vf_coef", 0.2, 0.8),
-                "max_grad_norm": trial.suggest_float("max_grad_norm", 0.3, 5.0),
                 "n_layers": trial.suggest_int("n_layers", 2, 4),
                 "layer_size": trial.suggest_int("layer_size", 64, 256),
-                "activation_fn": trial.suggest_categorical("activation_fn", ["tanh", "relu"]),
             }
             net_arch = [params["layer_size"]] * params["n_layers"]
-            activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[params["activation_fn"]]
-            policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
+            policy_kwargs = {"net_arch": [dict(pi=net_arch, vf=net_arch)]}
+            model = A2C("MlpPolicy", env, verbose=0, device=device,
+                        learning_rate=params["learning_rate"], gamma=params["gamma"], 
+                        n_steps=params["n_steps"], ent_coef=params["ent_coef"], 
+                        vf_coef=params["vf_coef"], policy_kwargs=policy_kwargs,
+                        tensorboard_log=os.path.join(TB_ROOT, algo_name))
 
-            model = A2C(
-                "MlpPolicy", env, verbose=0, device=device,
-                learning_rate=params["learning_rate"],
-                gamma=params["gamma"],
-                n_steps=params["n_steps"],
-                ent_coef=params["ent_coef"],
-                vf_coef=params["vf_coef"],
-                max_grad_norm=params["max_grad_norm"],
-                policy_kwargs=policy_kwargs,
-            )
+        elif algo_name.lower() == "td3":
+            params = {
+                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "tau": trial.suggest_float("tau", 0.005, 0.02),
+                "gamma": trial.suggest_float("gamma", 0.95, 0.999),
+                "action_noise_sigma": trial.suggest_float("action_noise_sigma", 1e-3, 0.1, log=True),
+                "n_layers": trial.suggest_int("n_layers", 2, 4),
+                "layer_size": trial.suggest_int("layer_size", 64, 400),
+            }
+            net_arch = [params["layer_size"]] * params["n_layers"]
+            policy_kwargs = {"net_arch": net_arch}
+            model = TD3("MlpPolicy", env, verbose=0, device=device,
+                        learning_rate=params["learning_rate"], tau=params["tau"], 
+                        gamma=params["gamma"],
+                        action_noise=NormalActionNoise(mean=np.zeros(1), sigma=params["action_noise_sigma"] * np.ones(1)),
+                        policy_kwargs=policy_kwargs,
+                        tensorboard_log=os.path.join(TB_ROOT, algo_name))
+                        
+        elif algo_name.lower() == "ddpg":
+            params = {
+                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "tau": trial.suggest_float("tau", 0.001, 0.02),
+                "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+                "action_noise_sigma": trial.suggest_float("action_noise_sigma", 0.05, 0.5),
+                "n_layers": trial.suggest_int("n_layers", 2, 4),
+                "layer_size": trial.suggest_int("layer_size", 64, 256),
+            }
+            net_arch = [params["layer_size"]] * params["n_layers"]
+            policy_kwargs = {"net_arch": net_arch}
+            model = DDPG("MlpPolicy", env, verbose=0, device=device,
+                         learning_rate=params["learning_rate"], tau=params["tau"],
+                         gamma=params["gamma"],
+                         action_noise=NormalActionNoise(mean=np.zeros(1), sigma=params["action_noise_sigma"] * np.ones(1)),
+                         policy_kwargs=policy_kwargs,
+                         tensorboard_log=os.path.join(TB_ROOT, algo_name))
 
+        elif algo_name.lower() == "ppo":
+            n_steps = trial.suggest_categorical("n_steps", [64, 128, 256, 512, 1024, 2048])
+            batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
+            if batch_size > n_steps: raise optuna.TrialPruned()
+
+            params = {
+                "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+                "n_steps": n_steps, "batch_size": batch_size,
+                "n_epochs": trial.suggest_int("n_epochs", 4, 20),
+                "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+                "clip_range": trial.suggest_float("clip_range", 0.1, 0.4),
+                "ent_coef": trial.suggest_float("ent_coef", 1e-8, 0.01, log=True),
+                "vf_coef": trial.suggest_float("vf_coef", 0.2, 0.8),
+                "n_layers": trial.suggest_int("n_layers", 2, 4),
+                "layer_size": trial.suggest_int("layer_size", 64, 256),
+            }
+            net_arch = [params["layer_size"]] * params["n_layers"]
+            policy_kwargs = {"net_arch": [dict(pi=net_arch, vf=net_arch)]}
+            model = PPO("MlpPolicy", env, verbose=0, device=device,
+                        learning_rate=params["learning_rate"], n_steps=params["n_steps"],
+                        batch_size=params["batch_size"], n_epochs=params["n_epochs"],
+                        gamma=params["gamma"], clip_range=params["clip_range"],
+                        ent_coef=params["ent_coef"], vf_coef=params["vf_coef"],
+                        policy_kwargs=policy_kwargs,
+                        tensorboard_log=os.path.join(TB_ROOT, algo_name))
         else:
             raise ValueError(f"Unsupported algorithm: {algo_name}")
 
-        # --- Train and Evaluate ---
-        # Train the model for a fixed number of steps
-        model.learn(total_timesteps=50000, progress_bar=False) # Reduced for faster trials
+        # --- TRAIN-EVAL LOOP WITH PRUNING ---
+        timesteps = 0
+        final_reward = 0
+        while timesteps < TOTAL_TIMESTEPS_PER_TRIAL:
+            # Use the trial number to give each run a unique TensorBoard log name
+            model.learn(EVAL_INTERVAL, reset_num_timesteps=False, progress_bar=False, tb_log_name=f"trial_{trial.number}")
+            timesteps += EVAL_INTERVAL
 
-        # Evaluate the trained model and calculate the mean reward
-        mean_reward = 0
-        n_eval_episodes = 5 # Evaluate over a few episodes
-        for _ in range(n_eval_episodes):
-            obs = env.reset()
-            done = False
-            episode_reward = 0
-            while not done:
-                action, _ = model.predict(obs, deterministic=True)
-                obs, reward, done, _ = env.step(action)
-                episode_reward += reward
-            mean_reward += episode_reward
+            # Evaluate the model
+            mean_reward = 0
+            for _ in range(N_EVAL_EPISODES):
+                obs, done, ep_rew = env.reset(), False, 0
+                while not done:
+                    action, _ = model.predict(obs, deterministic=True)
+                    obs, reward, done, _ = env.step(action)
+                    ep_rew += reward
+                mean_reward += ep_rew
+            mean_reward /= N_EVAL_EPISODES
+            final_reward = mean_reward
+            
+            # Manually log the evaluation score to TensorBoard
+            model.logger.record("eval/mean_reward", mean_reward)
+            model.logger.dump(step=timesteps)
 
-        # Optuna will try to maximize this return value
-        return mean_reward / n_eval_episodes
+            # 1. Hard-fail gate
+            if timesteps in HARD_FAIL_THRESHOLDS and mean_reward < HARD_FAIL_THRESHOLDS[timesteps]:
+                print(f"[{algo_name.upper()}|T{trial.number}] ✘ Hard-fail (<{HARD_FAIL_THRESHOLDS[timesteps]}) at {timesteps} (reward {mean_reward:.1f})")
+                raise optuna.TrialPruned()
+
+            # 2. Report intermediate value to the pruner
+            trial.report(mean_reward, step=timesteps)
+            if trial.should_prune():
+                print(f"[{algo_name.upper()}|T{trial.number}] ✘ Pruned by Halving at {timesteps} (reward {mean_reward:.1f})")
+                raise optuna.TrialPruned()
+        
+        return final_reward
 
     finally:
         # Crucially, close the environment to shut down the MATLAB engine
@@ -120,55 +186,62 @@ def objective(trial, algo_name):
 
 
 def tune_hyperparameters(algo_name, n_trials=50):
-    study_name = f"{algo_name}-bc-tuning"
+    """
+    Main function to set up and run the Optuna study with a pruner.
+    """
+    study_name = f"{algo_name}-bc-tuning-advanced"
     storage_name = f"sqlite:///{study_name}.db"
     
-    print(f"\nTuning {algo_name.upper()}. Study: {study_name}")
+    print(f"\nAdvanced Tuning for {algo_name.upper()}. Study: {study_name}")
     print(f"Results will be saved to: {storage_name}")
 
-    # Create a study object. The 'storage' argument allows resuming if interrupted.
+    # Set up the pruner
+    pruner = optuna.pruners.SuccessiveHalvingPruner(min_resource=MIN_RESOURCES)
+
     study = optuna.create_study(
-        study_name=study_name,
-        storage=storage_name,
-        load_if_exists=True,
-        direction="maximize"
+        study_name=study_name, storage=storage_name,
+        load_if_exists=True, direction="maximize", pruner=pruner
     )
 
-    # The main optimization loop
+    # Use a progress bar for the optimization loop
+    pbar = tqdm(total=n_trials, desc=f"Tuning {algo_name.upper()}", file=sys.stdout)
+    def _pbar_callback(study, trial):
+        pbar.update(1)
+        try:
+            pbar.set_postfix(best_val=f"{study.best_value:.1f}")
+        except ValueError:
+            pbar.set_postfix(best_val="N/A")
+
     study.optimize(
         lambda trial: objective(trial, algo_name),
         n_trials=n_trials,
-        n_jobs=1,  # IMPORTANT: Set n_jobs to 1 because each trial starts a MATLAB engine
+        n_jobs=1,  # IMPORTANT: Must be 1 for Simulink/MATLAB
+        callbacks=[_pbar_callback]
     )
+    pbar.close()
 
     # --- Save and Print Results ---
-    best_params = study.best_params
-    best_value = study.best_value
-    
-    results = {
-        "best_value": best_value,
-        "best_params": best_params,
-    }
-
-    # Save the results to a JSON file
-    os.makedirs("hyperparameter_results", exist_ok=True)
-    with open(f"hyperparameter_results/{algo_name}_best_params.json", "w") as f:
+    results = {"best_value": study.best_value, "best_params": study.best_params}
+    results_dir = "hyperparameter_results_advanced"
+    os.makedirs(results_dir, exist_ok=True)
+    with open(os.path.join(results_dir, f"{algo_name}_best_params.json"), "w") as f:
         json.dump(results, f, indent=4)
 
     print(f"\n--- Best parameters for {algo_name} ---")
-    print(f"Best value (mean reward): {best_value:.4f}")
-    for key, value in best_params.items():
+    print(f"Best value (mean reward): {study.best_value:.4f}")
+    for key, value in study.best_params.items():
         print(f"  {key}: {value}")
     
-    return best_params
+    return study.best_params
 
 
 if __name__ == "__main__":
-    # Select the algorithm to tune
-    ALGORITHM_TO_TUNE = "a2c" # Options: "a2c", "td3"
+    # --- CHOOSE THE MODEL TO TUNE ---
+    # Options: "SAC", "A2C", "TD3", "PPO", "DDPG"
+    ALGORITHM_TO_TUNE = "A2C" 
     
     print(f"{'=' * 50}")
-    print(f"Tuning hyperparameters for {ALGORITHM_TO_TUNE.upper()}...")
+    print(f"Advanced hyperparameter tuning for {ALGORITHM_TO_TUNE.upper()}...")
     print(f"{'=' * 50}\n")
     
     tune_hyperparameters(
