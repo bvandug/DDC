@@ -1,6 +1,6 @@
 import numpy as np
 from simulink_env import SimulinkEnv
-from stable_baselines3 import TD3,A2C
+from stable_baselines3 import TD3,A2C,SAC,DDPG,PPO,DQN
 import time
 import matplotlib.pyplot as plt
 
@@ -156,9 +156,9 @@ def evaluate_full_metrics(
 
 if __name__ == "__main__":
     env = SimulinkEnv()
-    name = "old_50k_models/td3_simulinker.zip"  # Replace with your model name
+    name = "jax/sac/best_model.zip"  # Replace with your model name
     print(f"Loading model {name}...")
-    model = TD3.load(name)
+    model = SAC.load(name)
 
     start = time.perf_counter()
     metrics = evaluate_full_metrics(

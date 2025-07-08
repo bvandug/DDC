@@ -12,6 +12,7 @@ class PendulumConfig(NamedTuple):
     dt: float = 0.01   # time step (s)
     angle_threshold: float = jnp.pi / 2
     max_force: float = 10.0
+    max_episode_time: float = 5.0  # NEW: 5s episode
 
 class PendulumState(NamedTuple):
     theta: float
@@ -29,23 +30,26 @@ def pendulum_dynamics(state: PendulumState, action: float, config: PendulumConfi
     theta_dot = state.theta_dot
     m, M, l, g = config.m, config.M, config.L, config.g
 
-    # Equations from Simulink model
     sin_theta = jnp.sin(theta)
     cos_theta = jnp.cos(theta)
-    denom = M + m - m * cos_theta**2
+
+    denom = m * l * cos_theta**2 - (M + m) * l
+    denom = jnp.where(jnp.abs(denom) < 1e-5, jnp.sign(denom) * 1e-5, denom)
 
     theta_ddot = (
         u * cos_theta
         - (M + m) * g * sin_theta
         + m * l * theta_dot**2 * cos_theta * sin_theta
-    ) / (m * l * cos_theta**2 - (M + m) * l)
+    ) / denom
 
     theta_dot_new = theta_dot + theta_ddot * config.dt
     theta_new = theta + theta_dot_new * config.dt
-
     t_new = state.t + config.dt
 
-    done = jnp.abs(theta_new) > config.angle_threshold
+    done = jnp.logical_or(
+        jnp.abs(theta_new) > config.angle_threshold,
+        t_new >= config.max_episode_time
+    )
 
     return PendulumState(
         theta=angle_normalize(theta_new),
@@ -60,7 +64,10 @@ def reset_pendulum_env(key, config: PendulumConfig) -> PendulumState:
     return PendulumState(theta=theta, theta_dot=0.0, t=0.0, done=False)
 
 def reward_fn(state: PendulumState, action: float) -> float:
-    return jnp.cos(state.theta)
+    upright_bonus = jnp.cos(state.theta)
+    velocity_penalty = 0.1 * state.theta_dot**2
+    effort_penalty = 0.001 * action**2
+    return upright_bonus - velocity_penalty - effort_penalty
 
 def step_pendulum_env(state: PendulumState, action: float, config: PendulumConfig):
     new_state = pendulum_dynamics(state, action, config)
