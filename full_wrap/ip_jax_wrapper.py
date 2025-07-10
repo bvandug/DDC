@@ -1,5 +1,3 @@
-# jax_pendulum_gym_wrapper.py
-
 import gym
 from gym import spaces
 import numpy as np
@@ -16,7 +14,6 @@ class InvertedPendulumGymWrapper(gym.Env):
         self.config = config if config else PendulumConfig()
         self.rng = jax.random.PRNGKey(seed if seed is not None else 0)
 
-        # Continuous action and observation space
         self.action_space = spaces.Box(
             low=-self.config.max_force,
             high=self.config.max_force,
@@ -32,13 +29,17 @@ class InvertedPendulumGymWrapper(gym.Env):
     def reset(self):
         self.rng, subkey = jax.random.split(self.rng)
         self.state = reset_pendulum_env(subkey, self.config)
-        return np.array([self.state.theta, self.state.theta_dot], dtype=np.float32)
+        return self._obs()
 
     def step(self, action):
         self.state, reward = step_pendulum_env(self.state, float(action), self.config)
-        obs = np.array([self.state.theta, self.state.theta_dot], dtype=np.float32)
-        done = bool(self.state.done)
-        return obs, float(reward), done, {}
+        return self._obs(), float(reward), bool(self.state.done), {}
+
+    def _obs(self):
+        # Reverted to raw state (no normalization)
+        theta = self.state.theta
+        theta_dot = self.state.theta_dot
+        return np.array([theta, theta_dot], dtype=np.float32)
 
     def render(self, mode="human"):
         pass

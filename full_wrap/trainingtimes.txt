@@ -76,3 +76,33 @@ Training Progress: 100%|██████████████████�
 Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\PendCart_260b5349.slx
 Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\PendCart_260b5349.slxc
 🏁 Training complete. Environment closed.
+
+
+Training Progress: 100%|███████████████████████████████████████████████████████████████████████████████| 100000/100000 [21:21:00<00:00,  1.33s/it] 
+📌 Checkpoint at 100000 steps:
+    - Model: models\ppo\best_model_100000.zip
+    - Replay buffer: models\ppo\replay_buffer_100000.pkl
+    - Elapsed: 29858.49 sec
+---------------------------------
+| rollout/           |          |
+|    ep_len_mean     | 434      |
+|    ep_rew_mean     | 430      |
+| time/              |          |
+|    fps             | 1        |
+|    iterations      | 391      |
+|    time_elapsed    | 77006    |
+|    total_timesteps | 100096   |
+---------------------------------
+Training Progress: 100096it [21:23:08,  1.30it/s]
+
+🕒 Training Time Summary:
+    10000 steps: 2797.02 sec
+    25000 steps: 5044.63 sec
+    50000 steps: 16104.45 sec
+    75000 steps: 23056.07 sec
+    100000 steps: 29858.49 sec
+    Total training time: 76988.22 sec
+✅ Final model saved to models\ppo\best_model.zip
+Deleted temporary model file: C:\Users\bvand\AppData\Local\Temp\PendCart_28ce1835.slx
+Deleted: C:\Users\bvand\OneDrive\Documents\MATLAB\DDC\full_wrap\PendCart_28ce1835.slxc
+🏁 Training complete. Environment closed.
