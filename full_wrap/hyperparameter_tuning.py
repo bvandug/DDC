@@ -17,7 +17,6 @@ SOLVED_THRESHOLD  = 490           # “good enough” reward, end trial early
 # HARD_FAIL_THRESHOLDS = {10_000: 30, 20_000: 150, 30_000: 200, 40_000: 250}
 HARD_FAIL_THRESHOLDS = {20_000: 20, 30_000: 50}
 
-
 TB_ROOT = "./hp1_logs"
 # --------------------------------------------------------------------- #
 os.makedirs(TB_ROOT, exist_ok=True)      # <<< 1. always create the folder
@@ -27,8 +26,6 @@ MIN_RESOURCES = 20000  # min. resources for pruning
 REDUCTION_FACTOR = 2  # reduction factor for pruning
 MIN_EARLY_STOPPING_RATE = 0  # min. early stopping rate for pruning
 # --------------------------------------------------------------------- #
-
-
 
 def objective(trial, algo_name):
     """
