@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MF0 version="1.1" packageUris="http://schema.mathworks.com/mf0/slsa_mm_param_graph/R2021b">
+  <slsa.mm.param.graph.VariableRegistry type="slsa.mm.param.graph.VariableRegistry" uuid="a7b24d29-3087-4052-b819-e09170aa0456">
+    <blockParameters type="slsa.mm.param.graph.BlockParameter" uuid="6d77b03b-0e3a-44d1-b346-30a26210194d">
+      <blockPath>PendCart_249987d3/Noise/White Noise</blockPath>
+      <parameterName>SampleTime</parameterName>
+      <expression type="slsa.mm.param.graph.Expression" uuid="6a75dede-eda1-4a4b-ae1b-c4f679fc0717"/>
+      <tunabilityType>Nontunable</tunabilityType>
+    </blockParameters>
+    <blockParameters type="slsa.mm.param.graph.BlockParameter" uuid="52106184-c844-46e4-a2ab-a6ed941491a5">
+      <blockPath>PendCart_249987d3/Noise_v/White Noise</blockPath>
+      <parameterName>SampleTime</parameterName>
+      <expression type="slsa.mm.param.graph.Expression" uuid="334e40d2-0945-4332-8dc3-616fbe4c50a2"/>
+      <tunabilityType>Nontunable</tunabilityType>
+    </blockParameters>
+    <expressions type="slsa.mm.param.graph.Expression" uuid="4f80a965-0703-4570-88a7-f41c4f59c2ee">
+      <expression>0.01</expression>
+      <users type="slsa.mm.param.graph.VariableDefinition" uuid="bcdfce92-750e-4a89-abfd-203d1d010e11"/>
+      <users type="slsa.mm.param.graph.VariableDefinition" uuid="3aefdc1e-3c37-4ce1-b2e4-b7802d37e470"/>
+    </expressions>
+    <expressions type="slsa.mm.param.graph.Expression" uuid="6a75dede-eda1-4a4b-ae1b-c4f679fc0717">
+      <expression>Ts</expression>
+      <users type="slsa.mm.param.graph.BlockParameter" uuid="6d77b03b-0e3a-44d1-b346-30a26210194d"/>
+      <variables type="slsa.mm.param.graph.Variable" uuid="80ec42ea-686f-43cc-b094-d162226c334a"/>
+    </expressions>
+    <expressions type="slsa.mm.param.graph.Expression" uuid="334e40d2-0945-4332-8dc3-616fbe4c50a2">
+      <expression>Ts</expression>
+      <users type="slsa.mm.param.graph.BlockParameter" uuid="52106184-c844-46e4-a2ab-a6ed941491a5"/>
+      <variables type="slsa.mm.param.graph.Variable" uuid="f0de0816-13ae-40ac-88b3-d4dee63577b0"/>
+    </expressions>
+    <name>PendCart_249987d3</name>
+    <variableDefinitions type="slsa.mm.param.graph.VariableDefinition" uuid="bcdfce92-750e-4a89-abfd-203d1d010e11">
+      <variable type="slsa.mm.param.graph.Variable" uuid="80ec42ea-686f-43cc-b094-d162226c334a"/>
+      <expression type="slsa.mm.param.graph.Expression" uuid="4f80a965-0703-4570-88a7-f41c4f59c2ee"/>
+      <tunabilityType>Nontunable</tunabilityType>
+    </variableDefinitions>
+    <variableDefinitions type="slsa.mm.param.graph.VariableDefinition" uuid="3aefdc1e-3c37-4ce1-b2e4-b7802d37e470">
+      <variable type="slsa.mm.param.graph.Variable" uuid="f0de0816-13ae-40ac-88b3-d4dee63577b0"/>
+      <expression type="slsa.mm.param.graph.Expression" uuid="4f80a965-0703-4570-88a7-f41c4f59c2ee"/>
+      <tunabilityType>Nontunable</tunabilityType>
+    </variableDefinitions>
+    <variables type="slsa.mm.param.graph.Variable" uuid="fc155dd4-6f8b-41ef-956d-90424f08c817">
+      <name>u</name>
+      <workspace type="slsa.mm.param.graph.Workspace" uuid="5fac9bb0-badf-4584-bfae-26b599c7a0b9"/>
+    </variables>
+    <variables type="slsa.mm.param.graph.Variable" uuid="f0de0816-13ae-40ac-88b3-d4dee63577b0">
+      <definition type="slsa.mm.param.graph.VariableDefinition" uuid="3aefdc1e-3c37-4ce1-b2e4-b7802d37e470"/>
+      <expressions type="slsa.mm.param.graph.Expression" uuid="334e40d2-0945-4332-8dc3-616fbe4c50a2"/>
+      <name>Ts</name>
+      <workspace type="slsa.mm.param.graph.Workspace" uuid="8d95b322-c689-4598-b700-a74308a6806b"/>
+    </variables>
+    <variables type="slsa.mm.param.graph.Variable" uuid="80ec42ea-686f-43cc-b094-d162226c334a">
+      <definition type="slsa.mm.param.graph.VariableDefinition" uuid="bcdfce92-750e-4a89-abfd-203d1d010e11"/>
+      <expressions type="slsa.mm.param.graph.Expression" uuid="6a75dede-eda1-4a4b-ae1b-c4f679fc0717"/>
+      <name>Ts</name>
+      <workspace type="slsa.mm.param.graph.Workspace" uuid="0726d260-2466-451b-a5f4-8fcbd031fdb7"/>
+    </variables>
+    <workspaces type="slsa.mm.param.graph.Workspace" uuid="0726d260-2466-451b-a5f4-8fcbd031fdb7">
+      <name>PendCart_249987d3:71</name>
+      <type>MASK</type>
+      <variables type="slsa.mm.param.graph.Variable" uuid="80ec42ea-686f-43cc-b094-d162226c334a"/>
+    </workspaces>
+    <workspaces type="slsa.mm.param.graph.Workspace" uuid="5fac9bb0-badf-4584-bfae-26b599c7a0b9">
+      <name>global-workspace</name>
+      <variables type="slsa.mm.param.graph.Variable" uuid="fc155dd4-6f8b-41ef-956d-90424f08c817"/>
+    </workspaces>
+    <workspaces type="slsa.mm.param.graph.Workspace" uuid="8d95b322-c689-4598-b700-a74308a6806b">
+      <name>PendCart_249987d3:75</name>
+      <type>MASK</type>
+      <variables type="slsa.mm.param.graph.Variable" uuid="f0de0816-13ae-40ac-88b3-d4dee63577b0"/>
+    </workspaces>
+    <contextManager type="slsa.mm.param.graph.ContextManager" uuid="b41c53c8-8f97-48f2-875a-a6cf6bbc10d7"/>
+  </slsa.mm.param.graph.VariableRegistry>
+</MF0>
