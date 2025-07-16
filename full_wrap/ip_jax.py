@@ -10,7 +10,7 @@ class PendulumConfig(NamedTuple):
     L: float = 0.15    # pendulum length to COM (m)
     g: float = 9.8     # gravitational acceleration (m/s^2)
     dt: float = 0.01   # time step (s)
-    angle_threshold: float = jnp.pi / 2
+    angle_threshold: float = jnp.pi / 3
     max_force: float = 10.0
     max_episode_time: float = 5.0  # NEW: 5s episode
 
@@ -64,10 +64,8 @@ def reset_pendulum_env(key, config: PendulumConfig) -> PendulumState:
     return PendulumState(theta=theta, theta_dot=0.0, t=0.0, done=False)
 
 def reward_fn(state: PendulumState, action: float) -> float:
-    upright_bonus = jnp.cos(state.theta)
-    velocity_penalty = 0.1 * state.theta_dot**2
-    effort_penalty = 0.001 * action**2
-    return upright_bonus - velocity_penalty - effort_penalty
+    return jnp.cos(state.theta)
+
 
 def step_pendulum_env(state: PendulumState, action: float, config: PendulumConfig):
     new_state = pendulum_dynamics(state, action, config)
