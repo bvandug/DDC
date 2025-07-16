@@ -1,0 +1,20 @@
+{
+    "best_params": {
+        "n_layers": 2,
+        "layer_size": 285,
+        "activation_fn": "tanh",
+        "learning_rate": 1.5874e-05,
+        "buffer_size": 168348,
+        "batch_size": 1024,
+        "gamma": 0.998,
+        "tau": 0.01975,
+        "ent_coef": "auto"
+    },
+    "best_value": 1937.79,
+    "n_trials": 50,
+    "best_net_arch": [
+        285,
+        285
+    ],
+    "best_activation_fn": "tanh"
+}

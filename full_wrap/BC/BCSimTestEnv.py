@@ -164,6 +164,8 @@ class BCSimulinkEnv(gym.Env):
         step_duration = self.dt * self.frame_skip
         derivative_error = (error - self.prev_error) / step_duration
         reward = 1.0 / (1.0 + error**2)
+
+        reward -= 0.01
         terminated = bool(self.current_time >= self.max_episode_time)
         truncated = False
 

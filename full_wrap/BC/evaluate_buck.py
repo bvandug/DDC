@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 from BCSimTestEnv import BCSimulinkEnv # Import your environment
 from stable_baselines3 import SAC, TD3, A2C # Import all potential model types
+from tqdm import tqdm # Import tqdm
 
 def plot_and_save_summary(all_episode_data, target_voltage, tolerance, model_type, plot_save_base):
     """
@@ -20,7 +21,7 @@ def plot_and_save_summary(all_episode_data, target_voltage, tolerance, model_typ
     """
     
     # --- Plot 1: Full View ---
-    full_view_path = f"{plot_save_base}_{model_type}_full_view.png"
+    full_view_path = f"{plot_save_base}_{target_voltage}_{model_type}_full_view.png"
     print(f"\n--- Generating and saving full view plot to {full_view_path} ---")
     
     plt.style.use('seaborn-v0_8-whitegrid')
@@ -49,7 +50,7 @@ def plot_and_save_summary(all_episode_data, target_voltage, tolerance, model_typ
     print("--- Full view plot saved successfully! ---")
 
     # --- Plot 2: Zoomed-in View ---
-    zoomed_view_path = f"{plot_save_base}_{model_type}_zoomed_view.png"
+    zoomed_view_path = f"{plot_save_base}_{target_voltage}_{model_type}_zoomed_view.png"
     print(f"\n--- Generating and saving zoomed view plot to {zoomed_view_path} ---")
     
     fig2, ax2 = plt.subplots(figsize=(15, 8))
@@ -75,12 +76,13 @@ def plot_and_save_summary(all_episode_data, target_voltage, tolerance, model_typ
 def run_evaluation(
     model,
     env,
-    n_episodes=5,
+    n_episodes=1,
     target_voltage=30.0,
     tolerance=0.5
 ):
     """
-    Evaluates a trained model and returns performance metrics and plot data.
+    Evaluates a trained model and returns performance metrics and plot data,
+    with a single progress bar for total timesteps.
     """
     all_rewards, stabilisation_times, stabilization_durations = [], [], []
     steady_state_errors, overshoots, undershoots = [], [], []
@@ -88,6 +90,12 @@ def run_evaluation(
     all_episode_plot_data = []
 
     env.env_method('set_goal_voltage', target_voltage)
+    
+    # --- Progress Bar Setup ---
+    # Create a single progress bar instance that will track total timesteps.
+    # The 'total' will be dynamically updated after the first step for accuracy.
+    pbar = tqdm(desc="Evaluating Timesteps", unit=" step")
+    is_first_step_of_eval = True
 
     for ep in range(n_episodes):
         obs = env.reset()
@@ -95,8 +103,6 @@ def run_evaluation(
         ep_reward = 0.0
         episode_voltages, episode_times = [], []
         
-        print(f"\n--- Running Evaluation Episode {ep + 1}/{n_episodes} ---")
-
         while not done:
             action, _ = model.predict(obs, deterministic=True)
             obs, reward, terminated, info = env.step(action)
@@ -108,6 +114,21 @@ def run_evaluation(
             ep_reward += reward[0]
             episode_voltages.append(current_voltage)
             episode_times.append(current_time)
+
+            # After the second step of the very first episode, we can calculate the
+            # exact total number of timesteps for the entire evaluation.
+            if is_first_step_of_eval and len(episode_times) > 1:
+                step_time = episode_times[1] - episode_times[0]
+                max_time_per_ep = env.get_attr('max_episode_time')[0]
+                steps_per_ep = int(max_time_per_ep / step_time) if step_time > 0 else 0
+                
+                # Set the total for the progress bar
+                pbar.total = steps_per_ep * n_episodes
+                pbar.refresh() # Display the updated total
+                is_first_step_of_eval = False
+
+            # Increment the progress bar on every single timestep
+            pbar.update(1)
             
             if terminated[0] or info[0].get('TimeLimit.truncated', False):
                 done = True
@@ -119,7 +140,7 @@ def run_evaluation(
         
         all_episode_plot_data.append((times_arr, voltages_arr))
 
-        # --- Metric Calculation ---
+        # --- Metric Calculation (no changes here) ---
         has_stabilized = False
         stabilisation_time = times_arr[-1]
         stable_time_for = 0.0
@@ -160,12 +181,13 @@ def run_evaluation(
         overshoots.append(overshoot)
         undershoots.append(undershoot)
 
-        print(f"  Episode Reward         : {ep_reward:.2f}")
-        print(f"  Stabilisation Time     : {stabilisation_time * 1000:.2f} ms" if has_stabilized else "  Stabilisation Time     : Not achieved")
-        print(f"  Stabilisation Duration : {stable_time_for * 1000:.2f} ms")
-        print(f"  Steady-State Error     : {steady_error:+.4f} V" if has_stabilized else "  Steady-State Error     : N/A")
-        print(f"  Overshoot              : {overshoot:.4f} V")
-        print(f"  Undershoot             : {undershoot:.4f} V")
+        # Print results at the end of each episode
+        print(f"\n--- Episode {ep + 1} Results ---")
+        print(f"  Reward: {ep_reward:.2f}, Stabilisation Time: {stabilisation_time * 1000:.2f} ms")
+
+
+    # Close the progress bar once all episodes are complete
+    pbar.close()
 
     print("\n--- Evaluation Summary ---")
     print("-" * 40)
@@ -184,75 +206,77 @@ def run_evaluation(
 if __name__ == '__main__':
     # --- CHOOSE THE MODEL TO EVALUATE ---
     # Options: 'SAC', 'A2C', 'TD3'
-    MODEL_TO_EVALUATE = 'SAC'
+    MODEL_TO_EVALUATE = 'A2C'
 
     # --- Configuration ---
     # --- Paths for LOADING model files (from local directory) ---
-    MODEL_SAVE_PATH = f"{MODEL_TO_EVALUATE.lower()}_bc_model_final.zip"
-    STATS_PATH = f"{MODEL_TO_EVALUATE.lower()}_vec_normalize_final.pkl"
+    MODEL_SAVE_PATH = "final_model_500k_NOn.zip"
+    STATS_PATH = "vec_normalize_500k_NOn.pkl"
 
     # --- Paths for SAVING evaluation results (to Google Drive) ---
-    drive_save_path = f"/content/drive/MyDrive/DDC/{MODEL_TO_EVALUATE}/"
+    drive_save_path = f"/content/drive/MyDrive/DDC/{MODEL_TO_EVALUATE}_500K_NormOn/"
     os.makedirs(drive_save_path, exist_ok=True) # Ensure the save directory exists
     PLOT_SAVE_BASE = os.path.join(drive_save_path, "evaluation_results")
 
     TARGET_VOLTAGE = 30.0
-    N_EVAL_EPISODES = 3
-    EVAL_EPISODE_TIME = 0.1
+    EVALUATION_VOLTAGES = [27.5, 29.0, 30.0, 31.5, 32.5]
+    N_EVAL_EPISODES = 1 # Increased to show the outer progress bar better
+    EVAL_EPISODE_TIME = 0.005
 
     # --- Setup ---
-    print(f"--- Setting up for STATISTICAL evaluation of {MODEL_TO_EVALUATE} model ---")
-    env = None
-    try:
-        env_fn = lambda: BCSimulinkEnv(
-            model_name="bcSim",
-            enable_plotting=False,
-            target_voltage=TARGET_VOLTAGE,
-            max_episode_time=EVAL_EPISODE_TIME
-        )
-        env = DummyVecEnv([env_fn])
-        env = VecNormalize.load(STATS_PATH, env)
-        env.training = False
-        env.norm_reward = False
-        
-        # Dynamically load the correct model class
-        if MODEL_TO_EVALUATE == 'SAC':
-            model = SAC.load(MODEL_SAVE_PATH, env=env)
-        elif MODEL_TO_EVALUATE == 'TD3':
-            model = TD3.load(MODEL_SAVE_PATH, env=env)
-        elif MODEL_TO_EVALUATE == 'A2C':
-            model = A2C.load(MODEL_SAVE_PATH, env=env)
-        else:
-            raise ValueError(f"Model type '{MODEL_TO_EVALUATE}' not recognized.")
-
-        
-        # --- Run Evaluation ---
-        start_time = time.perf_counter()
-        metrics, plot_data = run_evaluation(
-            model=model,
-            env=env,
-            n_episodes=N_EVAL_EPISODES,
-            target_voltage=TARGET_VOLTAGE,
-            tolerance=0.5
-        )
-        end_time = time.perf_counter()
-        print(f"\nTotal evaluation time: {end_time - start_time:.2f} seconds")
-
-        # --- Generate and Save Summary Plot ---
-        if plot_data:
-            plot_and_save_summary(
-                all_episode_data=plot_data,
-                target_voltage=TARGET_VOLTAGE,
-                tolerance=0.5,
-                model_type=MODEL_TO_EVALUATE,
-                plot_save_base=PLOT_SAVE_BASE
+    for voltage in EVALUATION_VOLTAGES:
+        print(f"--- Setting up for STATISTICAL evaluation of {MODEL_TO_EVALUATE} model for {voltage}V ---")
+        env = None
+        try:
+            env_fn = lambda: BCSimulinkEnv(
+                model_name="bcSim",
+                enable_plotting=False,
+                target_voltage=voltage,
+                max_episode_time=EVAL_EPISODE_TIME
             )
+            env = DummyVecEnv([env_fn])
+            env = VecNormalize.load(STATS_PATH, env)
+            env.training = False
+            env.norm_reward = False
+            
+            # Dynamically load the correct model class
+            if MODEL_TO_EVALUATE == 'SAC':
+                model = SAC.load(MODEL_SAVE_PATH, env=env)
+            elif MODEL_TO_EVALUATE == 'TD3':
+                model = TD3.load(MODEL_SAVE_PATH, env=env)
+            elif MODEL_TO_EVALUATE == 'A2C':
+                model = A2C.load(MODEL_SAVE_PATH, env=env)
+            else:
+                raise ValueError(f"Model type '{MODEL_TO_EVALUATE}' not recognized.")
 
-    except FileNotFoundError as e:
-        print(f"\n[ERROR] A required file was not found: {e}")
-        print(f"Please ensure the model and stats files are in the same directory as the script.")
-    except Exception as e:
-        print(f"\nAn unexpected error occurred: {e}")
-    finally:
-        if env:
-            env.close()
+            
+            # --- Run Evaluation ---
+            start_time = time.perf_counter()
+            metrics, plot_data = run_evaluation(
+                model=model,
+                env=env,
+                n_episodes=N_EVAL_EPISODES,
+                target_voltage=voltage,
+                tolerance=0.5
+            )
+            end_time = time.perf_counter()
+            print(f"\nTotal evaluation time: {end_time - start_time:.2f} seconds")
+
+            # --- Generate and Save Summary Plot ---
+            if plot_data:
+                plot_and_save_summary(
+                    all_episode_data=plot_data,
+                    target_voltage=voltage,
+                    tolerance=0.5,
+                    model_type=MODEL_TO_EVALUATE,
+                    plot_save_base=PLOT_SAVE_BASE,
+                )
+
+        except FileNotFoundError as e:
+            print(f"\n[ERROR] A required file was not found: {e}")
+            print(f"Please ensure the model and stats files are in the same directory as the script.")
+        except Exception as e:
+            print(f"\nAn unexpected error occurred: {e}")
+        finally:
+            if env:
+                env.close()

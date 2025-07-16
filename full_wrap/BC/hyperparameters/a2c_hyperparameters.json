@@ -1,0 +1,22 @@
+{
+    "best_params": {
+        "learning_rate": 0.002517700894695954,
+        "gamma": 0.9852317519921416,
+        "n_steps": 1024,
+        "ent_coef": 0.00019716244332231868,
+        "vf_coef": 0.3800239918811925,
+        "max_grad_norm": 1.7018760638184602,
+        "gae_lambda": 0.9416240334404364,
+        "normalize_advantage": true,
+        "n_layers": 2,
+        "layer_size": 156,
+        "activation_fn": "relu"
+    },
+    "best_value": 1959.97,
+    "n_trials": 1,
+    "best_net_arch": [
+        156,
+        156
+    ],
+    "best_activation_fn": "relu"
+}
