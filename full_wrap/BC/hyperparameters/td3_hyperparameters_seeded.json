@@ -1,21 +1,26 @@
 {
     "best_params": {
-        "n_layers": 3,
-        "layer_size": 79,
-        "activation_fn": "relu",
-        "learning_rate": 0.00020003730283549883,
-        "buffer_size": 237432,
-        "batch_size": 256,
-        "gamma": 0.9333263113941028,
-        "tau": 0.01160514804549974,
-        "action_noise_sigma": 0.1465978623222506
+        "n_layers": 2,
+        "layer_size": 154,
+        "activation_fn": "elu",
+        "action_noise_sigma": 0.17374836573304878,
+        "learning_rate": 0.00047103893090217155,
+        "buffer_size": 109398,
+        "batch_size": 393,
+        "tau": 0.009753591202101234,
+        "gamma": 0.9642691710985068,
+        "policy_delay": 1,
+        "target_policy_noise": 0.3483901504575038,
+        "target_noise_clip": 0.6352369965782614,
+        "gradient_steps": 8,
+        "train_freq": 32
     },
-    "best_value": 1952.5272,
+    "best_value": 1949.6077,
     "n_trials": 50,
     "best_net_arch": [
-        79,
-        79,
-        79
+        154,
+        154
     ],
-    "best_activation_fn": "relu"
+    "best_activation_fn": "elu",
+    "seed": 688449
 }
