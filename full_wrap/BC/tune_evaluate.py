@@ -17,7 +17,7 @@ from stable_baselines3.common.monitor import Monitor
 # Python environment for fast training
 from PYBCEnv import BuckConverterEnv as BCPyEnv 
 # MATLAB/Simulink environment for accurate evaluation
-from BCSimTestEnv import BCSimulinkEnv 
+from full_wrap.BC.BCSimulinkEnv import BCSimulinkEnv 
 
 # --- CONSTANTS (Optimized for Colab Runtime) ---
 # Total training time for a single trial

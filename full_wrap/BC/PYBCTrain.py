@@ -9,15 +9,12 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.buffers import ReplayBuffer
 import matplotlib.pyplot as plt
 
-# --- Import for Google Drive Mounting ---
 try:
     from google.colab import drive
     IS_COLAB = True
 except ImportError:
     IS_COLAB = False
 
-# Make sure the environment file is named 'buck_converter_env.py'
-# and is in the same directory as this script.
 from PYBCEnv import BuckConverterEnv
 
 class EpisodeStatsLogger(BaseCallback):
@@ -81,7 +78,6 @@ class EpisodeStatsLogger(BaseCallback):
         self.log_file.close()
 
 if __name__ == "__main__":
-    # --- Set Save Path based on Environment (Colab or Local) ---
     if IS_COLAB:
         print("Running in Google Colab. Assuming Drive is already mounted.")
         # Define the base path inside Google Drive
@@ -90,7 +86,7 @@ if __name__ == "__main__":
         # If not in Colab, save to a local folder named 'DDC'
         drive_base_path = "./DDC"
 
-    # --- CHOOSE THE MODEL TO TRAIN ---
+    # CHOOSE THE MODEL TO TRAIN
     MODEL_TO_TRAIN = 'SAC'
     USE_RANDOMIZED_VOLTAGE = True
     FIXED_VOLTAGE = 30.0
@@ -99,7 +95,6 @@ if __name__ == "__main__":
     GRACE_PERIOD = 50
 
     training_mode = "Randomized" if USE_RANDOMIZED_VOLTAGE else "Fixed"
-    # --- UPDATED SAVE PATH ---
     base_save_path = os.path.join(drive_base_path, f"{MODEL_TO_TRAIN}_{training_mode}_Python_1")
     os.makedirs(base_save_path, exist_ok=True)
     print(f"All files will be saved to: {base_save_path}")
@@ -124,7 +119,6 @@ if __name__ == "__main__":
     env = DummyVecEnv([env_fn])
     env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.0)
 
-    # --- MODEL CONFIGURATION ---
     model_class = globals()[MODEL_TO_TRAIN]
     model = model_class("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_log_path)
 
@@ -174,7 +168,7 @@ if __name__ == "__main__":
     obs, info = eval_env.reset()
     print(f"Evaluating with a fixed target of {eval_env.goal:.2f}V")
 
-    # --- Data collection lists for manual plotting ---
+    # Data collection lists for manual plotting
     eval_times = []
     eval_voltages = []
     eval_duties = []

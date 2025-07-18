@@ -4,11 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class BuckConverterEnv(gym.Env):
-    """
-    Robust Python-only environment for controlling a Buck Converter.
-    This version includes an advanced reward function to penalize overshoot,
-    encourage a fast settling time, and promote a smooth response.
-    """
     metadata = {'render_modes': ['human']}
 
     def __init__(self, 
@@ -17,7 +12,6 @@ class BuckConverterEnv(gym.Env):
                  grace_period_steps: int = 50,
                  frame_skip: int = 10,
                  render_mode: str = None,
-                 # --- Goal Control Parameters ---
                  use_randomized_goal: bool = True,
                  fixed_goal_voltage: float = 30.0,
                  target_voltage_min: float = 28.5,
@@ -37,14 +31,14 @@ class BuckConverterEnv(gym.Env):
         self.target_voltage_max = target_voltage_max
         self.goal = 30.0  # Initial placeholder
 
-        # --- Physical Parameters of the Buck Converter ---
-        self.V_in = 48.0
-        self.L = 100e-6
-        self.C = 1000e-6
-        self.R = 10.0
-        self.R_mosfet = 0.1
-        self.Vf_diode = 0.8
-        self.R_diode = 0.001
+        # Physical parameters of a buck converter
+        self.V_in = 48.0 # Source voltage
+        self.L = 100e-6 # Inductor
+        self.C = 1000e-6 # Capacitor
+        self.R = 10.0 # Resistor
+        self.R_mosfet = 0.1 # MOSFET Resistance
+        self.Vf_diode = 0.8 # Diode
+        self.R_diode = 0.001 # Diode resistance
         self.f_sw = 10e3  # Switching frequency
         self.T_sw = 1 / self.f_sw # Switching period
 
@@ -91,7 +85,6 @@ class BuckConverterEnv(gym.Env):
         error = self.v_out - self.goal
         step_duration = self.dt * self.frame_skip
         derivative_error = (error - self.prev_error) / step_duration if step_duration > 0 else 0.0
-        
         return np.array([self.v_out, error, derivative_error, self.goal], dtype=np.float32)
 
     def reset(self, seed=None, options=None):
@@ -118,23 +111,41 @@ class BuckConverterEnv(gym.Env):
         return self._get_obs(), {"goal": self.goal}
 
     def step(self, action):
+        # Get the duty cycle and clip it to the allowed range
         duty_cycle = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
 
-        # Simulate for `frame_skip` steps using the high-fidelity switching model
+        # Simulate the dynamics of the buck converter
         for _ in range(self.frame_skip):
+            # Determine the exact time within the current ON/OFF switching period
             t_in_period = self.total_sim_time % self.T_sw
             
+            # Check if the switch (MOSFET) is currently in its "ON" state
             if t_in_period < (duty_cycle * self.T_sw):
+                # Switch is ON: Calculate the rate of change of inductor current (di/dt).
+                # This is based on Kirchhoff's Voltage Law (KVL) for the primary loop:
+                # V_inductor = V_input - V_mosfet_drop - V_output
                 di_L_dt = (self.V_in - self.i_L * self.R_mosfet - self.v_out) / self.L
             else:
+                # Switch is OFF: Calculate the rate of change of inductor current (di/dt).
+                # The current now flows through the flywheel diode.
+                # KVL for the secondary loop: V_inductor = -V_diode_drop - V_output
                 di_L_dt = (-self.Vf_diode - self.i_L * self.R_diode - self.v_out) / self.L
 
+            # Calculate the rate of change of the output capacitor voltage (dv/dt).
+            # This is based on Kirchhoff's Current Law (KCL) at the output node:
+            # I_capacitor = I_inductor - I_load_resistor
             dv_out_dt = (self.i_L - self.v_out / self.R) / self.C
 
+            # Update the inductor current based on its rate of change over the small time step 'dt'.
             self.i_L += di_L_dt * self.dt
+
+            # Enforce a physical constraint: the diode prevents current from flowing backward.
             if self.i_L < 0: self.i_L = 0
             
+            # Update the output voltage based on its rate of change.
             self.v_out += dv_out_dt * self.dt
+
+            # Advance total simulation time
             self.total_sim_time += self.dt
 
         self.current_step += 1
@@ -143,18 +154,8 @@ class BuckConverterEnv(gym.Env):
         error = obs[1]
         derivative_error = obs[2]
 
-        # --- REFINED REWARD FUNCTION ---
-        # 1. Base reward for being close to the goal
-        reward = 1.0 / (1.0 + error**2) # Made error penalty slightly stronger
-
-        # 3. Penalty for rapid voltage changes (smoother response)
-        #voltage_change_penalty = 0.1 * (error - self.prev_error)**2
-        #reward -= voltage_change_penalty
-        
-        # 4. Penalty for taking too long (incentivizes speed)
-        reward -= 0.01 # Small penalty for each step
-
-        # 5. Penalty for instability
+        reward = 1.0 / (1.0 + error**2)
+        reward -= 0.01
         terminated = False
         if self.current_step > self.grace_period_steps:
             if not (0 < self.v_out < 53.0):

@@ -2,7 +2,8 @@ import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from stable_baselines3 import A2C
+from stable_baselines3 import DDPG
+from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
@@ -55,14 +56,13 @@ def run_evaluation(model_path, stats_path, n_episodes=5, target_voltage=30.0, to
 
     eval_env = None
     try:
-        # CORRECTED: Pass max_episode_steps to the environment constructor
         env_fn = lambda: BCPyEnv(use_randomized_goal=False, fixed_goal_voltage=target_voltage, max_episode_steps=max_episode_steps)
         eval_env = DummyVecEnv([env_fn])
         eval_env = VecNormalize.load(stats_path, eval_env)
         eval_env.training = False
         eval_env.norm_reward = False
 
-        loaded_model = A2C.load(model_path, env=eval_env)
+        loaded_model = DDPG.load(model_path, env=eval_env)
 
         for ep in range(n_episodes):
             obs = eval_env.reset()
@@ -129,17 +129,13 @@ def run_evaluation(model_path, stats_path, n_episodes=5, target_voltage=30.0, to
     
     return all_episode_plot_data
 
-def run_experiment(hyperparams, run_number, main_save_path):
+def run_experiment(hyperparams, seed, main_save_path):
     """
-    Trains and evaluates a single model configuration for a specific run.
+    Trains and evaluates a single DDPG model configuration with a specific seed.
     """
     rank = hyperparams["rank"]
     
-    # --- Generate a random seed for this specific run ---
-    seed = random.randint(0, 1_000_000)
-    set_random_seed(seed)
-    
-    run_save_path = os.path.join(main_save_path, f"Rank_{rank}", f"Run_{run_number}_Seed_{seed}")
+    run_save_path = os.path.join(main_save_path, f"Rank_{rank}_Seed_{seed}")
     tb_log_path = os.path.join(run_save_path, "tensorboard_logs")
     eval_save_path = os.path.join(run_save_path, "generalization_tests")
     os.makedirs(tb_log_path, exist_ok=True)
@@ -152,27 +148,43 @@ def run_experiment(hyperparams, run_number, main_save_path):
     # 1. TRAINING PHASE (using Python Environment)
     # ======================================================================
     print("\n" + "#"*80)
-    print(f"# --- STARTING TRAINING: Rank {rank}, Run {run_number}, Seed: {seed} ---")
+    print(f"# --- STARTING TRAINING: Rank {rank}, Seed {seed} ---")
     print(f"Training for {TOTAL_TRAINING_TIMESTEPS} timesteps.")
     print("#"*80 + "\n")
 
     train_env = None
     try:
+        set_random_seed(seed)
         env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=True, target_voltage_min=28.5, target_voltage_max=31.5))
         train_env = DummyVecEnv([env_fn])
-        train_env.seed(seed) # Seed the environment
+        train_env.seed(seed)
         train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False, clip_obs=10.0)
 
         policy_kwargs = {
-            "net_arch": dict(pi=[hyperparams["layer_size"]] * hyperparams["n_layers"], vf=[hyperparams["layer_size"]] * hyperparams["n_layers"]),
+            "net_arch": [hyperparams["layer_size"]] * hyperparams["n_layers"],
             "activation_fn": {"tanh": nn.Tanh, "relu": nn.ReLU}[hyperparams["activation_fn"]]
         }
         
+        n_actions = train_env.action_space.shape[-1]
+        action_noise = NormalActionNoise(
+            mean=np.zeros(n_actions), 
+            sigma=hyperparams["action_noise_sigma"] * np.ones(n_actions)
+        )
+
         model_params = hyperparams.copy()
-        for key in ["rank", "n_layers", "layer_size", "activation_fn"]:
+        for key in ["rank", "n_layers", "layer_size", "activation_fn", "action_noise_sigma"]:
             del model_params[key]
 
-        model = A2C("MlpPolicy", train_env, policy_kwargs=policy_kwargs, verbose=1, tensorboard_log=tb_log_path, seed=seed, **model_params)
+        model = DDPG(
+            "MlpPolicy", 
+            train_env, 
+            policy_kwargs=policy_kwargs, 
+            action_noise=action_noise,
+            verbose=1, 
+            tensorboard_log=tb_log_path, 
+            seed=seed, 
+            **model_params
+        )
         model.learn(total_timesteps=TOTAL_TRAINING_TIMESTEPS, progress_bar=True)
         
         print(f"\n--- Training complete. Saving final model to: {run_save_path} ---")
@@ -189,7 +201,7 @@ def run_experiment(hyperparams, run_number, main_save_path):
     # 2. EVALUATION PHASE (using Python Environment)
     # ======================================================================
     print("\n" + "#"*80)
-    print(f"# --- STARTING EVALUATION: Rank {rank}, Run {run_number} (Seed: {seed}) ---")
+    print(f"# --- STARTING EVALUATION: Rank {rank}, Seed {seed} ---")
     print(f"Evaluating on Python environment.")
     print("#"*80 + "\n")
     
@@ -208,7 +220,7 @@ def run_experiment(hyperparams, run_number, main_save_path):
         
         if plot_data:
             plot_save_base = os.path.join(eval_save_path, f"evaluation_at_{voltage:.1f}V")
-            plot_and_save_summary(plot_data, voltage, 0.5, "A2C", plot_save_base)
+            plot_and_save_summary(plot_data, voltage, 0.5, "DDPG", plot_save_base)
 
 
 # --- Main Script ---
@@ -220,30 +232,29 @@ if __name__ == '__main__':
     else:
         gdrive_base_path = "./DDC"
         
-    main_test_folder = os.path.join(gdrive_base_path, "A2C_Final_Params_PyEval_1000")
+    main_test_folder = os.path.join(gdrive_base_path, "DDPG_Final_Params")
     os.makedirs(main_test_folder, exist_ok=True)
     print(f"All results will be saved in: {main_test_folder}")
 
     # --- Configuration ---
-    TOTAL_TRAINING_TIMESTEPS = 400000
+    TOTAL_TRAINING_TIMESTEPS = 200000
     EVALUATION_VOLTAGES = [27.5, 29.0, 30.0, 31.5, 32.5]
     EVAL_EPISODE_STEPS = 2000
-    NUMBER_OF_RUNS_PER_SET = 10
     
-    # --- The top 7 hyperparameter sets to test ---
-    top_hyperparameters = [
-        {"rank": 1, 'n_layers': 2, 'layer_size': 156, 'activation_fn': 'relu', 'learning_rate': 0.002517700894695954, 'gamma': 0.9852317519921416, 'ent_coef': 0.00019716244332231868, 'vf_coef': 0.3800239918811925, 'max_grad_norm': 1.7018760638184602, 'n_steps': 1024, 'gae_lambda': 0.9416240334404364, 'normalize_advantage': True},
-        {"rank": 2, 'n_layers': 2, 'layer_size': 293, 'activation_fn': 'relu', 'learning_rate': 0.001368427283045135, 'gamma': 0.9731110803031553, 'ent_coef': 0.00019490035412585453, 'vf_coef': 0.5630789700244379, 'max_grad_norm': 0.8109681391750938, 'n_steps': 4096, 'gae_lambda': 0.9178126844654229, 'normalize_advantage': True},
-        {"rank": 5, 'n_layers': 3, 'layer_size': 406, 'activation_fn': 'relu', 'learning_rate': 0.0008249328852703262, 'gamma': 0.9820568011716699, 'ent_coef': 0.00036543703667629186, 'vf_coef': 0.5468476523403789, 'max_grad_norm': 0.6639505378183985, 'n_steps': 4096, 'gae_lambda': 0.9173164605120976, 'normalize_advantage': True}
+    # --- The top 2 DDPG hyperparameter sets from your Optuna study ---
+    experiments_to_run = [
+        {
+            "seed": 663996,
+            "params": {'rank': 2, 'n_layers': 3, 'layer_size': 327, 'activation_fn': 'tanh', 'learning_rate': 0.0002061163011738982, 'buffer_size': 237949, 'batch_size': 128, 'gamma': 0.9046223214626081, 'tau': 0.012670170106082904, 'train_freq': 8, 'gradient_steps': 8, 'action_noise_sigma': 0.057700908370714184}
+        }
     ]
     
     # --- Main Loop for Experiments ---
-    for params in top_hyperparameters:
-        for run_num in range(1, NUMBER_OF_RUNS_PER_SET + 1):
-            run_experiment(
-                hyperparams=params, 
-                run_number=run_num,
-                main_save_path=main_test_folder
-            )
+    for experiment in experiments_to_run:
+        run_experiment(
+            hyperparams=experiment["params"], 
+            seed=experiment["seed"],
+            main_save_path=main_test_folder
+        )
 
     print("\n\n--- ALL TRAINING AND EVALUATION RUNS COMPLETE ---")

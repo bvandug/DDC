@@ -5,7 +5,7 @@ import torch
 from gymnasium.spaces import Box # Import Box for type hinting if needed
 
 # Import the custom environment and wrappers used during training
-from BCSimTestEnv import BCSimulinkEnv
+from full_wrap.BC.BCSimulinkEnv import BCSimulinkEnv
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 class SB3ModelInspector:

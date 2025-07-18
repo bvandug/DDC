@@ -14,15 +14,15 @@ from stable_baselines3 import PPO, SAC, A2C, TD3, DDPG
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.monitor import Monitor # Import the Monitor wrapper
+from stable_baselines3.common.monitor import Monitor
 
-# Ensure your environment file is named 'PYBCEnv.py'
+# Assumes your environment file is named 'PYBCEnv.py' and is accessible
 from PYBCEnv import BuckConverterEnv as BCPyEnv
 
 # --- CONSTANTS ---
 TOTAL_TIMESTEPS_PER_TRIAL = 100000
 EVAL_INTERVAL = 10000
-MIN_RESOURCES_FOR_PRUNING = 20000 # Start pruning after the second evaluation
+MIN_RESOURCES_FOR_PRUNING = 20000
 TB_ROOT = "./buck_converter_tuning_logs/"
 os.makedirs(TB_ROOT, exist_ok=True)
 
@@ -30,14 +30,12 @@ def define_hyperparameters(trial: optuna.Trial, algo_name: str):
     """Defines the CORE hyperparameter search space for a given algorithm."""
     algo = algo_name.lower()
     
-    # General network parameters
-    n_layers = trial.suggest_int("n_layers", 1, 3)
-    layer_size = trial.suggest_int("layer_size", 64, 512, log=True)
-    activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
-    activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[activation_fn_name]
-    
     if algo in ["a2c", "ppo"]:
-        # Core On-Policy parameters
+        n_layers = trial.suggest_int("n_layers", 1, 3)
+        layer_size = trial.suggest_int("layer_size", 64, 512, log=True)
+        activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
+        activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[activation_fn_name]
+        
         net_arch = dict(pi=[layer_size] * n_layers, vf=[layer_size] * n_layers)
         policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
         params = {
@@ -62,12 +60,72 @@ def define_hyperparameters(trial: optuna.Trial, algo_name: str):
             params["gae_lambda"] = trial.suggest_float("gae_lambda", 0.9, 1.0)
         return params
 
-    elif algo in ["sac", "td3", "ddpg"]:
-        # Core Off-Policy parameters
+    elif algo == "sac":
+        n_layers = trial.suggest_int("n_layers", 1, 3)
+        layer_size = trial.suggest_int("layer_size", 32, 256, log=True) 
+        activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu", "leaky_relu", "elu"])
+        activation_map = {"tanh": nn.Tanh, "relu": nn.ReLU, "leaky_relu": nn.LeakyReLU, "elu": nn.ELU}
+        activation_fn = activation_map[activation_fn_name]
+        net_arch = [layer_size] * n_layers
+        policy_kwargs = {"net_arch": dict(pi=net_arch, qf=net_arch), "activation_fn": activation_fn}
+
+        params = {
+            "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+            "buffer_size": trial.suggest_int("buffer_size", 50_000, 200_000),
+            "batch_size": trial.suggest_categorical("batch_size", [64, 128, 256, 512]),
+            "tau": trial.suggest_float("tau", 0.001, 0.02),
+            "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+            "ent_coef": trial.suggest_categorical("ent_coef", ["auto", 0.001, 0.01, 0.1]),
+            "policy_kwargs": policy_kwargs
+        }
+        return params
+
+    elif algo == "td3":
+        n_layers = trial.suggest_int("n_layers", 1, 3)
+        layer_size = trial.suggest_int("layer_size", 32, 256)
+        activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu", "leaky_relu", "elu"])
+        activation_map = {"tanh": nn.Tanh, "relu": nn.ReLU, "leaky_relu": nn.LeakyReLU, "elu": nn.ELU}
+        activation_fn = activation_map[activation_fn_name]
         net_arch = [layer_size] * n_layers
         policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
-        if algo == "sac":
-             policy_kwargs["net_arch"] = dict(pi=net_arch, qf=net_arch)
+        action_noise_sigma = trial.suggest_float("action_noise_sigma", 0.1, 0.5)
+
+        params = {
+            "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+            "buffer_size": trial.suggest_int("buffer_size", 50_000, 200_000),
+            "batch_size": trial.suggest_int("batch_size", 64, 512),
+            "tau": trial.suggest_float("tau", 0.001, 0.02),
+            "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+            "policy_delay": trial.suggest_int("policy_delay", 1, 4),
+            "action_noise": NormalActionNoise(mean=np.zeros(1), sigma=action_noise_sigma * np.ones(1)),
+            "target_policy_noise": trial.suggest_float("target_policy_noise", 0.1, 0.5),
+            "target_noise_clip": trial.suggest_float("target_noise_clip", 0.3, 0.7),
+            "policy_kwargs": policy_kwargs,
+        }
+        
+        # --- CORRECTED LOGIC FOR TRAIN_FREQ AND GRADIENT_STEPS ---
+        # 1. Sample both from their full, static list of choices
+        gradient_steps = trial.suggest_categorical("gradient_steps", [1, 4, 8, 16, 32, 64, 128])
+        train_freq = trial.suggest_categorical("train_freq", [1, 4, 8, 16, 32, 64, 128, 256])
+
+        # 2. After sampling, enforce the constraint by correcting invalid combinations
+        if train_freq < gradient_steps:
+            # If the combination is invalid, adjust train_freq to a valid value.
+            train_freq = gradient_steps
+
+        params["gradient_steps"] = gradient_steps
+        params["train_freq"] = train_freq
+        
+        return params
+
+    elif algo == "ddpg":
+        n_layers = trial.suggest_int("n_layers", 1, 3)
+        layer_size = trial.suggest_int("layer_size", 64, 512, log=True)
+        activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
+        activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[activation_fn_name]
+        net_arch = [layer_size] * n_layers
+        policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
+        action_noise_sigma = trial.suggest_float("action_noise_sigma", 0.01, 0.2)
 
         params = {
             "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
@@ -77,42 +135,31 @@ def define_hyperparameters(trial: optuna.Trial, algo_name: str):
             "tau": trial.suggest_float("tau", 0.001, 0.02),
             "train_freq": trial.suggest_categorical("train_freq", [1, 4, 8, 16, 32, 64, 128, 256]),
             "gradient_steps": trial.suggest_categorical("gradient_steps", [1, 2, 4, 8, 16, 32, 64, 128]),
+            "action_noise": NormalActionNoise(mean=np.zeros(1), sigma=action_noise_sigma * np.ones(1)),
             "policy_kwargs": policy_kwargs
         }
-        if algo == "sac":
-            params["ent_coef"] = trial.suggest_categorical("ent_coef", ["auto", 0.001, 0.01])
-        else: # TD3 and DDPG
-            action_noise_sigma = trial.suggest_float("action_noise_sigma", 0.01, 0.2)
-            params["action_noise"] = NormalActionNoise(mean=np.zeros(1), sigma=action_noise_sigma * np.ones(1))
-            if algo == "td3":
-                params["policy_delay"] = trial.suggest_int("policy_delay", 1, 10)
         return params
     else:
         raise ValueError(f"Unsupported algorithm: {algo_name}")
-
 
 def objective(trial: optuna.Trial, algo_name: str):
     """
     The objective function for Optuna to minimize/maximize.
     """
-    # --- Generate and set a random seed for this trial to ensure reproducibility ---
     seed = random.randint(0, 1_000_000)
     set_random_seed(seed)
-    trial.set_user_attr("seed", seed) # Save the seed to the trial's attributes
+    trial.set_user_attr("seed", seed)
     print(f"\n[INFO] Starting Trial {trial.number} with Seed: {seed}")
 
-    # --- Environment Setup ---
     train_env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=True))
     train_env = DummyVecEnv([train_env_fn])
-    train_env.seed(seed) # Seed the environment
+    train_env.seed(seed)
     train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False, clip_obs=10.0)
 
-    # --- Hyperparameter and Model Setup ---
     hyperparams = define_hyperparameters(trial, algo_name)
-    hyperparams['seed'] = seed # Add seed to model params
+    hyperparams['seed'] = seed
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    # Set a fixed learning_starts for off-policy algorithms
     if algo_name.lower() in ["sac", "td3", "ddpg"]:
         hyperparams["learning_starts"] = 10000
 
@@ -120,7 +167,6 @@ def objective(trial: optuna.Trial, algo_name: str):
     model = model_class("MlpPolicy", train_env, device=device, verbose=0, 
                         tensorboard_log=os.path.join(TB_ROOT, algo_name), **hyperparams)
 
-    # --- Training and Pruning Loop ---
     timesteps_so_far = 0
     mean_reward = -np.inf
     
@@ -130,10 +176,9 @@ def objective(trial: optuna.Trial, algo_name: str):
                         tb_log_name=f"trial_{trial.number}")
             timesteps_so_far += EVAL_INTERVAL
 
-            # --- Corrected Evaluation ---
             eval_env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=False, fixed_goal_voltage=30.0))
             eval_env = DummyVecEnv([eval_env_fn])
-            eval_env.seed(seed) # Seed the evaluation environment as well
+            eval_env.seed(seed)
             train_env.save("temp_vec_normalize.pkl")
             eval_env = VecNormalize.load("temp_vec_normalize.pkl", eval_env)
             eval_env.training = False 
@@ -154,21 +199,22 @@ def objective(trial: optuna.Trial, algo_name: str):
         
     except (AssertionError, ValueError) as e:
         print(f"[FAIL] Trial {trial.number} failed with error: {e}")
-        raise optuna.TrialPruned()
+        # Returning a value like -inf or a very low number can be better than pruning
+        # as it still provides information to some samplers.
+        return -1e9 # Return a very bad value instead of pruning
     finally:
         train_env.close()
         if os.path.exists("temp_vec_normalize.pkl"):
             os.remove("temp_vec_normalize.pkl")
 
-
 def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
     """
     Main function to set up and run the Optuna study.
     """
-    study_name = f"{algo_name}-bc-tuning-final-seed"
+    study_name = f"{algo_name}-bc-tuning-final-seeded-v4"
     storage_name = f"sqlite:///{study_name}.db"
 
-    pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=MIN_RESOURCES_FOR_PRUNING // EVAL_INTERVAL)
+    pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=MIN_RESOURCES_FOR_PRUNING)
     study = optuna.create_study(
         study_name=study_name, storage=storage_name,
         load_if_exists=True, direction="maximize", pruner=pruner
@@ -179,7 +225,7 @@ def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
         pbar.update(1)
         try:
             pbar.set_postfix(best_val=f"{study.best_value:.2f}")
-        except ValueError:
+        except (ValueError, TypeError):
             pbar.set_postfix(best_val="N/A")
 
     try:
@@ -193,12 +239,10 @@ def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
     finally:
         pbar.close()
 
-    # --- Save and Print Results ---
     results_dir = "hyperparameter_results_final"
     os.makedirs(results_dir, exist_ok=True)
     results_file = os.path.join(results_dir, f"{algo_name}_best_params_seeded.json")
 
-    # Save all trial data, including user attributes like the seed
     all_trials_data = []
     for trial in study.trials:
         trial_data = {
@@ -217,31 +261,38 @@ def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
     print("--- INDIVIDUAL TRIAL RESULTS (BEST TO WORST) ---")
     print("="*80)
     
-    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-    sorted_trials = sorted(completed_trials, key=lambda t: t.value, reverse=True)
-
-    for i, trial in enumerate(sorted_trials):
-        seed = trial.user_attrs.get('seed', 'N/A')
-        print(f"\n--- Rank {i+1}: Trial #{trial.number} (Seed: {seed}) ---")
-        print(f"  Value (Mean Reward): {trial.value:.4f}")
-        print("  Params: ")
-        for key, value in trial.params.items():
-            print(f"    {key:<20}: {value}")
+    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE and t.value is not None]
+    
+    if completed_trials:
+        sorted_trials = sorted(completed_trials, key=lambda t: t.value, reverse=True)
+        for i, trial in enumerate(sorted_trials):
+            seed = trial.user_attrs.get('seed', 'N/A')
+            print(f"\n--- Rank {i+1}: Trial #{trial.number} (Seed: {seed}) ---")
+            print(f"  Value (Mean Reward): {trial.value:.4f}")
+            print("  Params: ")
+            for key, value in trial.params.items():
+                print(f"    {key:<20}: {value}")
+    else:
+        print("No trials completed successfully.")
             
     print("\n" + "="*80)
     print(f"--- Best parameters for {algo_name} ---")
-    print(f"Best value (mean reward): {study.best_value:.4f}")
-    best_trial = study.best_trial
-    best_seed = best_trial.user_attrs.get('seed', 'N/A')
-    print(f"Best trial was #{best_trial.number} with seed {best_seed}")
-    for key, value in best_trial.params.items():
-        print(f"  {key}: {value}")
+    
+    try:
+        best_trial = study.best_trial
+        print(f"Best value (mean reward): {best_trial.value:.4f}")
+        best_seed = best_trial.user_attrs.get('seed', 'N/A')
+        print(f"Best trial was #{best_trial.number} with seed {best_seed}")
+        for key, value in best_trial.params.items():
+            print(f"  {key}: {value}")
+        return study.best_params
+    except (ValueError, AttributeError):
+         print("No best trial found.")
+         return None
 
-    return study.best_params
 
 if __name__ == "__main__":
-    ALGORITHM_TO_TUNE = "DDPG"
-    # Set n_jobs=1 for effective pruning and clear progress bars
+    ALGORITHM_TO_TUNE = "TD3"
     tune_hyperparameters(
         algo_name=ALGORITHM_TO_TUNE,
         n_trials=50, 

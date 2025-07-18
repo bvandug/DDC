@@ -14,7 +14,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 
 # --- Import Environments ---
 from PYBCEnv import BuckConverterEnv as BCPyEnv
-from BCSimTestEnv import BCSimulinkEnv
+from full_wrap.BC.BCSimulinkEnv import BCSimulinkEnv
 
 # --- Constants ---
 TOTAL_TIMESTEPS_PER_TRIAL = 400_000
