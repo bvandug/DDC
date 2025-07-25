@@ -1,0 +1,19 @@
+{
+    "best_params": {
+        "n_steps": 64,
+        "batch_size": 64,
+        "learning_rate": 0.000296150311190066,
+        "n_epochs": 12,
+        "gamma": 0.9677399132023956,
+        "clip_range": 0.2377298467476699,
+        "ent_coef": 7.275162305166893e-05,
+        "vf_coef": 0.4921035770453935,
+        "max_grad_norm": 0.4403350142092357,
+        "gae_lambda": 0.8192968355690624,
+        "layer_size": 122,
+        "n_layers": 1,
+        "activation_fn": "leaky_relu"
+    },
+    "best_value": 496.4908022880554,
+    "n_trials": 50
+}

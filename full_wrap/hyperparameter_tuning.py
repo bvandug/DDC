@@ -343,34 +343,7 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
         storage=storage_path,
         load_if_exists=True,
     )
-
-
-    # ---------- enqueue good baseline params ----------
-    # if algo_name == "dqn":
-    #     study.enqueue_trial({
-    #         "learning_rate": 5e-4, "buffer_size": 100_000, "batch_size": 128,
-    #         "gamma": 0.99, "tau": 0.01, "exploration_fraction": 0.1,
-    #         "exploration_final_eps": 0.05, "target_update_interval": 1_000,
-    #         "train_freq": 4, "n_layers": 2, "layer_size": 128,
-    #         "activation_fn": "relu",
-    #     })
-    # if algo_name == "td3":
-    #     study.enqueue_trial({
-    #         "learning_rate": 9.53e-4, "buffer_size": 127_040, "batch_size": 511,
-    #         "tau": 0.0077, "gamma": 0.943, "policy_delay": 4,
-    #         "action_noise_sigma": 0.102, "target_policy_noise": 0.105,
-    #         "target_noise_clip": 0.564, "n_layers": 2, "layer_size": 64,
-    #         "activation_fn": "relu",
-    #     })
-    # elif algo_name == "ppo":
-    #     study.enqueue_trial({
-    #         "n_steps": 68, "batch_size": 34, "learning_rate": 3.45e-4,
-    #         "n_epochs": 4, "gamma": 0.948, "clip_range": 0.132,
-    #         "ent_coef": 1.1e-5, "vf_coef": 0.625, "max_grad_norm": 2.499,
-    #         "gae_lambda": 0.938, "n_layers": 3, "layer_size": 249,
-    #         "activation_fn": "tanh",
-    #     })
-
+    
     pbar = tqdm(total=n_trials, desc=f"Tuning {algo_name.upper()}",
                 file=sys.stdout, dynamic_ncols=True, leave=True)
 

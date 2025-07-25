@@ -17,3 +17,23 @@
     "best_value": 498.17554663009855,
     "n_trials": 50
 }
+
+// {
+//     "best_params": {
+//         "n_steps": 512,
+//         "batch_size": 128,
+//         "learning_rate": 0.0011479997356035098,
+//         "n_epochs": 16,
+//         "gamma": 0.9719210212211565,
+//         "clip_range": 0.3049488734225133,
+//         "ent_coef": 0.09323072742768768,
+//         "vf_coef": 0.6167162885603097,
+//         "max_grad_norm": 1.7817038078711125,
+//         "gae_lambda": 0.8114783291254902,
+//         "layer_size": 253,
+//         "n_layers": 3,
+//         "activation_fn": "relu"
+//     },
+//     "best_value": 499.2447204589844,
+//     "n_trials": 50
+// }
