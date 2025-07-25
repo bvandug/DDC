@@ -5,7 +5,7 @@ import torch
 from gymnasium.spaces import Box # Import Box for type hinting if needed
 
 # Import the custom environment and wrappers used during training
-from BCSimulinkEnv import BCSimulinkEnv
+from full_wrap.BC.BCSimulinkEnv import BCSimulinkEnv
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 class SB3ModelInspector:
@@ -14,7 +14,7 @@ class SB3ModelInspector:
 
     This class allows you to load an A2C model from a .zip file and
     then retrieve information about the total timesteps it was trained
-    with, as well as its policy network parameters and other
+    with, as well as its policy network parameters and all
     algorithm-specific hyperparameters.
     """
 
@@ -81,33 +81,48 @@ class SB3ModelInspector:
 
     def get_algorithm_hyperparameters(self):
         """
-        Prints common algorithm-specific hyperparameters of the A2C model.
+        Prints all algorithm-specific and policy-related hyperparameters of the A2C model.
         """
         if self.model:
             print("\n--- A2C Algorithm Hyperparameters ---")
-            # The learning rate can be a schedule, so we pass a dummy value (1.0)
-            # to get the current learning rate if it's a constant or the value at the end.
-            print(f"  Learning Rate: {self.model.lr_schedule(1.0)}")
+            print(f"  Learning Rate: {self.model.lr_schedule(1.0):.6f}")
             print(f"  Gamma (Discount Factor): {self.model.gamma}")
             print(f"  GAE Lambda: {self.model.gae_lambda}")
             print(f"  Entropy Coefficient: {self.model.ent_coef}")
             print(f"  Value Function Coefficient: {self.model.vf_coef}")
             print(f"  Max Grad Norm: {self.model.max_grad_norm}")
             print(f"  Number of Steps (n_steps): {self.model.n_steps}")
-            # Accessing optimizer parameters
+            # Use getattr for safety with older model versions
+            print(f"  Normalize Advantage: {getattr(self.model, 'normalize_advantage', 'N/A')}")
+
+            print("\n  --- Policy & Network Architecture ---")
+            # policy.activation_fn stores the class, .__name__ gets the string (e.g., 'ReLU')
+            print(f"  Activation Function: {self.model.policy.activation_fn.__name__}")
+            # The net_arch attribute is part of the policy's arguments
+            net_arch = getattr(self.model.policy, 'net_arch', 'N/A')
+            print(f"  Network Architecture (net_arch): {net_arch}")
+
+            print("\n  --- Optimizer ---")
             if self.model.optimizer and self.model.optimizer.param_groups:
+                # The use_rms_prop is inferred by the optimizer's class name
+                print(f"  Optimizer Class: {self.model.optimizer.__class__.__name__}")
                 print(f"  RMSprop Epsilon: {self.model.optimizer.param_groups[0].get('eps', 'N/A')}")
                 print(f"  RMSprop Alpha: {self.model.optimizer.param_groups[0].get('alpha', 'N/A')}")
             else:
-                print("  Optimizer parameters not directly accessible or model not fully initialized.")
+                print("  Optimizer parameters not accessible.")
+
+            print("\n  --- State-Dependent Exploration (SDE) ---")
+            print(f"  Use SDE: {self.model.use_sde}")
+            if self.model.use_sde:
+                print(f"  SDE Sample Frequency: {self.model.sde_sample_freq}")
         else:
             print("Model not loaded. Cannot retrieve algorithm hyperparameters.")
 
 # --- Example Usage ---
 if __name__ == "__main__":
     # Define the path to your model file and normalization stats
-    model_file = "a2c_bc_model_final.zip"
-    vec_normalize_stats_file = "vec_normalize_stats_final.pkl"
+    model_file = "model_400000.zip"
+    vec_normalize_stats_file = "vec_normalize_400000.pkl"
 
     # --- Environment Instantiation with Parameters from train_bc.py ---
     # These values are taken directly from your train_bc.py script
@@ -117,15 +132,12 @@ if __name__ == "__main__":
     print("Setting up the environment for model loading...")
 
     # Create the base custom environment function
-    # Note: enable_plotting is set to False here as we are only loading for inspection,
-    # not running a full simulation with plotting.
     env_fn = lambda: BCSimulinkEnv(
         model_name="bcSim",
         frame_skip=10,
-        enable_plotting=False,           # Set to False for inspection, not training
+        enable_plotting=False,
         grace_period_steps=GRACE_PERIOD,
         max_episode_time=EPISODE_TIME,
-        target_voltage=30.0 # This matches the default in train_bc.py
     )
 
     # Wrap the environment in DummyVecEnv
@@ -134,20 +146,20 @@ if __name__ == "__main__":
     # Wrap the environment in VecNormalize and load the saved stats
     if os.path.exists(vec_normalize_stats_file):
         try:
+            # First, create the VecNormalize instance with the correct parameters
             env = VecNormalize(env,
                                norm_obs=True,
                                norm_reward=False,
                                clip_obs=10.0)
+            # Then, load the saved statistics into it
             env = VecNormalize.load(vec_normalize_stats_file, env)
             print(f"Successfully loaded VecNormalize stats from {vec_normalize_stats_file}")
         except Exception as e:
             print(f"Error loading VecNormalize stats: {e}")
-            print("Proceeding without normalization stats, which might cause issues if the model relied on them.")
-            # If loading VecNormalize stats fails, you might still want to proceed
-            # but be aware the model's performance could be affected if it expects normalized inputs.
+            print("Proceeding without normalization, which may cause issues.")
     else:
         print(f"Warning: VecNormalize stats file '{vec_normalize_stats_file}' not found.")
-        print("Creating VecNormalize without loading stats. This might lead to observation space mismatch if the model was trained with normalization.")
+        print("Creating VecNormalize without loading stats. This might lead to observation space mismatch.")
         env = VecNormalize(env,
                            norm_obs=True,
                            norm_reward=False,
@@ -164,29 +176,25 @@ if __name__ == "__main__":
         inspector = SB3ModelInspector(model_file, env_instance=env)
 
         if inspector.model: # Check if the model was successfully loaded
-            # Get and print total timesteps
             timesteps = inspector.get_total_timesteps()
             print(f"\nTotal timesteps the model was trained for: {timesteps}")
 
-            # Get and print policy network parameters
             inspector.get_policy_parameters()
 
-            # Get and print algorithm hyperparameters
+            # This will now print the comprehensive list of hyperparameters
             inspector.get_algorithm_hyperparameters()
         else:
-            print("\nModel could not be loaded. Please ensure the path is correct and the environment instance matches the model's training environment.")
+            print("\nModel could not be loaded. Please ensure the path is correct and the environment instance matches.")
+            
     except FileNotFoundError as e:
         print(f"\nCaught expected error: {e}")
-        print("This means the model file was not found. Please ensure 'a2c_bc_model_final.zip' exists.")
     except ImportError as e:
         print(f"\nCaught an ImportError: {e}")
-        print("This often indicates a problem with your NumPy/Pandas/Torch installation or Python environment.")
-        print("Please ensure all required libraries are installed correctly in your virtual environment.")
+        print("This often indicates a problem with your library installations (e.g., NumPy, PyTorch).")
     except Exception as e:
         print(f"\nAn unexpected error occurred: {e}")
     finally:
         # Ensure the environment (and MATLAB engine) is closed
-        if env:
+        if 'env' in locals() and env:
             env.close()
             print("\nEnvironment closed.")
-
