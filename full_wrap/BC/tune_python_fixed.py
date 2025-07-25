@@ -9,8 +9,10 @@ from tqdm import tqdm
 import sys
 import random
 from stable_baselines3.common.utils import set_random_seed
+import gymnasium as gym
 
-from stable_baselines3 import PPO, SAC, A2C, TD3, DDPG
+# --- Import All Algorithms ---
+from stable_baselines3 import PPO, SAC, A2C, TD3, DDPG, DQN
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -20,45 +22,67 @@ from stable_baselines3.common.monitor import Monitor
 from PYBCEnv import BuckConverterEnv as BCPyEnv
 
 # --- CONSTANTS ---
-TOTAL_TIMESTEPS_PER_TRIAL = 100000
-EVAL_INTERVAL = 10000
-MIN_RESOURCES_FOR_PRUNING = 20000
+TOTAL_TIMESTEPS_PER_TRIAL = 300000
+EVAL_INTERVAL = 20000
+MIN_RESOURCES_FOR_PRUNING = 60000
 TB_ROOT = "./buck_converter_tuning_logs/"
 os.makedirs(TB_ROOT, exist_ok=True)
+
+# --- Wrapper to make continuous environment compatible with DQN ---
+class DiscretizeActionWrapper(gym.ActionWrapper):
+    """
+    A wrapper to discretize a continuous action space for DQN.
+    :param env: The continuous action environment to wrap.
+    :param n_bins: The number of discrete actions to create.
+    """
+    def __init__(self, env, n_bins=17):
+        super().__init__(env)
+        self.n_bins = n_bins
+        self.action_space = gym.spaces.Discrete(self.n_bins)
+        self.continuous_actions = np.linspace(
+            self.env.action_space.low[0],
+            self.env.action_space.high[0],
+            self.n_bins
+        )
+
+    def action(self, action):
+        """
+        Translates the discrete action from the agent into its
+        corresponding continuous value for the environment.
+        """
+        continuous_action = self.continuous_actions[action]
+        return np.array([continuous_action], dtype=np.float32)
 
 def define_hyperparameters(trial: optuna.Trial, algo_name: str):
     """Defines the CORE hyperparameter search space for a given algorithm."""
     algo = algo_name.lower()
     
-    if algo in ["a2c", "ppo"]:
-        n_layers = trial.suggest_int("n_layers", 1, 3)
+    if algo == "ppo":
+        n_layers = trial.suggest_int("n_layers", 1, 5)
         layer_size = trial.suggest_int("layer_size", 64, 512, log=True)
         activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
         activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[activation_fn_name]
         
         net_arch = dict(pi=[layer_size] * n_layers, vf=[layer_size] * n_layers)
         policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
-        params = {
-            "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True),
+        
+        n_steps = trial.suggest_categorical("n_steps", [128, 256, 512, 1024, 2048, 4096])
+        batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512])
+        if batch_size > n_steps: batch_size = n_steps
+            
+        return {
+            "n_steps": n_steps,
+            "batch_size": batch_size,
+            "n_epochs": trial.suggest_int("n_epochs", 4, 20),
             "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+            "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True),
             "ent_coef": trial.suggest_float("ent_coef", 1e-8, 0.01, log=True),
+            "clip_range": trial.suggest_float("clip_range", 0.1, 0.4),
             "vf_coef": trial.suggest_float("vf_coef", 0.2, 0.8),
             "max_grad_norm": trial.suggest_float("max_grad_norm", 0.3, 5.0),
+            "gae_lambda": trial.suggest_float("gae_lambda", 0.9, 1.0),
             "policy_kwargs": policy_kwargs
         }
-        if algo == "a2c":
-            params["n_steps"] = trial.suggest_int("n_steps", 16, 2048, log=True)
-            params["gae_lambda"] = trial.suggest_float("gae_lambda", 0.9, 1.0)
-        elif algo == "ppo":
-            params["n_steps"] = trial.suggest_categorical("n_steps", [128, 256, 512, 1024, 2048, 4096])
-            batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512])
-            if batch_size > params["n_steps"]:
-                batch_size = params["n_steps"]
-            params["batch_size"] = batch_size
-            params["n_epochs"] = trial.suggest_int("n_epochs", 4, 20)
-            params["clip_range"] = trial.suggest_float("clip_range", 0.1, 0.4)
-            params["gae_lambda"] = trial.suggest_float("gae_lambda", 0.9, 1.0)
-        return params
 
     elif algo == "sac":
         n_layers = trial.suggest_int("n_layers", 1, 3)
@@ -69,7 +93,7 @@ def define_hyperparameters(trial: optuna.Trial, algo_name: str):
         net_arch = [layer_size] * n_layers
         policy_kwargs = {"net_arch": dict(pi=net_arch, qf=net_arch), "activation_fn": activation_fn}
 
-        params = {
+        return {
             "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
             "buffer_size": trial.suggest_int("buffer_size", 50_000, 200_000),
             "batch_size": trial.suggest_categorical("batch_size", [64, 128, 256, 512]),
@@ -78,67 +102,32 @@ def define_hyperparameters(trial: optuna.Trial, algo_name: str):
             "ent_coef": trial.suggest_categorical("ent_coef", ["auto", 0.001, 0.01, 0.1]),
             "policy_kwargs": policy_kwargs
         }
-        return params
 
-    elif algo == "td3":
-        n_layers = trial.suggest_int("n_layers", 1, 3)
-        layer_size = trial.suggest_int("layer_size", 32, 256)
+    # --- UPDATED: DQN Hyperparameters ---
+    elif algo == "dqn":
+        n_layers = trial.suggest_int("n_layers", 1, 5)
+        layer_size = trial.suggest_int("layer_size", 64, 256, log=True)
+        # Fixed typo and expanded options
         activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu", "leaky_relu", "elu"])
         activation_map = {"tanh": nn.Tanh, "relu": nn.ReLU, "leaky_relu": nn.LeakyReLU, "elu": nn.ELU}
         activation_fn = activation_map[activation_fn_name]
-        net_arch = [layer_size] * n_layers
-        policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
-        action_noise_sigma = trial.suggest_float("action_noise_sigma", 0.1, 0.5)
-
-        params = {
-            "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+        
+        policy_kwargs = {"net_arch": [layer_size] * n_layers, "activation_fn": activation_fn}
+        
+        return {
+            "learning_rate": trial.suggest_float("learning_rate", 1e-4, 1e-3, log=True),
             "buffer_size": trial.suggest_int("buffer_size", 50_000, 200_000),
-            "batch_size": trial.suggest_int("batch_size", 64, 512),
-            "tau": trial.suggest_float("tau", 0.001, 0.02),
+            "batch_size": trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512]),
             "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
-            "policy_delay": trial.suggest_int("policy_delay", 1, 4),
-            "action_noise": NormalActionNoise(mean=np.zeros(1), sigma=action_noise_sigma * np.ones(1)),
-            "target_policy_noise": trial.suggest_float("target_policy_noise", 0.1, 0.5),
-            "target_noise_clip": trial.suggest_float("target_noise_clip", 0.3, 0.7),
-            "policy_kwargs": policy_kwargs,
-        }
-        
-        # --- CORRECTED LOGIC FOR TRAIN_FREQ AND GRADIENT_STEPS ---
-        # 1. Sample both from their full, static list of choices
-        gradient_steps = trial.suggest_categorical("gradient_steps", [1, 4, 8, 16, 32, 64, 128])
-        train_freq = trial.suggest_categorical("train_freq", [1, 4, 8, 16, 32, 64, 128, 256])
-
-        # 2. After sampling, enforce the constraint by correcting invalid combinations
-        if train_freq < gradient_steps:
-            # If the combination is invalid, adjust train_freq to a valid value.
-            train_freq = gradient_steps
-
-        params["gradient_steps"] = gradient_steps
-        params["train_freq"] = train_freq
-        
-        return params
-
-    elif algo == "ddpg":
-        n_layers = trial.suggest_int("n_layers", 1, 3)
-        layer_size = trial.suggest_int("layer_size", 64, 512, log=True)
-        activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
-        activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[activation_fn_name]
-        net_arch = [layer_size] * n_layers
-        policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
-        action_noise_sigma = trial.suggest_float("action_noise_sigma", 0.01, 0.2)
-
-        params = {
-            "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
-            "buffer_size": trial.suggest_int("buffer_size", 50_000, 250_000),
-            "batch_size": trial.suggest_categorical("batch_size", [128, 256, 512, 1024]),
-            "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
-            "tau": trial.suggest_float("tau", 0.001, 0.02),
-            "train_freq": trial.suggest_categorical("train_freq", [1, 4, 8, 16, 32, 64, 128, 256]),
-            "gradient_steps": trial.suggest_categorical("gradient_steps", [1, 2, 4, 8, 16, 32, 64, 128]),
-            "action_noise": NormalActionNoise(mean=np.zeros(1), sigma=action_noise_sigma * np.ones(1)),
+            "tau": trial.suggest_float("tau", 0.005, 0.02),
+            "train_freq": trial.suggest_categorical("train_freq", [1, 4, 8, 16]),
+            #"gradient_steps": trial.suggest_categorical("gradient_steps", [1, 2, 4, 8]),
+            "exploration_fraction": trial.suggest_float("exploration_fraction", 0.1, 0.5),
+            "exploration_final_eps": trial.suggest_float("exploration_final_eps", 0.01, 0.1),
+            # Added target_update_interval
+            "target_update_interval": trial.suggest_categorical("target_update_interval", [500, 1000, 2000, 5000, 10000]),
             "policy_kwargs": policy_kwargs
         }
-        return params
     else:
         raise ValueError(f"Unsupported algorithm: {algo_name}")
 
@@ -151,7 +140,13 @@ def objective(trial: optuna.Trial, algo_name: str):
     trial.set_user_attr("seed", seed)
     print(f"\n[INFO] Starting Trial {trial.number} with Seed: {seed}")
 
-    train_env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=True))
+    # Conditionally wrap environment for DQN
+    if algo_name.lower() == 'dqn':
+        # 9 bins for [1, 2, ..., 9]. 17 bins for [1.0, 1.5, ..., 9.0]
+        train_env_fn = lambda: Monitor(DiscretizeActionWrapper(BCPyEnv(use_randomized_goal=True), n_bins=17))
+    else:
+        train_env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=True))
+
     train_env = DummyVecEnv([train_env_fn])
     train_env.seed(seed)
     train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False, clip_obs=10.0)
@@ -160,7 +155,7 @@ def objective(trial: optuna.Trial, algo_name: str):
     hyperparams['seed'] = seed
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    if algo_name.lower() in ["sac", "td3", "ddpg"]:
+    if algo_name.lower() in ["sac", "td3", "ddpg", "dqn"]:
         hyperparams["learning_starts"] = 10000
 
     model_class = globals()[algo_name.upper()]
@@ -168,7 +163,6 @@ def objective(trial: optuna.Trial, algo_name: str):
                         tensorboard_log=os.path.join(TB_ROOT, algo_name), **hyperparams)
 
     timesteps_so_far = 0
-    mean_reward = -np.inf
     
     try:
         while timesteps_so_far < TOTAL_TIMESTEPS_PER_TRIAL:
@@ -176,7 +170,12 @@ def objective(trial: optuna.Trial, algo_name: str):
                         tb_log_name=f"trial_{trial.number}")
             timesteps_so_far += EVAL_INTERVAL
 
-            eval_env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=False, fixed_goal_voltage=30.0))
+            # Conditionally wrap evaluation environment for DQN
+            if algo_name.lower() == 'dqn':
+                eval_env_fn = lambda: Monitor(DiscretizeActionWrapper(BCPyEnv(use_randomized_goal=False, fixed_goal_voltage=30.0), n_bins=17))
+            else:
+                eval_env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=False, fixed_goal_voltage=30.0))
+            
             eval_env = DummyVecEnv([eval_env_fn])
             eval_env.seed(seed)
             train_env.save("temp_vec_normalize.pkl")
@@ -184,7 +183,7 @@ def objective(trial: optuna.Trial, algo_name: str):
             eval_env.training = False 
             eval_env.norm_reward = False
             
-            mean_reward, _ = evaluate_policy(model, eval_env, n_eval_episodes=1)
+            mean_reward, _ = evaluate_policy(model, eval_env, n_eval_episodes=3)
             eval_env.close()
             
             print(f"[DEBUG] Trial {trial.number} | Timestep {timesteps_so_far} | Mean reward: {mean_reward}")
@@ -199,9 +198,7 @@ def objective(trial: optuna.Trial, algo_name: str):
         
     except (AssertionError, ValueError) as e:
         print(f"[FAIL] Trial {trial.number} failed with error: {e}")
-        # Returning a value like -inf or a very low number can be better than pruning
-        # as it still provides information to some samplers.
-        return -1e9 # Return a very bad value instead of pruning
+        return -1e9
     finally:
         train_env.close()
         if os.path.exists("temp_vec_normalize.pkl"):
@@ -211,7 +208,7 @@ def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
     """
     Main function to set up and run the Optuna study.
     """
-    study_name = f"{algo_name}-bc-tuning-final-seeded-v4"
+    study_name = f"{algo_name}-bc-tuning-modular-v1-17bins"
     storage_name = f"sqlite:///{study_name}.db"
 
     pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=MIN_RESOURCES_FOR_PRUNING)
@@ -239,6 +236,7 @@ def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
     finally:
         pbar.close()
 
+    # --- UPDATED: Full saving and printing logic ---
     results_dir = "hyperparameter_results_final"
     os.makedirs(results_dir, exist_ok=True)
     results_file = os.path.join(results_dir, f"{algo_name}_best_params_seeded.json")
@@ -258,6 +256,9 @@ def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
         json.dump(all_trials_data, f, indent=4)
         
     print("\n\n" + "="*80)
+    print(f"All trial data saved to: {results_file}")
+    
+    # --- Print a ranked list of all completed trials ---
     print("--- INDIVIDUAL TRIAL RESULTS (BEST TO WORST) ---")
     print("="*80)
     
@@ -292,9 +293,9 @@ def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
 
 
 if __name__ == "__main__":
-    ALGORITHM_TO_TUNE = "TD3"
+    ALGORITHM_TO_TUNE = "DQN"
     tune_hyperparameters(
         algo_name=ALGORITHM_TO_TUNE,
-        n_trials=50, 
+        n_trials=100, 
         n_jobs=1 
     )

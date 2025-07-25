@@ -204,8 +204,8 @@ if __name__ == '__main__':
     MODEL_TO_EVALUATE = 'A2C'
 
     # Load the model from local directory
-    MODEL_SAVE_PATH = "final_model.zip" # The model .zip
-    STATS_PATH = "vec_normalize.pkl" # The normalisation weights for the NNs
+    MODEL_SAVE_PATH = f"final_model_{MODEL_TO_EVALUATE}.zip" # The model .zip
+    STATS_PATH = f"vec_normalize_{MODEL_TO_EVALUATE}.pkl" # The normalisation weights for the NNs
 
     # Save the results of the evaluation into google drive
     drive_save_path = f"/content/drive/MyDrive/DDC/{MODEL_TO_EVALUATE}/"

@@ -1,0 +1,29 @@
+{
+    "best_params": {
+        "n_layers": 3,
+        "layer_size": 116,
+        "activation_fn": "elu",
+        "learning_rate": 0.0001810821982940043,
+        "buffer_size": 185507,
+        "batch_size": 32,
+        "gamma": 0.9550537740496252,
+        "tau": 0.015864868597360998,
+        "train_freq": 1,
+        "gradient_steps": 1,
+        "exploration_fraction": 0.14135640775577812,
+        "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.013690773557863389,
+        "target_update_interval": 500,
+        "learning_starts": 10000
+    },
+    "best_value": 1950.533537,
+    "n_trials": 100,
+    "best_net_arch": [
+        116,
+        116,
+        116
+    ],
+    "best_activation_fn": "elu",
+    "seed": 17528,
+    "n_bins": 17
+}
