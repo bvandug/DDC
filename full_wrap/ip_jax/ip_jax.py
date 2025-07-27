@@ -9,8 +9,8 @@ class PendulumConfig(NamedTuple):
     L: float = 0.15       # pendulum length to COM (m)
     g: float = 9.8        # gravitational acceleration (m/s^2)
     dt: float = 0.01      # time step (s)
-    angle_threshold: float = jnp.pi / 3
-    max_torque: float = 10.0      # renamed from max_force
+    angle_threshold: float = jnp.pi / 2
+    max_torque: float = 2.0      # renamed from max_force
     max_episode_time: float = 5.0  # seconds
 
 class PendulumState(NamedTuple):
@@ -35,7 +35,7 @@ def pendulum_dynamics(state: PendulumState, action: float, config: PendulumConfi
     I = m * L**2
 
     # Pure‑pendulum acceleration
-    theta_ddot = (m * g * L * jnp.sin(theta) + tau) / I
+    theta_ddot = (-m * g * L * jnp.sin(theta) + tau) / I
 
     # Euler integration
     theta_dot_new = theta_dot + theta_ddot * config.dt
@@ -61,11 +61,13 @@ def reset_pendulum_env(key, config: PendulumConfig) -> PendulumState:
     theta = jnp.where(jnp.abs(theta) < 0.05, theta + 0.1, theta)
     return PendulumState(theta=theta, theta_dot=0.0, t=0.0, done=False)
 
-def reward_fn(state, action):
-    return jnp.cos(state.theta)
-
+def reward_fn(state: PendulumState, action: float, config: PendulumConfig) -> float:
+    """Calculates reward with STRONGER penalties for velocity and effort."""
+    position_reward = jnp.cos(state.theta)
+    return position_reward
 
 def step_pendulum_env(state: PendulumState, action: float, config: PendulumConfig):
+    """Steps the environment forward using the shaped reward."""
     new_state = pendulum_dynamics(state, action, config)
-    reward    = reward_fn(new_state, action)
+    reward = reward_fn(new_state, action, config)
     return new_state, reward

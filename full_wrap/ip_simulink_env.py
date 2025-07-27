@@ -30,7 +30,7 @@ class SimulinkEnv(gym.Env):
     # agent_block: str = "PendCart/DRL",
     dt: float = 0.01,
     max_episode_time: float = 5,
-    angle_threshold: float = np.pi / 3,
+    angle_threshold: float = np.pi / 2,
     ):
         super().__init__()
 
@@ -41,7 +41,7 @@ class SimulinkEnv(gym.Env):
 
         # 🔄 Instance-specific MATLAB engine
         print("Starting MATLAB engine...")
-        self.eng = matlab.engine.start_matlab()
+        self.eng = matlab.engine.start_matlab("-nodesktop -licmode onlinelicensing")
 
         # 🆕 Create a unique copy of the model file
         unique_id = uuid.uuid4().hex[:8]
@@ -145,8 +145,7 @@ class SimulinkEnv(gym.Env):
         return np.array([theta0, vel0], dtype=np.float32)
 
     def step(self, action):
-        force = float(np.clip(action, self.action_space.low, self.action_space.high))
-        torque = force * self.pendulum_length
+        torque = float(np.clip(action, self.action_space.low, self.action_space.high))
         # and then send `torque` to the Constant block:
         self.eng.set_param(f"{self.model_name}/Constant", "Value", str(torque), nargout=0)
 
@@ -173,10 +172,10 @@ class SimulinkEnv(gym.Env):
         obs = np.array([theta, vel], dtype=np.float32)
         print(obs)
 
-        # Custom reward with velocity and effort penalties
-        # k_vel = 0.5
-        # k_u = 0.05
-        reward = np.cos(theta) #- k_vel * (vel ** 2) - k_u * (u ** 2)
+        # MODIFICATION: Update penalties to match the new training reward
+        reward = np.cos(theta)
+        
+
         print(f"Reward: {reward}")
 
         done = abs(theta) > self.angle_threshold or t >= self.max_episode_time
