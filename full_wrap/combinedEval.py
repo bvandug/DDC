@@ -224,10 +224,10 @@ def evaluate_full_metrics(
 if __name__ == '__main__':
     env = SimulinkEnv()
     models = {
-        'A2C': 'ip_jax/jax/a2c/best_model.zip',
-        'SAC': 'ip_jax/jax/sac/best_model.zip',
+        #'A2C': 'ip_jax/jax/a2c/best_model.zip',
+        #'SAC': 'ip_jax/jax/sac/best_model.zip',
         # 'DQN': 'ip_jax/jax/dqn/best_model.zip',
-        # 'PPO': 'ip_jax/jax/ppo/best_model.zip'
+        'PPO': 'jax/ppo/best_model.zip'
         # 'DDPG': 'ip_jax/jax/ddpg/best_model.zip',
         # 'TD3': 'ip_jax/jax/td3/best_model.zip'
     }
@@ -235,7 +235,7 @@ if __name__ == '__main__':
     for name, path in models.items():
         print(f'\n=== Evaluating {name} ===')
         ModelClass = globals()[name]
-        if name in ('PPO', 'A2C'):
+        if name in ('PPO'):
             model = ModelClass.load(path, device='cpu')
         else:
             model = ModelClass.load(path)
