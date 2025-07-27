@@ -64,7 +64,14 @@ def reset_pendulum_env(key, config: PendulumConfig) -> PendulumState:
 def reward_fn(state: PendulumState, action: float, config: PendulumConfig) -> float:
     """Calculates reward with STRONGER penalties for velocity and effort."""
     position_reward = jnp.cos(state.theta)
-    return position_reward
+    
+    # MODIFICATION: Increased velocity penalty by 5x
+    velocity_penalty = 0.05 * state.theta_dot**2
+    
+    # MODIFICATION: Increased effort penalty by 5x
+    effort_penalty = 0.005 * (action / config.max_torque)**2
+    
+    return position_reward - velocity_penalty - effort_penalty
 
 def step_pendulum_env(state: PendulumState, action: float, config: PendulumConfig):
     """Steps the environment forward using the shaped reward."""

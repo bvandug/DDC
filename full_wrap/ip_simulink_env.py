@@ -173,8 +173,10 @@ class SimulinkEnv(gym.Env):
         print(obs)
 
         # MODIFICATION: Update penalties to match the new training reward
-        reward = np.cos(theta)
-        
+        position_reward = np.cos(theta)
+        velocity_penalty = 0.05 * vel**2
+        effort_penalty = 0.005 * (action / self.action_space.high[0])**2
+        reward = position_reward - velocity_penalty - float(effort_penalty)
 
         print(f"Reward: {reward}")
 
