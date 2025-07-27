@@ -144,9 +144,14 @@ def main(algo_name="ppo",
 
     # If using DQN (or similar), wrap with DiscretizedActionWrapper
     if algo_name == "dqn":
-        force_values = np.linspace(-10.0, 10.0, 5)
-        env = DiscretizedActionWrapper(env, force_values=force_values)
-
+        # build a discrete set of torques instead of forces
+        torque_values = np.linspace(
+            -env.config.max_torque,
+            env.config.max_torque,
+            21
+        )
+        # pass to the wrapper under its new argument name
+        env = DiscretizedActionWrapper(env, torque_values=torque_values)
     # Directories and file names
     model_base_dir     = os.path.join("jax", prefix + algo_name)
     os.makedirs(model_base_dir, exist_ok=True)

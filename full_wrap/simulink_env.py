@@ -26,8 +26,8 @@ class SimulinkEnv(gym.Env):
 
     def __init__(
     self,
-    model_name: str = "PendCart",
-    agent_block: str = "PendCart/DRL",
+    model_name: str = "pendulum",
+    # agent_block: str = "PendCart/DRL",
     dt: float = 0.01,
     max_episode_time: float = 5,
     angle_threshold: float = np.pi / 3,
@@ -53,7 +53,7 @@ class SimulinkEnv(gym.Env):
         self.eng.load_system(self.model_path, nargout=0)
         self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
-        self.agent_block = agent_block
+        # self.agent_block = agent_block
         self.dt = dt
         self.current_time = 0.0
         self.max_episode_time = max_episode_time
@@ -75,19 +75,19 @@ class SimulinkEnv(gym.Env):
             f"{self.model_name}/Pendulum and Cart", "init", str(initial_angle), nargout=0
         )
 
-        # Random noise
-        noise_seed = str(np.random.randint(1, 40000))
-        noise_power = 0
-        self.eng.set_param(f"{self.model_name}/Noise", "seed", f"[{noise_seed}]", nargout=0)
-        self.eng.set_param(f"{self.model_name}/Noise", "Cov", f"[{noise_power}]", nargout=0)
-        noise_seed_v = str(np.random.randint(1, 40000))
-        noise_power_v = 0
-        self.eng.set_param(
-            f"{self.model_name}/Noise_v", "seed", f"[{noise_seed_v}]", nargout=0
-        )
-        self.eng.set_param(
-            f"{self.model_name}/Noise_v", "Cov", f"[{noise_power_v}]", nargout=0
-        )
+        # # Random noise
+        # noise_seed = str(np.random.randint(1, 40000))
+        # noise_power = 0
+        # self.eng.set_param(f"{self.model_name}/Noise", "seed", f"[{noise_seed}]", nargout=0)
+        # self.eng.set_param(f"{self.model_name}/Noise", "Cov", f"[{noise_power}]", nargout=0)
+        # noise_seed_v = str(np.random.randint(1, 40000))
+        # noise_power_v = 0
+        # self.eng.set_param(
+        #     f"{self.model_name}/Noise_v", "seed", f"[{noise_seed_v}]", nargout=0
+        # )
+        # self.eng.set_param(
+        #     f"{self.model_name}/Noise_v", "Cov", f"[{noise_power_v}]", nargout=0
+        # )
 
 
     def get_data(self):
@@ -97,6 +97,8 @@ class SimulinkEnv(gym.Env):
         time_2d = [[raw_time]] if isinstance(raw_time, float) else raw_time
         angle_lst = [a[0] for a in angle_2d]
         time_lst = [t[0] for t in time_2d]
+        # print(angle_lst)
+        # print(time_lst)
         return angle_lst, time_lst
 
     def reset(self):
@@ -114,13 +116,13 @@ class SimulinkEnv(gym.Env):
             nargout=0,
         )
 
-        noise_seed = str(np.random.randint(1, 40000))
-        noise_seed_v = str(np.random.randint(1, 40000))
-        for blk, seed in [("Noise", noise_seed), ("Noise_v", noise_seed_v)]:
-            self.eng.set_param(
-                f"{self.model_name}/{blk}", "seed", f"[{seed}]", nargout=0
-            )
-            self.eng.set_param(f"{self.model_name}/{blk}", "Cov", "[0]", nargout=0)
+        # noise_seed = str(np.random.randint(1, 40000))
+        # noise_seed_v = str(np.random.randint(1, 40000))
+        # for blk, seed in [("Noise", noise_seed), ("Noise_v", noise_seed_v)]:
+        #     self.eng.set_param(
+        #         f"{self.model_name}/{blk}", "seed", f"[{seed}]", nargout=0
+        #     )
+        #     self.eng.set_param(f"{self.model_name}/{blk}", "Cov", "[0]", nargout=0)
 
         self.eng.set_param(
             self.model_name, "FastRestart", "off", "LoadInitialState", "off", nargout=0
@@ -165,11 +167,13 @@ class SimulinkEnv(gym.Env):
             (theta - angle_lst[-2]) / (t - time_lst[-2]) if len(angle_lst) >= 2 else 0.0
         )
         obs = np.array([theta, vel], dtype=np.float32)
+        print(obs)
 
         # Custom reward with velocity and effort penalties
-        k_vel = 0.5
-        k_u = 0.05
+        # k_vel = 0.5
+        # k_u = 0.05
         reward = np.cos(theta) #- k_vel * (vel ** 2) - k_u * (u ** 2)
+        print(f"Reward: {reward}")
 
         done = abs(theta) > self.angle_threshold or t >= self.max_episode_time
         self.current_time = t

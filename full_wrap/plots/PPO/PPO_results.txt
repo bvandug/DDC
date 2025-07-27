@@ -1,39 +1,39 @@
 Episode 1:
-  Total reward           : 499.66
-  Stabilisation time     : 0.11 s
-  Steady-state error     : 1.73°
-  Overshoot magnitude    : 14.38°
-  Total stable time      : 4.89 s
+  Total reward           : 8.11
+  Stabilisation time     : 0.09 s
+  Steady-state error     : 70.46°
+  Overshoot magnitude    : 70.46°
+  Total stable time      : 0.01 s
 Episode 2:
-  Total reward           : 499.18
-  Stabilisation time     : 0.14 s
-  Steady-state error     : 1.89°
-  Overshoot magnitude    : 26.58°
-  Total stable time      : 4.86 s
+  Total reward           : 5.94
+  Stabilisation time     : 0.09 s
+  Steady-state error     : 91.86°
+  Overshoot magnitude    : 91.86°
+  Total stable time      : 0.00 s
 Episode 3:
-  Total reward           : 497.57
-  Stabilisation time     : 0.21 s
-  Steady-state error     : 0.78°
-  Overshoot magnitude    : 39.42°
-  Total stable time      : 4.79 s
+  Total reward           : 8.99
+  Stabilisation time     : 0.11 s
+  Steady-state error     : 91.93°
+  Overshoot magnitude    : 91.93°
+  Total stable time      : 0.01 s
 Episode 4:
-  Total reward           : 497.08
-  Stabilisation time     : 0.23 s
-  Steady-state error     : 0.83°
-  Overshoot magnitude    : 41.96°
-  Total stable time      : 4.77 s
+  Total reward           : 11.05
+  Stabilisation time     : 0.13 s
+  Steady-state error     : 97.59°
+  Overshoot magnitude    : 97.59°
+  Total stable time      : 0.02 s
 Episode 5:
-  Total reward           : 493.04
-  Stabilisation time     : 0.37 s
-  Steady-state error     : 0.96°
-  Overshoot magnitude    : 50.83°
-  Total stable time      : 4.63 s
+  Total reward           : 6.41
+  Stabilisation time     : 0.08 s
+  Steady-state error     : 65.36°
+  Overshoot magnitude    : 65.36°
+  Total stable time      : 0.01 s
 
 Summary Metrics:
 ----------------------------------------
-Mean Reward: 497.31 ± 2.34 (Max: 500)
-→ 99.5% of theoretical max reward
-Mean Stabilisation Time : 0.21 s
-Mean Steady-State Error : 1.24°
-Mean Overshoot Magnitude: 34.63°
-Mean Total Stable Time  : 4.79 s
+Mean Reward: 8.10 ± 1.84 (Max: 500)
+→ 1.6% of theoretical max reward
+Mean Stabilisation Time : 0.10 s
+Mean Steady-State Error : 83.44°
+Mean Overshoot Magnitude: 83.44°
+Mean Total Stable Time  : 0.01 s

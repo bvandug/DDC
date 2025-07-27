@@ -5,14 +5,13 @@ from typing import NamedTuple
 
 # Environment configuration structure
 class PendulumConfig(NamedTuple):
-    m: float = 0.2     # pendulum mass (kg)
-    M: float = 0.5     # cart mass (kg)
-    L: float = 0.15    # pendulum length to COM (m)
-    g: float = 9.8     # gravitational acceleration (m/s^2)
-    dt: float = 0.01   # time step (s)
+    m: float = 0.2        # pendulum mass (kg)
+    L: float = 0.15       # pendulum length to COM (m)
+    g: float = 9.8        # gravitational acceleration (m/s^2)
+    dt: float = 0.01      # time step (s)
     angle_threshold: float = jnp.pi / 3
-    max_force: float = 10.0
-    max_episode_time: float = 5.0  # NEW: 5s episode
+    max_torque: float = 10.0      # renamed from max_force
+    max_episode_time: float = 5.0  # seconds
 
 class PendulumState(NamedTuple):
     theta: float
@@ -25,28 +24,25 @@ def angle_normalize(x):
 
 @jax.jit
 def pendulum_dynamics(state: PendulumState, action: float, config: PendulumConfig) -> PendulumState:
-    u = jnp.clip(action, -config.max_force, config.max_force)
+    # Clip input to ±max_torque
+    tau = jnp.clip(action, -config.max_torque, config.max_torque)
 
-    theta = state.theta
+    theta     = state.theta
     theta_dot = state.theta_dot
-    m, M, l, g = config.m, config.M, config.L, config.g
+    m, L, g   = config.m, config.L, config.g
 
-    sin_theta = jnp.sin(theta)
-    cos_theta = jnp.cos(theta)
+    # Moment of inertia about pivot
+    I = m * L**2
 
-    denom = m * l * cos_theta**2 - (M + m) * l
-    denom = jnp.where(jnp.abs(denom) < 1e-5, jnp.sign(denom) * 1e-5, denom)
+    # Pure‑pendulum acceleration
+    theta_ddot = (m * g * L * jnp.sin(theta) + tau) / I
 
-    theta_ddot = (
-        u * cos_theta
-        - (M + m) * g * sin_theta
-        + m * l * theta_dot**2 * cos_theta * sin_theta
-    ) / denom
-
+    # Euler integration
     theta_dot_new = theta_dot + theta_ddot * config.dt
-    theta_new = theta + theta_dot_new * config.dt
-    t_new = state.t + config.dt
+    theta_new     = theta + theta_dot_new * config.dt
+    t_new         = state.t + config.dt
 
+    # Termination: angle out of bounds or time up
     done = jnp.logical_or(
         jnp.abs(theta_new) > config.angle_threshold,
         t_new >= config.max_episode_time
@@ -65,11 +61,11 @@ def reset_pendulum_env(key, config: PendulumConfig) -> PendulumState:
     theta = jnp.where(jnp.abs(theta) < 0.05, theta + 0.1, theta)
     return PendulumState(theta=theta, theta_dot=0.0, t=0.0, done=False)
 
-def reward_fn(state: PendulumState, action: float) -> float:
+def reward_fn(state, action):
     return jnp.cos(state.theta)
 
 
 def step_pendulum_env(state: PendulumState, action: float, config: PendulumConfig):
     new_state = pendulum_dynamics(state, action, config)
-    reward = reward_fn(new_state, action)
+    reward    = reward_fn(new_state, action)
     return new_state, reward

@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from simulink_env import SimulinkEnv
+from ip_simulink_env import SimulinkEnv
 from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO, DQN
 import matplotlib.pyplot as plt
 
@@ -224,12 +224,12 @@ def evaluate_full_metrics(
 if __name__ == '__main__':
     env = SimulinkEnv()
     models = {
-        # 'A2C': 'ip_jax/jax/a2c/best_model.zip',
-        # 'SAC': 'ip_jax/jax/sac/best_model.zip',
-        'DQN': 'ip_jax/jax/dqn/best_model.zip',
-        'PPO': 'ip_jax/jax/ppo/best_model.zip',
-        'DDPG': 'ip_jax/jax/ddpg/best_model.zip',
-        'TD3': 'ip_jax/jax/td3/best_model.zip'
+        'A2C': 'ip_jax/jax/a2c/best_model.zip',
+        'SAC': 'ip_jax/jax/sac/best_model.zip',
+        # 'DQN': 'ip_jax/jax/dqn/best_model.zip',
+        # 'PPO': 'ip_jax/jax/ppo/best_model.zip'
+        # 'DDPG': 'ip_jax/jax/ddpg/best_model.zip',
+        # 'TD3': 'ip_jax/jax/td3/best_model.zip'
     }
     results = {}
     for name, path in models.items():
