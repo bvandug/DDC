@@ -7,7 +7,7 @@ import torch.nn as nn
 import time
 from tqdm import tqdm
 
-from ip_numpy_wrapper import InvertedPendulumGymWrapper
+from cp_numpy_wrapper import InvertedPendulumGymWrapper
 from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO, DQN
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.callbacks import BaseCallback
