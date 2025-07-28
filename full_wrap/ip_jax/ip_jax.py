@@ -65,11 +65,11 @@ def reward_fn(state: PendulumState, action: float, config: PendulumConfig) -> fl
     """Calculates reward with STRONGER penalties for velocity and effort."""
     position_reward = jnp.cos(state.theta)
     
-    # MODIFICATION: Increased velocity penalty by 5x
-    velocity_penalty = 0.05 * state.theta_dot**2
+    # # MODIFICATION: Increased velocity penalty by 5x
+    # velocity_penalty = 0.05 * state.theta_dot**2
     
-    # MODIFICATION: Increased effort penalty by 5x
-    effort_penalty = 0.005 * (action / config.max_torque)**2
+    # # MODIFICATION: Increased effort penalty by 5x
+    # effort_penalty = 0.005 * (action / config.max_torque)**2
     
     return position_reward
 
