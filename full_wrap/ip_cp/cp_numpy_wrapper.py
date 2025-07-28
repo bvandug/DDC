@@ -3,7 +3,7 @@ import gym
 from gym import spaces
 import numpy as np
 from typing import Optional
-from ip_numpy import PendulumConfig, PendulumState, reset_pendulum_env, step_pendulum_env
+from cp_numpy import PendulumConfig, PendulumState, reset_pendulum_env, step_pendulum_env
 
 class InvertedPendulumGymWrapper(gym.Env):
     metadata = {"render.modes": []}
