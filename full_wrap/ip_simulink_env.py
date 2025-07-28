@@ -170,15 +170,15 @@ class SimulinkEnv(gym.Env):
             (theta - angle_lst[-2]) / (t - time_lst[-2]) if len(angle_lst) >= 2 else 0.0
         )
         obs = np.array([theta, vel], dtype=np.float32)
-        print(obs)
+        # print(obs)
 
         # MODIFICATION: Update penalties to match the new training reward
-        position_reward = np.cos(theta)
-        velocity_penalty = 0.05 * vel**2
-        effort_penalty = 0.005 * (action / self.action_space.high[0])**2
-        reward = position_reward - velocity_penalty - float(effort_penalty)
+        # position_reward = np.cos(theta)
+        # velocity_penalty = 0.05 * vel**2
+        # effort_penalty = 0.005 * (action / self.action_space.high[0])**2
+        reward = np.cos(theta)
 
-        print(f"Reward: {reward}")
+        # print(f"Reward: {reward}")
 
         done = abs(theta) > self.angle_threshold or t >= self.max_episode_time
         self.current_time = t

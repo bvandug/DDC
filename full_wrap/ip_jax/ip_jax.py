@@ -71,7 +71,7 @@ def reward_fn(state: PendulumState, action: float, config: PendulumConfig) -> fl
     # MODIFICATION: Increased effort penalty by 5x
     effort_penalty = 0.005 * (action / config.max_torque)**2
     
-    return position_reward - velocity_penalty - effort_penalty
+    return position_reward
 
 def step_pendulum_env(state: PendulumState, action: float, config: PendulumConfig):
     """Steps the environment forward using the shaped reward."""

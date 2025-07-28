@@ -28,11 +28,12 @@ def set_global_seeds(seed: int = 42):
 def make_env(algo_name):
     base = InvertedPendulumGymWrapper(seed=42)
     if algo_name == "dqn":
-        return DummyVecEnv([lambda: Monitor(DiscretizedActionWrapper(base, [-10.0, 0.0, 10.0]))])
+        return DummyVecEnv([lambda: Monitor(DiscretizedActionWrapper(base, [-2.0, 0.0, 2.0]))])
     return DummyVecEnv([lambda: Monitor(base)])
 
 def objective(trial, algo_name):
     set_global_seeds(42)
+    
     env = make_env(algo_name)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -157,7 +158,7 @@ def objective(trial, algo_name):
 
 def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
     print(f"Tuning {algo_name.upper()} on JAX env with SB3...")
-    storage_path = f"sqlite:///jax_optuna_{algo_name}.db"
+    storage_path = f"sqlite:///ip_jax_optuna_{algo_name}.db"
     study = optuna.create_study(direction="maximize",
         pruner=optuna.pruners.SuccessiveHalvingPruner(
             min_resource=MIN_RESOURCES,
@@ -189,5 +190,5 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
     return study.best_params
 
 if __name__ == "__main__":
-    for algo in [ "td3", "ddpg", "sac", "dqn"]:
+    for algo in [  "sac", "dqn", "a2c"]:
         tune_hyperparameters(algo)

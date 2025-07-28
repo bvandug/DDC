@@ -1,15 +1,15 @@
 {
-  "best_params": {
-    "learning_rate": 2.0666936485685963e-5,
-    "buffer_size": 125662,
-    "batch_size": 404,
-    "tau": 0.013343354544917758,
-    "gamma": 0.9401543325631804,
-    "ent_coef": "auto",
-    "layer_size": 173,
-    "n_layers": 3,
-    "activation_fn": "elu"
-  },
-  "best_value": 499.1788024902344,
-  "n_trials": 50
+    "best_params": {
+        "learning_rate": 7.519468391768591e-05,
+        "buffer_size": 109417,
+        "batch_size": 281,
+        "tau": 0.008568783584993144,
+        "gamma": 0.9238847923186063,
+        "ent_coef": 0.1,
+        "layer_size": 273,
+        "n_layers": 4,
+        "activation_fn": "elu"
+    },
+    "best_value": 499.75762939453125,
+    "n_trials": 50
 }
