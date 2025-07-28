@@ -11,6 +11,7 @@ class DiscretizedActionWrapper(gym.ActionWrapper):
     Wraps a continuous-action env so a discrete index is mapped to a pre-defined
     force value.  Suitable for running SB3-DQN on SimulinkEnv.
     """
+
     def __init__(self, env, force_values):
         super().__init__(env)
         self.force_values = np.asarray(force_values, dtype=np.float32)
@@ -19,18 +20,21 @@ class DiscretizedActionWrapper(gym.ActionWrapper):
     def action(self, act_idx):
         """Convert the integer chosen by DQN into the continuous force."""
         return np.array([self.force_values[int(act_idx)]], dtype=np.float32)
+
+
 # ------------------------------------------------------------------------------
+
 
 class SimulinkEnv(gym.Env):
     metadata = {"render.modes": []}
 
     def __init__(
-    self,
-    model_name: str = "pendulum",
-    # agent_block: str = "PendCart/DRL",
-    dt: float = 0.01,
-    max_episode_time: float = 5,
-    angle_threshold: float = np.pi / 2,
+        self,
+        model_name: str = "pendulum",
+        # agent_block: str = "PendCart/DRL",
+        dt: float = 0.01,
+        max_episode_time: float = 5,
+        angle_threshold: float = np.pi / 2,
     ):
         super().__init__()
 
@@ -73,7 +77,10 @@ class SimulinkEnv(gym.Env):
         while -0.05 <= initial_angle <= 0.05:
             initial_angle = np.random.uniform(-1, 1)
         self.eng.set_param(
-            f"{self.model_name}/Pendulum and Cart", "init", str(initial_angle), nargout=0
+            f"{self.model_name}/Pendulum and Cart",
+            "init",
+            str(initial_angle),
+            nargout=0,
         )
 
         # # Random noise
@@ -90,17 +97,21 @@ class SimulinkEnv(gym.Env):
         #     f"{self.model_name}/Noise_v", "Cov", f"[{noise_power_v}]", nargout=0
         # )
 
-
     def get_data(self):
+        # pull _both_ angle and true angular velocity out of Simulink
         raw_ang = self.eng.eval("out.angle", nargout=1)
+        raw_vel = self.eng.eval("out.angle_v", nargout=1)
         raw_time = self.eng.eval("out.tout", nargout=1)
-        angle_2d = [[raw_ang]] if isinstance(raw_ang, float) else raw_ang
-        time_2d = [[raw_time]] if isinstance(raw_time, float) else raw_time
-        angle_lst = [a[0] for a in angle_2d]
-        time_lst = [t[0] for t in time_2d]
-        # print(angle_lst)
-        # print(time_lst)
-        return angle_lst, time_lst
+
+        # flatten
+        ang2d = [[raw_ang]] if isinstance(raw_ang, float) else raw_ang
+        vel2d = [[raw_vel]] if isinstance(raw_vel, float) else raw_vel
+        t2d = [[raw_time]] if isinstance(raw_time, float) else raw_time
+
+        angle_lst = [a[0] for a in ang2d]
+        vel_lst = [v[0] for v in vel2d]
+        time_lst = [t[0] for t in t2d]
+        return angle_lst, vel_lst, time_lst
 
     def reset(self):
 
@@ -110,12 +121,12 @@ class SimulinkEnv(gym.Env):
         initial_angle = np.random.uniform(-1, 1)
         while -0.05 < initial_angle < 0.05:
             initial_angle = np.random.uniform(-1, 1)
-        self.eng.set_param(
-            f"{self.model_name}/Pendulum and Cart",
-            "init",
-            str(initial_angle),
-            nargout=0,
-        )
+        # self.eng.set_param(
+        #     f"{self.model_name}/Pendulum and Cart",
+        #     "init",
+        #     str(initial_angle),
+        #     nargout=0,
+        # )
 
         # noise_seed = str(np.random.randint(1, 40000))
         # noise_seed_v = str(np.random.randint(1, 40000))
@@ -134,20 +145,19 @@ class SimulinkEnv(gym.Env):
         )
         self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
-        angle_lst, time_lst = self.get_data()
-        theta0 = angle_lst[-1]
-        vel0 = (
-            (angle_lst[-1] - angle_lst[-2]) / (time_lst[-1] - time_lst[-2])
-            if len(angle_lst) >= 2
-            else 0.0
-        )
+        # angle_lst, vel_lst, time_lst = self.get_data()
+        # theta = angle_lst[-1]
+        # t = time_lst[-1]
+        # vel = vel_lst[-1]
 
-        return np.array([theta0, vel0], dtype=np.float32)
+        return np.array([theta0, 0], dtype=np.float32)
 
     def step(self, action):
         torque = float(np.clip(action, self.action_space.low, self.action_space.high))
         # and then send `torque` to the Constant block:
-        self.eng.set_param(f"{self.model_name}/Constant", "Value", str(torque), nargout=0)
+        self.eng.set_param(
+            f"{self.model_name}/Constant", "Value", str(torque), nargout=0
+        )
 
         start, stop = self.current_time, self.current_time + self.dt
         self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
@@ -163,12 +173,10 @@ class SimulinkEnv(gym.Env):
         )
         self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
-        angle_lst, time_lst = self.get_data()
+        angle_lst, vel_lst, time_lst = self.get_data()
         theta = angle_lst[-1]
         t = time_lst[-1]
-        vel = (
-            (theta - angle_lst[-2]) / (t - time_lst[-2]) if len(angle_lst) >= 2 else 0.0
-        )
+        vel = vel_lst[-1]
         obs = np.array([theta, vel], dtype=np.float32)
         # print(obs)
 
@@ -184,7 +192,6 @@ class SimulinkEnv(gym.Env):
         self.current_time = t
 
         return obs, reward, done, {"time": t}
-
 
     def render(self, mode="human"):
         pass
@@ -226,5 +233,3 @@ class SimulinkEnv(gym.Env):
                     print(f"Deleted: {full_path}")
                 except Exception as e:
                     print(f"Warning: could not delete file: {full_path}: {e}")
-
-
