@@ -8,7 +8,7 @@ class PendulumConfig(NamedTuple):
     L: float = 0.15
     g: float = 9.8
     dt: float = 0.01
-    angle_threshold: float = np.pi / 3
+    angle_threshold: float = np.pi / 2
     max_force: float = 10.0
     max_episode_time: float = 5.0
 
