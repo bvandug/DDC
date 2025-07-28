@@ -150,7 +150,7 @@ class SimulinkEnv(gym.Env):
         # t = time_lst[-1]
         # vel = vel_lst[-1]
 
-        return np.array([theta0, 0], dtype=np.float32)
+        return np.array([intial_angle, 0.0], dtype=np.float32)
 
     def step(self, action):
         torque = float(np.clip(action, self.action_space.low, self.action_space.high))
