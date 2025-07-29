@@ -1,4 +1,4 @@
-# ip_numpy_train.py (Training with NumPy env and SB3)
+# ip_numpy_train.py (Training with NumPy env and SB3, now seeded)
 import os
 import json
 import argparse
@@ -6,12 +6,15 @@ import numpy as np
 import torch.nn as nn
 import time
 from tqdm import tqdm
+import random
+import torch
 
 from ip_numpy_wrapper import InvertedPendulumGymWrapper
 from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO, DQN
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.callbacks import BaseCallback
 from torch.utils.tensorboard import SummaryWriter
+from stable_baselines3.common.utils import set_random_seed
 
 activation_fn_map = {
     "relu": nn.ReLU,
@@ -112,7 +115,15 @@ def create_policy_kwargs(params):
     )
 
 def main(algo_name="ppo", timesteps=100_000):
-    env = InvertedPendulumGymWrapper()
+    SEED = 42
+
+    # Set seeds globally
+    np.random.seed(SEED)
+    random.seed(SEED)
+    torch.manual_seed(SEED)
+    set_random_seed(SEED)
+
+    env = InvertedPendulumGymWrapper(seed=SEED)
 
     assert algo_name in algo_map, f"Algorithm must be one of: {list(algo_map.keys())}"
 
@@ -152,6 +163,7 @@ def main(algo_name="ppo", timesteps=100_000):
         common_kwargs = dict(
             policy="MlpPolicy",
             env=env,
+            seed=SEED,
             verbose=1,
             learning_rate=params["learning_rate"],
             gamma=params["gamma"],
@@ -165,10 +177,12 @@ def main(algo_name="ppo", timesteps=100_000):
                 batch_size=params["batch_size"],
                 tau=params["tau"],
                 train_freq=(1, "step"),
-                policy_delay=params["policy_delay"],
-                action_noise=action_noise,
-                target_policy_noise=params["target_policy_noise"],
-                target_noise_clip=params["target_noise_clip"])
+                #policy_delay=params["policy_delay"],
+                action_noise=action_noise
+                #,
+                #target_policy_noise=params["target_policy_noise"],
+                #target_noise_clip=params["target_noise_clip"]
+                )
         elif algo_name == "sac":
             model = Algo(**common_kwargs,
                 buffer_size=params["buffer_size"],
@@ -213,7 +227,7 @@ def main(algo_name="ppo", timesteps=100_000):
                 exploration_final_eps=params["exploration_final_eps"],
                 learning_starts=5000)
 
-    checkpoint_steps = {10_000, 25_000, 50_000, 75_000, 100_000}
+    checkpoint_steps = {10_000, 25_000, 50_000, 75_000, timesteps}
     callback = FancyTensorboardCallback(
         save_steps=checkpoint_steps,
         save_path_prefix=model_path,
@@ -235,10 +249,5 @@ def main(algo_name="ppo", timesteps=100_000):
     print("🏁 Training complete. Environment closed.")
 
 if __name__ == "__main__":
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument("--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo", "dqn"], default="a2c")
-    #parser.add_argument("--timesteps", type=int, default=100_000)
-    #args = parser.parse_args()
-    for algo in ["ppo", "a2c", "td3"]:
-        #main(algo_name=args.algo, timesteps=args.timesteps)
-        main(algo_name=algo, timesteps=100000)
+    for algo in ["td3","ddpg","sac","ppo","a2c"]:
+        main(algo_name=algo, timesteps=100_000)

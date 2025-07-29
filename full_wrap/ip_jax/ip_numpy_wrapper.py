@@ -40,8 +40,11 @@ class InvertedPendulumGymWrapper(gym.Env):
         """
         super().reset(seed=seed)
         if seed is not None:
-            self.np_rng = np.random.RandomState(seed)
-        new_seed = self.np_rng.randint(0, 2**32 - 1)
+            #self.np_rng = np.random.RandomState(seed)
+            self.np_rng = np.random.default_rng(seed)
+        #new_seed = self.np_rng.randint(0, 2**32 - 1)
+        new_seed = self.np_rng.integers(0, 2**32 - 1, dtype=np.uint32)
+
         self.state = reset_pendulum_env(seed=new_seed, config=self.config)
         
         return self._obs(), {}

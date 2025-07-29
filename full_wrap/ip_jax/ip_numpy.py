@@ -1,6 +1,8 @@
 # ip_numpy.py (NumPy-based dynamics for SB3)
 import numpy as np
 from typing import NamedTuple
+import jax
+import jax.numpy as jnp
 
 class PendulumConfig(NamedTuple):
     m: float = 0.2
@@ -45,10 +47,11 @@ def pendulum_dynamics(state: PendulumState, action: float, config: PendulumConfi
     )
 
 def reset_pendulum_env(seed, config: PendulumConfig) -> PendulumState:
-    rng = np.random.default_rng(seed)
-    theta = rng.uniform(-1.0, 1.0)
-    if abs(theta) < 0.05: theta += 0.1
+    key = jax.random.PRNGKey(seed)
+    theta = jax.random.uniform(key, minval=-1.0, maxval=1.0)
+    theta = jnp.where(jnp.abs(theta) < 0.05, theta + 0.1, theta)
     return PendulumState(theta=theta, theta_dot=0.0, t=0.0, done=False)
+
 
 def reward_fn(state: PendulumState, action: float) -> float:
     return np.cos(state.theta)
