@@ -9,3 +9,5 @@ matlabengine==24.2.0
 optuna>=3.3.0
 tqdm>=4.65.0 
 tensorflow
+jax
+jaxlib

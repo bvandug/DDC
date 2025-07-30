@@ -1,0 +1,25 @@
+{
+    "best_params": {
+        "n_steps": 126,
+        "batch_size_idx": 1,
+        "learning_rate": 0.0007914487565540364,
+        "n_epochs": 13,
+        "gamma": 0.9520596513616589,
+        "clip_range": 0.3660268718500816,
+        "ent_coef": 5.071028321424264e-06,
+        "vf_coef": 0.8409032149154008,
+        "max_grad_norm": 1.996247417137996,
+        "gae_lambda": 0.9159592314770219,
+        "n_layers": 3,
+        "layer_size": 93,
+        "activation_fn": "tanh"
+    },
+    "best_value": 496.923140320464,
+    "n_trials": 50,
+    "best_net_arch": [
+        93,
+        93,
+        93
+    ],
+    "best_activation_fn": "tanh"
+}
