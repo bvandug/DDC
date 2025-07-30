@@ -4,13 +4,16 @@ import json
 import argparse
 import numpy as np
 import torch.nn as nn
+import torch
+import random
 import time
 from tqdm import tqdm
 
-from cp_numpy_wrapper import InvertedPendulumGymWrapper
+from cp_numpy_wrapper import CartPoleGymWrapper, DiscretizedActionWrapper
 from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO, DQN
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.utils import set_random_seed
 from torch.utils.tensorboard import SummaryWriter
 
 activation_fn_map = {
@@ -92,8 +95,9 @@ class FancyTensorboardCallback(BaseCallback):
         self.writer.flush()
         self.writer.close()
 
+
 def load_hyperparameters(algo_name):
-    path = f"hyperparameter_results/{algo_name}_best_params.json"
+    path = f"jax_hp_results/{algo_name}_best_params.json"
     with open(path, "r") as f:
         params = json.load(f)["best_params"]
 
@@ -105,17 +109,31 @@ def load_hyperparameters(algo_name):
 
     return params
 
+
 def create_policy_kwargs(params):
     return dict(
         net_arch=[params["layer_size"]] * params["n_layers"],
         activation_fn=activation_fn_map[params["activation_fn"].lower()]
     )
 
-def main(algo_name="ppo", timesteps=100_000):
-    env = InvertedPendulumGymWrapper()
+
+def main(algo_name="ppo", timesteps=100_000, noise=False, noise_level=0.01):
+    # Set all seeds for reproducibility
+    SEED = 42
+    np.random.seed(SEED)
+    random.seed(SEED)
+    torch.manual_seed(SEED)
+    set_random_seed(SEED)
+
+    # Instantiate environment
+    env = CartPoleGymWrapper(seed=SEED, noise=noise, noise_std=noise_level)
+    if algo_name == "dqn":
+        force_values = np.linspace(-10.0, 10.0, 5)
+        env = DiscretizedActionWrapper(env, force_values=force_values)
 
     assert algo_name in algo_map, f"Algorithm must be one of: {list(algo_map.keys())}"
 
+    # Directories
     model_base_dir = os.path.join("numpy", algo_name)
     os.makedirs(model_base_dir, exist_ok=True)
     model_path = os.path.join(model_base_dir, "best_model")
@@ -125,6 +143,7 @@ def main(algo_name="ppo", timesteps=100_000):
     print(f"📁 Saving models to: {model_base_dir}")
     print(f"📊 TensorBoard logs to: {tensorboard_log_dir}")
 
+    # Load hyperparameters
     params = load_hyperparameters(algo_name)
     policy_kwargs = create_policy_kwargs(params)
     Algo = algo_map[algo_name]
@@ -136,12 +155,13 @@ def main(algo_name="ppo", timesteps=100_000):
             sigma=params["action_noise_sigma"] * np.ones(1)
         )
 
+    # Load or create model
     if os.path.exists(model_path + ".zip"):
         print(f"Loading model from {model_path}.zip...")
         model = Algo.load(
             model_path,
             env=env,
-            action_noise=action_noise if algo_name in ["td3", "ddpg"] else None,
+            action_noise=action_noise if algo_name in OFF_POLICY_ALGOS else None,
             tensorboard_log=tensorboard_log_dir
         )
         if algo_name in OFF_POLICY_ALGOS and os.path.exists(replay_buffer_path + ".pkl"):
@@ -152,6 +172,7 @@ def main(algo_name="ppo", timesteps=100_000):
         common_kwargs = dict(
             policy="MlpPolicy",
             env=env,
+            seed=SEED,
             verbose=1,
             learning_rate=params["learning_rate"],
             gamma=params["gamma"],
@@ -165,10 +186,8 @@ def main(algo_name="ppo", timesteps=100_000):
                 batch_size=params["batch_size"],
                 tau=params["tau"],
                 train_freq=(1, "step"),
-                policy_delay=params["policy_delay"],
-                action_noise=action_noise,
-                target_policy_noise=params["target_policy_noise"],
-                target_noise_clip=params["target_noise_clip"])
+                action_noise=action_noise
+            )
         elif algo_name == "sac":
             model = Algo(**common_kwargs,
                 buffer_size=params["buffer_size"],
@@ -213,20 +232,19 @@ def main(algo_name="ppo", timesteps=100_000):
                 exploration_final_eps=params["exploration_final_eps"],
                 learning_starts=5000)
 
-    checkpoint_steps = {10_000, 25_000, 50_000, 75_000, 100_000}
-    callback = FancyTensorboardCallback(
-        save_steps=checkpoint_steps,
-        save_path_prefix=model_path,
-        log_dir=tensorboard_log_dir
-    )
+    # Train
+    checkpoint_steps = {10_000, 25_000, 50_000, 75_000, timesteps}
+    callback = FancyTensorboardCallback(save_steps=checkpoint_steps,
+                                       save_path_prefix=model_path,
+                                       log_dir=tensorboard_log_dir)
 
     print(f"🚀 Training {algo_name.upper()} for {timesteps} timesteps...")
     model.learn(total_timesteps=timesteps, reset_num_timesteps=False,
                 callback=callback, tb_log_name="run")
 
+    # Save final model and buffer
     model.save(model_path)
     print(f"✅ Final model saved to {model_path}.zip")
-
     if algo_name in OFF_POLICY_ALGOS:
         model.save_replay_buffer(replay_buffer_path)
         print(f"✅ Final replay buffer saved to {replay_buffer_path}.pkl")
@@ -236,7 +254,29 @@ def main(algo_name="ppo", timesteps=100_000):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo", "dqn"], default="sac")
+    parser.add_argument(
+        "--algos",
+        nargs="+",
+        choices=list(algo_map.keys()) + ["all"],
+        default=["ppo"],
+        help="Which algorithm(s) to train; use 'all' to run every algo in sequence."
+    )
     parser.add_argument("--timesteps", type=int, default=100_000)
+    parser.add_argument("--noise", action="store_true", help="Add Gaussian noise to observations")
+    parser.add_argument("--noise-level", type=float, default=0.01, help="Standard deviation for observation noise")
     args = parser.parse_args()
-    main(algo_name=args.algo, timesteps=args.timesteps)
+
+    # Expand "all" into the full list
+    if "all" in args.algos:
+        algos_to_run = list(algo_map.keys())
+    else:
+        algos_to_run = args.algos
+
+    for algo in algos_to_run:
+        print(f"\n🔄 Starting training for {algo.upper()} …")
+        main(
+            algo_name=algo,
+            timesteps=args.timesteps,
+            noise=args.noise,
+            noise_level=args.noise_level,
+        )
