@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<MF0 version="1.1" packageUris="http://schema.mathworks.com/mf0/slsa_mm_param_rtp/R2023a">
-  <slsa.mm.param.rtp.ModelMetadata type="slsa.mm.param.rtp.ModelMetadata" uuid="8c7fbdb5-8fb2-4cb5-93e5-6c00f68637a3">
-    <modelName>PendCart_3ea96591</modelName>
-  </slsa.mm.param.rtp.ModelMetadata>
-</MF0>
