@@ -108,19 +108,16 @@ class SimulinkEnv(gym.Env):
         return angle_lst, vel_lst, time_lst
 
     def reset(self):
-        print(f"\n=== RESET DEBUG ===")
         self.current_time = 0.0
 
         # Stop simulation completely
         self.eng.set_param(self.model_name, "SimulationCommand", "stop", nargout=0)
-        print("✓ Simulation stopped")
 
         # Clear any previous saved states
         try:
             self.eng.eval("clear xFinal", nargout=0)
-            print("✓ Cleared xFinal state")
         except:
-            print("⚠ No xFinal to clear (this is fine)")
+            pass  # No xFinal to clear, which is fine
 
         # Generate new initial angle using seeded RNG
         self.rng, subkey = jax.random.split(self.rng)
@@ -128,7 +125,6 @@ class SimulinkEnv(gym.Env):
         initial_angle = (
             initial_angle + 0.1 if abs(initial_angle) < 0.05 else initial_angle
         )
-        print(f"✓ Generated initial angle: {initial_angle:.6f}")
 
         # Set the initial angle in Simulink
         self.eng.set_param(
@@ -137,25 +133,13 @@ class SimulinkEnv(gym.Env):
             str(initial_angle),
             nargout=0,
         )
-        print("✓ Set initial angle in Simulink")
-
-        # Verify the angle was actually set by reading it back
-        try:
-            set_angle = self.eng.get_param(
-                f"{self.model_name}/Pendulum and Cart", "init", nargout=1
-            )
-            print(f"✓ Verified angle in Simulink: {set_angle}")
-        except Exception as e:
-            print(f"⚠ Could not verify angle: {e}")
 
         # Completely disable FastRestart and LoadInitialState for clean reset
         self.eng.set_param(
             self.model_name, "FastRestart", "off", "LoadInitialState", "off", nargout=0
         )
-        print("✓ Disabled FastRestart and LoadInitialState")
 
         # Run a very short simulation to initialize properly
-        print("⏳ Running initialization simulation...")
         self.eng.eval(
             f"out = sim('{self.model_name}', "
             "'StopTime','1e-4', "
@@ -164,32 +148,15 @@ class SimulinkEnv(gym.Env):
             "xFinal = out.xFinal;",
             nargout=0,
         )
-        print("✓ Initialization simulation complete")
 
         # Re-enable FastRestart for performance
         self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
-        print("✓ Re-enabled FastRestart")
 
         # Get the actual initial state from simulation
         angle_lst, vel_lst, time_lst = self.get_data()
         theta = angle_lst[-1]
         t = time_lst[-1]
         vel = vel_lst[-1]
-
-        print(
-            f"✓ Final reset state - theta: {theta:.6f}, vel: {vel:.6f}, time: {t:.6f}"
-        )
-
-        # Sanity check: make sure we're close to our intended initial angle
-        angle_diff = abs(theta - initial_angle)
-        if angle_diff > 0.01:
-            print(
-                f"⚠ WARNING: Large difference between set ({initial_angle:.6f}) and actual ({theta:.6f}) angle!"
-            )
-        else:
-            print(f"✓ Angle verification passed (diff: {angle_diff:.6f})")
-
-        print("=== RESET COMPLETE ===\n")
 
         return np.array([theta, vel], dtype=np.float32)
 

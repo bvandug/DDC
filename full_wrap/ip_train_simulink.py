@@ -193,10 +193,10 @@ def main(algo_name="td3", timesteps=100000):
                 batch_size=params["batch_size"],
                 tau=params["tau"],
                 train_freq=(1, "step"),
-                policy_delay=params["policy_delay"],
+                # policy_delay=params["policy_delay"],
                 action_noise=action_noise,
-                target_policy_noise=params["target_policy_noise"],
-                target_noise_clip=params["target_noise_clip"],
+                # target_policy_noise=params["target_policy_noise"],
+                # target_noise_clip=params["target_noise_clip"],
             )
         elif algo_name == "sac":
             model = Algo(
@@ -286,7 +286,7 @@ def main(algo_name="td3", timesteps=100000):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo", "dqn"], default="a2c"
+        "--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo", "dqn"], default="ppo"
     )
     parser.add_argument("--timesteps", type=int, default=100_000)
     args = parser.parse_args()
