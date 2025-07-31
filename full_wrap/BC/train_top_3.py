@@ -2,7 +2,8 @@ import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from stable_baselines3 import DQN
+from stable_baselines3 import DDPG
+from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
@@ -10,7 +11,6 @@ from torch import nn
 import random
 import torch
 from tqdm import tqdm
-import gymnasium as gym
 
 # --- Import The Python Environment ---
 # This environment will be used for both training and evaluation.
@@ -22,31 +22,6 @@ try:
     IS_COLAB = True
 except ImportError:
     IS_COLAB = False
-
-# --- Wrapper to make continuous environment compatible with DQN ---
-class DiscretizeActionWrapper(gym.ActionWrapper):
-    """
-    A wrapper to discretize a continuous action space for DQN.
-    :param env: The continuous action environment to wrap.
-    :param n_bins: The number of discrete actions to create.
-    """
-    def __init__(self, env, n_bins=17): # Defaulting to 17 bins
-        super().__init__(env)
-        self.n_bins = n_bins
-        self.action_space = gym.spaces.Discrete(self.n_bins)
-        self.continuous_actions = np.linspace(
-            self.env.action_space.low[0],
-            self.env.action_space.high[0],
-            self.n_bins
-        )
-
-    def action(self, action):
-        """
-        Translates the discrete action from the agent into its
-        corresponding continuous value for the environment.
-        """
-        continuous_action = self.continuous_actions[action]
-        return np.array([continuous_action], dtype=np.float32)
 
 # --- Utility and Plotting Functions ---
 
@@ -74,21 +49,20 @@ def plot_and_save_summary(all_episode_data, target_voltage, tolerance, model_typ
     plt.close(fig1)
     print("--- Full view plot saved successfully! ---")
 
-def run_evaluation(model_path, stats_path, seed, n_episodes=5, target_voltage=30.0, tolerance=0.5, max_episode_steps=2000):
+def run_evaluation(model_path, stats_path, n_episodes=5, target_voltage=30.0, tolerance=0.5, max_episode_steps=2000):
     """Evaluates a trained model on the Python environment."""
     all_rewards, stabilisation_times, steady_state_errors, overshoots = [], [], [], []
     all_episode_plot_data = []
 
     eval_env = None
     try:
-        env_fn = lambda: Monitor(DiscretizeActionWrapper(BCPyEnv(use_randomized_goal=False, fixed_goal_voltage=target_voltage, max_episode_steps=max_episode_steps), n_bins=17))
+        env_fn = lambda: BCPyEnv(use_randomized_goal=False, fixed_goal_voltage=target_voltage, max_episode_steps=max_episode_steps)
         eval_env = DummyVecEnv([env_fn])
-        eval_env.seed(seed)
         eval_env = VecNormalize.load(stats_path, eval_env)
         eval_env.training = False
         eval_env.norm_reward = False
 
-        loaded_model = DQN.load(model_path, env=eval_env)
+        loaded_model = DDPG.load(model_path, env=eval_env)
 
         for ep in range(n_episodes):
             obs = eval_env.reset()
@@ -155,9 +129,9 @@ def run_evaluation(model_path, stats_path, seed, n_episodes=5, target_voltage=30
     
     return all_episode_plot_data
 
-def run_experiment(hyperparams, seed, main_save_path, total_training_timesteps):
+def run_experiment(hyperparams, seed, main_save_path):
     """
-    Trains and evaluates a single DQN model configuration with a specific seed.
+    Trains and evaluates a single DDPG model configuration with a specific seed.
     """
     rank = hyperparams["rank"]
     
@@ -175,40 +149,43 @@ def run_experiment(hyperparams, seed, main_save_path, total_training_timesteps):
     # ======================================================================
     print("\n" + "#"*80)
     print(f"# --- STARTING TRAINING: Rank {rank}, Seed {seed} ---")
-    print(f"Training for {total_training_timesteps} timesteps.")
+    print(f"Training for {TOTAL_TRAINING_TIMESTEPS} timesteps.")
     print("#"*80 + "\n")
 
     train_env = None
     try:
         set_random_seed(seed)
-        # Wrap the environment for DQN with 17 bins for finer control
-        env_fn = lambda: Monitor(DiscretizeActionWrapper(BCPyEnv(use_randomized_goal=True, target_voltage_min=28.5, target_voltage_max=31.5), n_bins=17))
+        env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=True, target_voltage_min=28.5, target_voltage_max=31.5))
         train_env = DummyVecEnv([env_fn])
         train_env.seed(seed)
         train_env = VecNormalize(train_env, norm_obs=True, norm_reward=False, clip_obs=10.0)
-        
-        activation_map = {"tanh": nn.Tanh, "relu": nn.ReLU, "leaky_relu": nn.LeakyReLU, "elu": nn.ELU}
+
         policy_kwargs = {
             "net_arch": [hyperparams["layer_size"]] * hyperparams["n_layers"],
-            "activation_fn": activation_map[hyperparams["activation_fn"]]
+            "activation_fn": {"tanh": nn.Tanh, "relu": nn.ReLU}[hyperparams["activation_fn"]]
         }
         
-        model_params = hyperparams.copy()
-        for key in ["rank", "n_layers", "layer_size", "activation_fn"]:
-            del model_params[key]
-        
-        model_params["policy_kwargs"] = policy_kwargs
-        model_params["learning_starts"] = 10000
+        n_actions = train_env.action_space.shape[-1]
+        action_noise = NormalActionNoise(
+            mean=np.zeros(n_actions), 
+            sigma=hyperparams["action_noise_sigma"] * np.ones(n_actions)
+        )
 
-        model = DQN(
+        model_params = hyperparams.copy()
+        for key in ["rank", "n_layers", "layer_size", "activation_fn", "action_noise_sigma"]:
+            del model_params[key]
+
+        model = DDPG(
             "MlpPolicy", 
             train_env, 
+            policy_kwargs=policy_kwargs, 
+            action_noise=action_noise,
             verbose=1, 
             tensorboard_log=tb_log_path, 
             seed=seed, 
             **model_params
         )
-        model.learn(total_timesteps=total_training_timesteps, progress_bar=True)
+        model.learn(total_timesteps=TOTAL_TRAINING_TIMESTEPS, progress_bar=True)
         
         print(f"\n--- Training complete. Saving final model to: {run_save_path} ---")
         model.save(model_save_path)
@@ -236,7 +213,6 @@ def run_experiment(hyperparams, seed, main_save_path, total_training_timesteps):
         plot_data = run_evaluation(
             model_path=model_save_path,
             stats_path=stats_save_path,
-            seed=seed,
             n_episodes=1,
             target_voltage=voltage,
             max_episode_steps=EVAL_EPISODE_STEPS
@@ -244,7 +220,7 @@ def run_experiment(hyperparams, seed, main_save_path, total_training_timesteps):
         
         if plot_data:
             plot_save_base = os.path.join(eval_save_path, f"evaluation_at_{voltage:.1f}V")
-            plot_and_save_summary(plot_data, voltage, 0.5, "DQN", plot_save_base)
+            plot_and_save_summary(plot_data, voltage, 0.5, "DDPG", plot_save_base)
 
 
 # --- Main Script ---
@@ -256,35 +232,29 @@ if __name__ == '__main__':
     else:
         gdrive_base_path = "./DDC"
         
+    main_test_folder = os.path.join(gdrive_base_path, "DDPG_Final_Params")
+    os.makedirs(main_test_folder, exist_ok=True)
+    print(f"All results will be saved in: {main_test_folder}")
+
     # --- Configuration ---
-    TRAINING_DURATIONS = [500000]
+    TOTAL_TRAINING_TIMESTEPS = 200000
     EVALUATION_VOLTAGES = [27.5, 29.0, 30.0, 31.5, 32.5]
     EVAL_EPISODE_STEPS = 2000
     
-    # --- UPDATED: The top 5 DQN hyperparameter sets from your most recent Optuna study ---
+    # --- The top 2 DDPG hyperparameter sets from your Optuna study ---
     experiments_to_run = [
         {
-            "seed": 17528,
-            "params": {'rank': 1, 'n_layers': 3, 'layer_size': 116, 'activation_fn': 'elu', 'learning_rate': 0.0001810821982940043, 'buffer_size': 185507, 'batch_size': 32, 'gamma': 0.9550537740496252, 'tau': 0.015864868597360998, 'train_freq': 1, 'exploration_fraction': 0.14135640775577812, 'exploration_final_eps': 0.013690773557863389, 'target_update_interval': 500}
-        },
+            "seed": 663996,
+            "params": {'rank': 2, 'n_layers': 3, 'layer_size': 327, 'activation_fn': 'tanh', 'learning_rate': 0.0002061163011738982, 'buffer_size': 237949, 'batch_size': 128, 'gamma': 0.9046223214626081, 'tau': 0.012670170106082904, 'train_freq': 8, 'gradient_steps': 8, 'action_noise_sigma': 0.057700908370714184}
+        }
     ]
     
     # --- Main Loop for Experiments ---
-    for duration in TRAINING_DURATIONS:
-        TOTAL_TRAINING_TIMESTEPS = duration
-        main_test_folder = os.path.join(gdrive_base_path, f"DQN_Final_Params_Top5_{duration//1000}k")
-        os.makedirs(main_test_folder, exist_ok=True)
-        print(f"\n\n{'='*80}")
-        print(f"STARTING TRAINING RUNS FOR {TOTAL_TRAINING_TIMESTEPS} TIMESTEPS")
-        print(f"All results for this duration will be saved in: {main_test_folder}")
-        print(f"{'='*80}\n")
-
-        for experiment in experiments_to_run:
-            run_experiment(
-                hyperparams=experiment["params"], 
-                seed=experiment["seed"],
-                main_save_path=main_test_folder,
-                total_training_timesteps=TOTAL_TRAINING_TIMESTEPS
-            )
+    for experiment in experiments_to_run:
+        run_experiment(
+            hyperparams=experiment["params"], 
+            seed=experiment["seed"],
+            main_save_path=main_test_folder
+        )
 
     print("\n\n--- ALL TRAINING AND EVALUATION RUNS COMPLETE ---")
