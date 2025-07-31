@@ -1,0 +1,468 @@
+(myenv) PS C:\Users\benva\OneDrive\Documents\MATLAB\full_wrap\ip_jax> python .\ip_jax_hp.py
+Tuning SAC on JAX env with SB3...
+[I 2025-07-28 10:35:59,382] A new study created in RDB with name: jax_sac_tuning
+Tuning SAC:   0%|                                                                                                                                                                                   | 0/50 [00:00<?, ?it/s]Pruning trial 0: Optuna judged it underperforming at step 20000 with reward 499.58
+[I 2025-07-28 10:51:24,386] Trial 0 pruned. 
+Tuning SAC:   2%|███                                                                                                                                                        | 1/50 [15:25<12:35:25, 925.00s/it, best_val=–]
+Pruning trial 2: Optuna judged it underperforming at step 20000 with reward 498.61
+[I 2025-07-28 10:52:41,438] Trial 2 pruned. 
+Tuning SAC:   4%|██████▏                                                                                                                                                     | 2/50 [16:42<5:40:57, 426.21s/it, best_val=–]
+Pruning trial 1: Optuna judged it underperforming at step 40000 with reward 498.69
+[I 2025-07-28 11:01:22,269] Trial 1 pruned. 
+Tuning SAC:   6%|█████████▎                                                                                                                                                  | 3/50 [25:22<6:07:42, 469.41s/it, best_val=–]
+[I 2025-07-28 11:05:04,768] Trial 3 finished with value: 498.6114501953125 and parameters: {'learning_rate': 0.00039849804627670854, 'buffer_size': 51355, 'batch_size': 327, 'tau': 0.01914885438475142, 'gamma': 0.9508432878598311, 'ent_coef': 'auto', 'layer_size': 158, 'n_layers': 2, 'activation_fn': 'elu'}. Best is trial 3 with value: 498.6114501953125.
+Tuning SAC:   8%|████████████▏                                                                                                                                           | 4/50 [29:05<4:45:09, 371.94s/it, best_val=498.6]
+Pruning trial 4: Optuna judged it underperforming at step 20000 with reward 499.45
+[I 2025-07-28 11:08:47,132] Trial 4 pruned. 
+Tuning SAC:  10%|███████████████▏                                                                                                                                        | 5/50 [32:47<3:58:29, 318.00s/it, best_val=498.6]
+Pruning trial 7: Optuna judged it underperforming at step 20000 with reward 494.01
+[I 2025-07-28 11:14:49,045] Trial 7 pruned. 
+Tuning SAC:  12%|██████████████████▏                                                                                                                                     | 6/50 [38:49<4:04:08, 332.93s/it, best_val=498.6]
+Pruning trial 6: Optuna judged it underperforming at step 20000 with reward 496.17
+[I 2025-07-28 11:17:03,503] Trial 6 pruned. 
+Tuning SAC:  14%|█████████████████████▎                                                                                                                                  | 7/50 [41:04<3:12:05, 268.04s/it, best_val=498.6]
+Pruning trial 5: Optuna judged it underperforming at step 20000 with reward 494.22
+[I 2025-07-28 11:25:20,830] Trial 5 pruned. 
+Tuning SAC:  16%|████████████████████████▎                                                                                                                               | 8/50 [49:21<3:58:43, 341.04s/it, best_val=498.6]
+Pruning trial 8: Optuna judged it underperforming at step 20000 with reward 496.38
+[I 2025-07-28 11:26:27,762] Trial 8 pruned. 
+Tuning SAC:  18%|███████████████████████████▎                                                                                                                            | 9/50 [50:28<2:54:29, 255.35s/it, best_val=498.6]
+Pruning trial 9: Optuna judged it underperforming at step 20000 with reward 496.39
+[I 2025-07-28 11:29:45,920] Trial 9 pruned. 
+Tuning SAC:  20%|██████████████████████████████▏                                                                                                                        | 10/50 [53:46<2:38:27, 237.69s/it, best_val=498.6]
+Pruning trial 10: Optuna judged it underperforming at step 20000 with reward 497.70
+[I 2025-07-28 11:34:58,857] Trial 10 pruned. 
+Tuning SAC:  22%|█████████████████████████████████▏                                                                                                                     | 11/50 [58:59<2:49:28, 260.72s/it, best_val=498.6]
+Pruning trial 13: Optuna judged it underperforming at step 40000 with reward 495.49
+[I 2025-07-28 11:57:49,354] Trial 13 pruned. 
+Tuning SAC:  24%|███████████████████████████████████▊                                                                                                                 | 12/50 [1:21:49<6:18:56, 598.33s/it, best_val=498.6]
+Pruning trial 12: Optuna judged it underperforming at step 40000 with reward 498.22
+[I 2025-07-28 12:07:54,092] Trial 12 pruned. 
+Tuning SAC:  26%|██████████████████████████████████████▋                                                                                                              | 13/50 [1:31:54<6:10:09, 600.27s/it, best_val=498.6]
+Pruning trial 15: Optuna judged it underperforming at step 20000 with reward 498.82
+[I 2025-07-28 12:13:27,365] Trial 15 pruned. 
+Tuning SAC:  28%|█████████████████████████████████████████▋                                                                                                           | 14/50 [1:37:27<5:11:46, 519.62s/it, best_val=498.6]
+[I 2025-07-28 12:21:14,664] Trial 14 finished with value: 499.434326171875 and parameters: {'learning_rate': 0.0002329308974863237, 'buffer_size': 136077, 'batch_size': 331, 'tau': 0.014113144143611575, 'gamma': 0.9332971806697484, 'ent_coef': 'auto', 'layer_size': 155, 'n_layers': 2, 'activation_fn': 'elu'}. Best is trial 14 with value: 499.434326171875.
+Tuning SAC:  30%|████████████████████████████████████████████▋                                                                                                        | 15/50 [1:45:15<4:53:54, 503.85s/it, best_val=499.4]
+Pruning trial 16: Optuna judged it underperforming at step 20000 with reward 499.08
+[I 2025-07-28 12:24:20,444] Trial 16 pruned. 
+Tuning SAC:  32%|███████████████████████████████████████████████▋                                                                                                     | 16/50 [1:48:21<3:51:15, 408.11s/it, best_val=499.4] 
+Pruning trial 17: Optuna judged it underperforming at step 20000 with reward 495.05
+[I 2025-07-28 12:24:53,017] Trial 17 pruned. 
+Tuning SAC:  34%|██████████████████████████████████████████████████▋                                                                                                  | 17/50 [1:48:53<2:42:21, 295.19s/it, best_val=499.4] 
+Pruning trial 18: Optuna judged it underperforming at step 20000 with reward 498.67
+[I 2025-07-28 12:37:01,659] Trial 18 pruned. 
+Tuning SAC:  36%|█████████████████████████████████████████████████████▋                                                                                               | 18/50 [2:01:02<3:46:53, 425.44s/it, best_val=499.4] 
+Pruning trial 19: Optuna judged it underperforming at step 20000 with reward 478.73
+[I 2025-07-28 12:44:58,149] Trial 19 pruned. 
+Tuning SAC:  38%|████████████████████████████████████████████████████████▌                                                                                            | 19/50 [2:08:58<3:47:43, 440.77s/it, best_val=499.4]
+[I 2025-07-28 12:49:39,012] Trial 11 finished with value: 498.9720764160156 and parameters: {'learning_rate': 0.00012707280798063112, 'buffer_size': 88454, 'batch_size': 410, 'tau': 0.005060453441096228, 'gamma': 0.9232888123988962, 'ent_coef': 0.1, 'layer_size': 242, 'n_layers': 4, 'activation_fn': 'elu'}. Best is trial 14 with value: 499.434326171875.
+Tuning SAC:  40%|███████████████████████████████████████████████████████████▌                                                                                         | 20/50 [2:13:39<3:16:22, 392.76s/it, best_val=499.4]
+Pruning trial 20: Optuna judged it underperforming at step 40000 with reward 489.97
+[I 2025-07-28 12:53:12,870] Trial 20 pruned. 
+Tuning SAC:  42%|██████████████████████████████████████████████████████████████▌                                                                                      | 21/50 [2:17:13<2:43:52, 339.06s/it, best_val=499.4] 
+Pruning trial 22: Optuna judged it underperforming at step 20000 with reward 498.08
+[I 2025-07-28 13:01:14,230] Trial 22 pruned. 
+Tuning SAC:  44%|█████████████████████████████████████████████████████████████████▌                                                                                   | 22/50 [2:25:14<2:58:09, 381.77s/it, best_val=499.4] 
+Pruning trial 21: Optuna judged it underperforming at step 40000 with reward 498.66
+[I 2025-07-28 13:06:17,683] Trial 21 pruned. 
+Tuning SAC:  46%|████████████████████████████████████████████████████████████████████▌                                                                                | 23/50 [2:30:18<2:41:13, 358.27s/it, best_val=499.4] 
+Pruning trial 24: Optuna judged it underperforming at step 40000 with reward 498.18
+[I 2025-07-28 13:25:21,796] Trial 24 pruned. 
+Tuning SAC:  48%|███████████████████████████████████████████████████████████████████████▌                                                                             | 24/50 [2:49:22<4:17:25, 594.07s/it, best_val=499.4] 
+Pruning trial 26: Optuna judged it underperforming at step 40000 with reward 497.66
+[I 2025-07-28 13:44:31,679] Trial 26 pruned. 
+Tuning SAC:  50%|██████████████████████████████████████████████████████████████████████████▌                                                                          | 25/50 [3:08:32<5:17:00, 760.83s/it, best_val=499.4] 
+[I 2025-07-28 14:03:23,969] Trial 25 finished with value: 498.774658203125 and parameters: {'learning_rate': 8.18093053882748e-05, 'buffer_size': 88296, 'batch_size': 386, 'tau': 0.008186754111100487, 'gamma': 0.9235122183881298, 'ent_coef': 0.1, 'layer_size': 248, 'n_layers': 4, 'activation_fn': 'elu'}. Best is trial 14 with value: 499.434326171875.
+Tuning SAC:  52%|█████████████████████████████████████████████████████████████████████████████▍                                                                       | 26/50 [3:27:24<5:48:54, 872.28s/it, best_val=499.4]
+[I 2025-07-28 14:05:49,272] Trial 27 finished with value: 499.5693359375 and parameters: {'learning_rate': 9.542375673905499e-05, 'buffer_size': 52717, 'batch_size': 394, 'tau': 0.009519460145517543, 'gamma': 0.9216630105998838, 'ent_coef': 0.1, 'layer_size': 162, 'n_layers': 4, 'activation_fn': 'elu'}. Best is trial 27 with value: 499.5693359375.
+Tuning SAC:  54%|████████████████████████████████████████████████████████████████████████████████▍                                                                    | 27/50 [3:29:49<4:10:45, 654.17s/it, best_val=499.6]
+[I 2025-07-28 14:20:19,067] Trial 23 finished with value: 499.75762939453125 and parameters: {'learning_rate': 7.519468391768591e-05, 'buffer_size': 109417, 'batch_size': 281, 'tau': 0.008568783584993144, 'gamma': 0.9238847923186063, 'ent_coef': 0.1, 'layer_size': 273, 'n_layers': 4, 'activation_fn': 'elu'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  56%|███████████████████████████████████████████████████████████████████████████████████▍                                                                 | 28/50 [3:44:19<4:23:34, 718.86s/it, best_val=499.8]
+Pruning trial 30: Optuna judged it underperforming at step 20000 with reward 498.72
+[I 2025-07-28 14:21:42,282] Trial 30 pruned. 
+Tuning SAC:  58%|██████████████████████████████████████████████████████████████████████████████████████▍                                                              | 29/50 [3:45:42<3:04:51, 528.16s/it, best_val=499.8] 
+[I 2025-07-28 14:24:36,880] Trial 28 finished with value: 499.54241943359375 and parameters: {'learning_rate': 8.458443121780363e-05, 'buffer_size': 52219, 'batch_size': 403, 'tau': 0.008361313177262224, 'gamma': 0.9395494343507143, 'ent_coef': 0.1, 'layer_size': 165, 'n_layers': 2, 'activation_fn': 'elu'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  60%|█████████████████████████████████████████████████████████████████████████████████████████▍                                                           | 30/50 [3:48:37<2:20:41, 422.09s/it, best_val=499.8]
+Pruning trial 32: Optuna judged it underperforming at step 20000 with reward 497.82
+[I 2025-07-28 14:34:56,086] Trial 32 pruned. 
+Tuning SAC:  62%|████████████████████████████████████████████████████████████████████████████████████████████▍                                                        | 31/50 [3:58:56<2:32:23, 481.23s/it, best_val=499.8] 
+Pruning trial 33: Optuna judged it underperforming at step 20000 with reward 497.70
+[I 2025-07-28 14:39:50,241] Trial 33 pruned. 
+Tuning SAC:  64%|███████████████████████████████████████████████████████████████████████████████████████████████▎                                                     | 32/50 [4:03:50<2:07:31, 425.10s/it, best_val=499.8]
+Pruning trial 35: Optuna judged it underperforming at step 20000 with reward 491.09
+[I 2025-07-28 14:54:15,842] Trial 35 pruned. 
+Tuning SAC:  66%|██████████████████████████████████████████████████████████████████████████████████████████████████▎                                                  | 33/50 [4:18:16<2:37:53, 557.25s/it, best_val=499.8] 
+[I 2025-07-28 15:02:20,823] Trial 29 finished with value: 498.86175537109375 and parameters: {'learning_rate': 9.234935232541127e-05, 'buffer_size': 130984, 'batch_size': 393, 'tau': 0.008897344415649957, 'gamma': 0.9175334800907214, 'ent_coef': 0.1, 'layer_size': 338, 'n_layers': 4, 'activation_fn': 'leaky_relu'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  68%|█████████████████████████████████████████████████████████████████████████████████████████████████████▎                                               | 34/50 [4:26:21<2:22:49, 535.57s/it, best_val=499.8]
+[I 2025-07-28 15:06:26,857] Trial 34 finished with value: 498.4937744140625 and parameters: {'learning_rate': 4.770140588074297e-05, 'buffer_size': 58933, 'batch_size': 249, 'tau': 0.009440294268728963, 'gamma': 0.9000842187135275, 'ent_coef': 0.1, 'layer_size': 210, 'n_layers': 2, 'activation_fn': 'elu'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  70%|████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                            | 35/50 [4:30:27<1:52:10, 448.71s/it, best_val=499.8]
+Pruning trial 36: Optuna judged it underperforming at step 20000 with reward 498.37
+[I 2025-07-28 15:08:58,353] Trial 36 pruned. 
+Tuning SAC:  72%|███████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                         | 36/50 [4:32:58<1:23:53, 359.55s/it, best_val=499.8] 
+Pruning trial 38: Optuna judged it underperforming at step 20000 with reward 496.72
+[I 2025-07-28 15:18:51,346] Trial 38 pruned. 
+Tuning SAC:  74%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                                      | 37/50 [4:42:51<1:33:04, 429.58s/it, best_val=499.8] 
+Pruning trial 37: Optuna judged it underperforming at step 20000 with reward 495.50
+[I 2025-07-28 15:21:28,193] Trial 37 pruned. 
+Tuning SAC:  76%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                                   | 38/50 [4:45:28<1:09:33, 347.76s/it, best_val=499.8] 
+Pruning trial 40: Optuna judged it underperforming at step 20000 with reward 498.27
+[I 2025-07-28 15:35:07,897] Trial 40 pruned. 
+Tuning SAC:  78%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                                | 39/50 [4:59:08<1:29:42, 489.34s/it, best_val=499.8] 
+[I 2025-07-28 15:44:13,700] Trial 31 finished with value: 499.65606689453125 and parameters: {'learning_rate': 2.8860682230955504e-05, 'buffer_size': 137439, 'batch_size': 310, 'tau': 0.008780230670278446, 'gamma': 0.9030965909632942, 'ent_coef': 0.1, 'layer_size': 304, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  80%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                             | 40/50 [5:08:14<1:24:22, 506.28s/it, best_val=499.8]
+Pruning trial 41: Optuna judged it underperforming at step 20000 with reward 494.92
+[I 2025-07-28 15:46:59,000] Trial 41 pruned. 
+Tuning SAC:  82%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                          | 41/50 [5:10:59<1:00:35, 403.99s/it, best_val=499.8] 
+Pruning trial 39: Optuna judged it underperforming at step 40000 with reward 499.10
+[I 2025-07-28 15:47:01,920] Trial 39 pruned. 
+Tuning SAC:  84%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                        | 42/50 [5:11:02<37:49, 283.67s/it, best_val=499.8] 
+Pruning trial 42: Optuna judged it underperforming at step 20000 with reward 495.13
+[I 2025-07-28 15:49:42,336] Trial 42 pruned. 
+Tuning SAC:  86%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                     | 43/50 [5:13:42<28:46, 246.69s/it, best_val=499.8] 
+[I 2025-07-28 16:31:29,113] Trial 46 finished with value: 499.7561950683594 and parameters: {'learning_rate': 2.6400401400035e-05, 'buffer_size': 143985, 'batch_size': 354, 'tau': 0.010277218310666168, 'gamma': 0.9033348330821259, 'ent_coef': 0.1, 'layer_size': 373, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  88%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                  | 44/50 [5:55:29<1:32:28, 924.72s/it, best_val=499.8]
+[I 2025-07-28 16:35:27,000] Trial 45 finished with value: 498.9530029296875 and parameters: {'learning_rate': 2.670239317131157e-05, 'buffer_size': 145564, 'batch_size': 355, 'tau': 0.00806880321033458, 'gamma': 0.9035901118652797, 'ent_coef': 0.1, 'layer_size': 365, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  90%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉               | 45/50 [5:59:27<59:53, 718.67s/it, best_val=499.8]
+Pruning trial 44: Optuna judged it underperforming at step 40000 with reward 499.41
+[I 2025-07-28 16:36:19,663] Trial 44 pruned. 
+Tuning SAC:  92%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉            | 46/50 [6:00:20<34:35, 518.87s/it, best_val=499.8] 
+[I 2025-07-28 17:18:13,070] Trial 47 finished with value: 499.601318359375 and parameters: {'learning_rate': 2.6427252079945072e-05, 'buffer_size': 50259, 'batch_size': 357, 'tau': 0.010282106197576898, 'gamma': 0.9031983016031717, 'ent_coef': 0.1, 'layer_size': 376, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  94%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████         | 47/50 [6:42:13<55:51, 1117.23s/it, best_val=499.8]
+[I 2025-07-28 17:20:21,865] Trial 43 finished with value: 499.51898193359375 and parameters: {'learning_rate': 2.7162808234415374e-05, 'buffer_size': 190571, 'batch_size': 210, 'tau': 0.0035051493795336683, 'gamma': 0.9110118835009098, 'ent_coef': 0.1, 'layer_size': 308, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  96%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉      | 48/50 [6:44:22<27:21, 820.70s/it, best_val=499.8]
+[I 2025-07-28 17:27:22,955] Trial 48 finished with value: 499.6087951660156 and parameters: {'learning_rate': 1.0392861059387999e-05, 'buffer_size': 185428, 'batch_size': 424, 'tau': 0.010485830297246793, 'gamma': 0.9125287856482226, 'ent_coef': 0.1, 'layer_size': 408, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC:  98%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉   | 49/50 [6:51:23<11:40, 700.82s/it, best_val=499.8]
+[I 2025-07-28 17:32:22,146] Trial 49 finished with value: 499.64947509765625 and parameters: {'learning_rate': 1.8043647710890493e-05, 'buffer_size': 51720, 'batch_size': 414, 'tau': 0.010229595170688506, 'gamma': 0.9186439754849501, 'ent_coef': 0.1, 'layer_size': 430, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 23 with value: 499.75762939453125.
+Tuning SAC: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [6:56:22<00:00, 580.33s/it, best_val=499.8]
+Tuning SAC: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [6:56:22<00:00, 499.66s/it, best_val=499.8] 
+Best reward: 499.76
+  learning_rate: 7.519468391768591e-05
+  buffer_size: 109417
+  batch_size: 281
+  tau: 0.008568783584993144
+  gamma: 0.9238847923186063
+  ent_coef: 0.1
+  layer_size: 273
+  n_layers: 4
+  activation_fn: elu
+
+
+  Tuning DQN on JAX env with SB3...
+[I 2025-07-28 17:32:22,470] A new study created in RDB with name: jax_dqn_tuning
+Tuning DQN:   0%|                                                                                                                                                                                   | 0/50 [00:00<?, ?it/s]Pruning trial 0: reward 5.71 below threshold 20 at 20000 steps
+[I 2025-07-28 17:34:05,389] Trial 0 pruned. 
+Tuning DQN:   2%|███                                                                                                                                                         | 1/50 [01:42<1:24:02, 102.91s/it, best_val=–] 
+Pruning trial 3: reward 11.62 below threshold 20 at 20000 steps
+[I 2025-07-28 17:34:38,839] Trial 3 pruned. 
+Tuning DQN:   4%|██████▎                                                                                                                                                        | 2/50 [02:16<49:38, 62.05s/it, best_val=–] 
+Pruning trial 4: Optuna judged it underperforming at step 20000 with reward 337.73
+[I 2025-07-28 17:36:46,839] Trial 4 pruned. 
+Tuning DQN:   6%|█████████▍                                                                                                                                                   | 3/50 [04:24<1:12:11, 92.17s/it, best_val=–] 
+Pruning trial 5: reward 6.46 below threshold 20 at 20000 steps
+[I 2025-07-28 17:37:35,074] Trial 5 pruned. 
+Tuning DQN:   8%|████████████▋                                                                                                                                                  | 4/50 [05:12<57:21, 74.82s/it, best_val=–] 
+[I 2025-07-28 17:38:42,985] Trial 1 finished with value: 287.5864562988281 and parameters: {'learning_rate': 0.0013386670312309145, 'buffer_size': 128795, 'batch_size': 64, 'gamma': 0.9650875029970468, 'tau': 0.029969065250804693, 'exploration_fraction': 0.2993721074079458, 'exploration_final_eps': 0.06689151328872762, 'target_update_interval': 4314, 'train_freq': 6, 'layer_size': 328, 'n_layers': 3, 'activation_fn': 'tanh'}. Best is trial 1 with value: 287.5864562988281.
+Tuning DQN:  10%|███████████████▌                                                                                                                                           | 5/50 [06:20<54:14, 72.33s/it, best_val=287.6]
+Pruning trial 7: reward 6.83 below threshold 20 at 20000 steps
+[I 2025-07-28 17:39:02,726] Trial 7 pruned. 
+Tuning DQN:  12%|██████████████████▌                                                                                                                                        | 6/50 [06:40<39:55, 54.45s/it, best_val=287.6]
+Pruning trial 6: reward 6.74 below threshold 20 at 20000 steps
+[I 2025-07-28 17:39:04,169] Trial 6 pruned. 
+Tuning DQN:  14%|█████████████████████▋                                                                                                                                     | 7/50 [06:41<26:36, 37.12s/it, best_val=287.6] 
+Pruning trial 9: reward 7.17 below threshold 20 at 20000 steps
+[I 2025-07-28 17:41:10,199] Trial 9 pruned. 
+Tuning DQN:  16%|████████████████████████▊                                                                                                                                  | 8/50 [08:47<45:47, 65.43s/it, best_val=287.6] 
+Pruning trial 2: Optuna judged it underperforming at step 40000 with reward 255.15
+[I 2025-07-28 17:41:20,228] Trial 2 pruned. 
+Tuning DQN:  18%|███████████████████████████▉                                                                                                                               | 9/50 [08:57<32:52, 48.11s/it, best_val=287.6] 
+Pruning trial 10: reward 10.84 below threshold 20 at 20000 steps
+[I 2025-07-28 17:41:24,258] Trial 10 pruned. 
+Tuning DQN:  20%|██████████████████████████████▊                                                                                                                           | 10/50 [09:01<22:59, 34.50s/it, best_val=287.6] 
+Pruning trial 8: reward 6.86 below threshold 20 at 20000 steps
+[I 2025-07-28 17:41:47,534] Trial 8 pruned. 
+Tuning DQN:  22%|█████████████████████████████████▉                                                                                                                        | 11/50 [09:25<20:11, 31.07s/it, best_val=287.6] 
+Pruning trial 12: Optuna judged it underperforming at step 20000 with reward 20.15
+[I 2025-07-28 17:43:45,780] Trial 12 pruned. 
+Tuning DQN:  24%|████████████████████████████████████▉                                                                                                                     | 12/50 [11:23<36:28, 57.59s/it, best_val=287.6]
+Pruning trial 11: reward 6.39 below threshold 20 at 20000 steps
+[I 2025-07-28 17:45:46,761] Trial 11 pruned. 
+Tuning DQN:  26%|████████████████████████████████████████                                                                                                                  | 13/50 [13:24<47:21, 76.79s/it, best_val=287.6]
+Pruning trial 13: Optuna judged it underperforming at step 20000 with reward 22.97
+[I 2025-07-28 17:46:00,077] Trial 13 pruned. 
+Tuning DQN:  28%|███████████████████████████████████████████                                                                                                               | 14/50 [13:37<34:34, 57.62s/it, best_val=287.6] 
+Pruning trial 14: Optuna judged it underperforming at step 20000 with reward 122.21
+[I 2025-07-28 17:47:06,824] Trial 14 pruned. 
+Tuning DQN:  30%|██████████████████████████████████████████████▏                                                                                                           | 15/50 [14:44<35:12, 60.37s/it, best_val=287.6] 
+Pruning trial 15: Optuna judged it underperforming at step 20000 with reward 52.97
+[I 2025-07-28 17:48:34,576] Trial 15 pruned. 
+Tuning DQN:  32%|█████████████████████████████████████████████████▎                                                                                                        | 16/50 [16:12<38:52, 68.61s/it, best_val=287.6] 
+Pruning trial 18: reward 6.90 below threshold 20 at 20000 steps
+[I 2025-07-28 17:50:12,164] Trial 18 pruned. 
+Tuning DQN:  34%|████████████████████████████████████████████████████▎                                                                                                     | 17/50 [17:49<42:31, 77.32s/it, best_val=287.6] 
+Pruning trial 19: reward 6.63 below threshold 20 at 20000 steps
+[I 2025-07-28 17:51:55,806] Trial 19 pruned. 
+Tuning DQN:  36%|███████████████████████████████████████████████████████▍                                                                                                  | 18/50 [19:33<45:27, 85.23s/it, best_val=287.6] 
+Pruning trial 20: reward 5.53 below threshold 20 at 20000 steps
+[I 2025-07-28 17:52:23,551] Trial 20 pruned. 
+Tuning DQN:  38%|██████████████████████████████████████████████████████████▌                                                                                               | 19/50 [20:01<35:06, 67.97s/it, best_val=287.6]
+Pruning trial 21: reward 7.04 below threshold 20 at 20000 steps
+[I 2025-07-28 17:53:53,343] Trial 21 pruned. 
+Tuning DQN:  40%|█████████████████████████████████████████████████████████████▌                                                                                            | 20/50 [21:30<37:15, 74.52s/it, best_val=287.6] 
+Pruning trial 22: reward 6.54 below threshold 20 at 20000 steps
+[I 2025-07-28 17:54:16,776] Trial 22 pruned. 
+Tuning DQN:  42%|████████████████████████████████████████████████████████████████▋                                                                                         | 21/50 [21:54<28:36, 59.19s/it, best_val=287.6] 
+Pruning trial 24: reward 5.65 below threshold 20 at 20000 steps
+[I 2025-07-28 17:56:14,350] Trial 24 pruned. 
+Tuning DQN:  44%|███████████████████████████████████████████████████████████████████▊                                                                                      | 22/50 [23:51<35:47, 76.71s/it, best_val=287.6] 
+[I 2025-07-28 17:56:32,271] Trial 17 finished with value: 494.1525573730469 and parameters: {'learning_rate': 0.00020908583585935267, 'buffer_size': 131121, 'batch_size': 160, 'gamma': 0.977680582830607, 'tau': 0.02649766436268365, 'exploration_fraction': 0.33122002968041775, 'exploration_final_eps': 0.0688686526117065, 'target_update_interval': 2224, 'train_freq': 2, 'layer_size': 72, 'n_layers': 3, 'activation_fn': 'relu'}. Best is trial 17 with value: 494.1525573730469.
+Tuning DQN:  46%|██████████████████████████████████████████████████████████████████████▊                                                                                   | 23/50 [24:09<26:34, 59.07s/it, best_val=494.2]
+Pruning trial 16: Optuna judged it underperforming at step 40000 with reward 95.08
+[I 2025-07-28 17:58:04,797] Trial 16 pruned. 
+Tuning DQN:  48%|█████████████████████████████████████████████████████████████████████████▉                                                                                | 24/50 [25:42<29:56, 69.11s/it, best_val=494.2]
+Pruning trial 25: Optuna judged it underperforming at step 20000 with reward 39.49
+[I 2025-07-28 17:58:13,742] Trial 25 pruned. 
+Tuning DQN:  50%|█████████████████████████████████████████████████████████████████████████████                                                                             | 25/50 [25:51<21:16, 51.06s/it, best_val=494.2] 
+Pruning trial 26: reward 6.75 below threshold 20 at 20000 steps
+[I 2025-07-28 17:59:14,918] Trial 26 pruned. 
+Tuning DQN:  52%|████████████████████████████████████████████████████████████████████████████████                                                                          | 26/50 [26:52<21:38, 54.09s/it, best_val=494.2] 
+Pruning trial 27: reward 6.84 below threshold 20 at 20000 steps
+[I 2025-07-28 18:00:01,520] Trial 27 pruned. 
+Tuning DQN:  54%|███████████████████████████████████████████████████████████████████████████████████▏                                                                      | 27/50 [27:39<19:52, 51.84s/it, best_val=494.2] 
+[I 2025-07-28 18:00:07,431] Trial 23 finished with value: 483.0848083496094 and parameters: {'learning_rate': 0.001442388598400369, 'buffer_size': 86137, 'batch_size': 256, 'gamma': 0.9559212332846508, 'tau': 0.02389684898323817, 'exploration_fraction': 0.25464422666920145, 'exploration_final_eps': 0.0463182214102411, 'target_update_interval': 4507, 'train_freq': 4, 'layer_size': 94, 'n_layers': 3, 'activation_fn': 'tanh'}. Best is trial 17 with value: 494.1525573730469.
+Tuning DQN:  56%|██████████████████████████████████████████████████████████████████████████████████████▏                                                                   | 28/50 [27:44<13:57, 38.06s/it, best_val=494.2]
+Pruning trial 28: reward 6.42 below threshold 20 at 20000 steps
+[I 2025-07-28 18:00:11,094] Trial 28 pruned. 
+Tuning DQN:  58%|█████████████████████████████████████████████████████████████████████████████████████████▎                                                                | 29/50 [27:48<09:42, 27.74s/it, best_val=494.2] 
+Pruning trial 29: Optuna judged it underperforming at step 20000 with reward 236.03
+[I 2025-07-28 18:00:53,916] Trial 29 pruned. 
+Tuning DQN:  60%|████████████████████████████████████████████████████████████████████████████████████████████▍                                                             | 30/50 [28:31<10:45, 32.27s/it, best_val=494.2] 
+Pruning trial 31: Optuna judged it underperforming at step 20000 with reward 24.59
+[I 2025-07-28 18:01:30,438] Trial 31 pruned. 
+Tuning DQN:  62%|███████████████████████████████████████████████████████████████████████████████████████████████▍                                                          | 31/50 [29:07<10:37, 33.54s/it, best_val=494.2] 
+Pruning trial 32: Optuna judged it underperforming at step 20000 with reward 24.03
+[I 2025-07-28 18:01:35,583] Trial 32 pruned. 
+Tuning DQN:  64%|██████████████████████████████████████████████████████████████████████████████████████████████████▌                                                       | 32/50 [29:13<07:30, 25.02s/it, best_val=494.2] 
+Pruning trial 33: reward 18.61 below threshold 20 at 20000 steps
+[I 2025-07-28 18:02:00,403] Trial 33 pruned. 
+Tuning DQN:  66%|█████████████████████████████████████████████████████████████████████████████████████████████████████▋                                                    | 33/50 [29:37<07:04, 24.96s/it, best_val=494.2] 
+Pruning trial 30: Optuna judged it underperforming at step 40000 with reward 275.12
+[I 2025-07-28 18:04:56,367] Trial 30 pruned. 
+Tuning DQN:  68%|████████████████████████████████████████████████████████████████████████████████████████████████████████▋                                                 | 34/50 [32:33<18:44, 70.26s/it, best_val=494.2] 
+Pruning trial 34: Optuna judged it underperforming at step 40000 with reward 306.88
+[I 2025-07-28 18:06:02,024] Trial 34 pruned. 
+Tuning DQN:  70%|███████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                              | 35/50 [33:39<17:13, 68.88s/it, best_val=494.2] 
+[I 2025-07-28 18:07:23,963] Trial 35 finished with value: 490.5636291503906 and parameters: {'learning_rate': 0.0003042165545455284, 'buffer_size': 72879, 'batch_size': 256, 'gamma': 0.9650835032308563, 'tau': 0.021221337989635103, 'exploration_fraction': 0.29586291546986837, 'exploration_final_eps': 0.057856633148993336, 'target_update_interval': 3895, 'train_freq': 5, 'layer_size': 139, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 17 with value: 494.1525573730469.
+Tuning DQN:  72%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                                           | 36/50 [35:01<16:59, 72.80s/it, best_val=494.2]
+[I 2025-07-28 18:07:42,152] Trial 36 finished with value: 233.20716857910156 and parameters: {'learning_rate': 0.0002975583662136713, 'buffer_size': 73013, 'batch_size': 288, 'gamma': 0.9649982386006001, 'tau': 0.021235202896016624, 'exploration_fraction': 0.23558170348956217, 'exploration_final_eps': 0.08011870385758929, 'target_update_interval': 3798, 'train_freq': 6, 'layer_size': 322, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 17 with value: 494.1525573730469.
+Tuning DQN:  74%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                                        | 37/50 [35:19<12:13, 56.42s/it, best_val=494.2]
+Pruning trial 38: Optuna judged it underperforming at step 20000 with reward 101.45
+[I 2025-07-28 18:07:57,718] Trial 38 pruned. 
+Tuning DQN:  76%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                     | 38/50 [35:35<08:49, 44.16s/it, best_val=494.2] 
+Pruning trial 39: Optuna judged it underperforming at step 20000 with reward 32.27
+[I 2025-07-28 18:08:51,416] Trial 39 pruned. 
+Tuning DQN:  78%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                  | 39/50 [36:28<08:37, 47.02s/it, best_val=494.2] 
+Pruning trial 40: Optuna judged it underperforming at step 20000 with reward 30.05
+[I 2025-07-28 18:09:08,448] Trial 40 pruned. 
+Tuning DQN:  80%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                              | 40/50 [36:45<06:20, 38.02s/it, best_val=494.2] 
+Pruning trial 37: Optuna judged it underperforming at step 40000 with reward 370.34
+[I 2025-07-28 18:09:21,650] Trial 37 pruned. 
+Tuning DQN:  82%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                           | 41/50 [36:59<04:35, 30.58s/it, best_val=494.2] 
+Pruning trial 41: Optuna judged it underperforming at step 20000 with reward 29.80
+[I 2025-07-28 18:09:37,470] Trial 41 pruned. 
+Tuning DQN:  84%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                        | 42/50 [37:15<03:29, 26.15s/it, best_val=494.2] 
+Pruning trial 43: reward 6.97 below threshold 20 at 20000 steps
+[I 2025-07-28 18:10:55,211] Trial 43 pruned. 
+Tuning DQN:  86%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▍                     | 43/50 [38:32<04:51, 41.63s/it, best_val=494.2] 
+Pruning trial 44: Optuna judged it underperforming at step 20000 with reward 42.37
+[I 2025-07-28 18:11:01,260] Trial 44 pruned. 
+Tuning DQN:  88%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                  | 44/50 [38:38<03:05, 30.95s/it, best_val=494.2] 
+Pruning trial 45: reward 6.50 below threshold 20 at 20000 steps
+[I 2025-07-28 18:11:07,646] Trial 45 pruned. 
+Tuning DQN:  90%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌               | 45/50 [38:45<01:57, 23.58s/it, best_val=494.2] 
+[I 2025-07-28 18:13:44,287] Trial 42 finished with value: 473.8170166015625 and parameters: {'learning_rate': 0.00034459534875353305, 'buffer_size': 60941, 'batch_size': 160, 'gamma': 0.9539613538795687, 'tau': 0.017411883152705115, 'exploration_fraction': 0.34228590591944263, 'exploration_final_eps': 0.03643306545150124, 'target_update_interval': 4167, 'train_freq': 4, 'layer_size': 175, 'n_layers': 3, 'activation_fn': 'leaky_relu'}. Best is trial 17 with value: 494.1525573730469.
+Tuning DQN:  92%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▋            | 46/50 [41:21<04:14, 63.50s/it, best_val=494.2]
+Pruning trial 49: reward 5.64 below threshold 20 at 20000 steps
+[I 2025-07-28 18:15:14,003] Trial 49 pruned. 
+Tuning DQN:  94%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊         | 47/50 [42:51<03:34, 71.37s/it, best_val=494.2] 
+[I 2025-07-28 18:15:51,904] Trial 48 finished with value: 404.0926513671875 and parameters: {'learning_rate': 0.0003369301835884297, 'buffer_size': 58151, 'batch_size': 224, 'gamma': 0.9533524196005553, 'tau': 0.025151322298849532, 'exploration_fraction': 0.1704155141545346, 'exploration_final_eps': 0.07888649305930796, 'target_update_interval': 3094, 'train_freq': 6, 'layer_size': 55, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 17 with value: 494.1525573730469.
+Tuning DQN:  96%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊      | 48/50 [43:29<02:02, 61.33s/it, best_val=494.2]
+[I 2025-07-28 18:16:00,336] Trial 47 finished with value: 485.03546142578125 and parameters: {'learning_rate': 0.0002520979282431422, 'buffer_size': 54701, 'batch_size': 224, 'gamma': 0.961591267049625, 'tau': 0.022738992310610034, 'exploration_fraction': 0.2579565888904279, 'exploration_final_eps': 0.0775095185106018, 'target_update_interval': 3111, 'train_freq': 5, 'layer_size': 398, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 17 with value: 494.1525573730469.
+Tuning DQN:  98%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉   | 49/50 [43:37<00:45, 45.46s/it, best_val=494.2]
+[I 2025-07-28 18:16:01,260] Trial 46 finished with value: 495.305908203125 and parameters: {'learning_rate': 0.0002832970989210881, 'buffer_size': 76233, 'batch_size': 320, 'gamma': 0.9614368796527718, 'tau': 0.02180447621701219, 'exploration_fraction': 0.22312989708132197, 'exploration_final_eps': 0.07779507474203744, 'target_update_interval': 4333, 'train_freq': 5, 'layer_size': 330, 'n_layers': 4, 'activation_fn': 'tanh'}. Best is trial 46 with value: 495.305908203125.
+Tuning DQN: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [43:38<00:00, 32.10s/it, best_val=495.3]
+Tuning DQN: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [43:38<00:00, 52.38s/it, best_val=495.3] 
+Best reward: 495.31
+  learning_rate: 0.0002832970989210881
+  buffer_size: 76233
+  batch_size: 320
+  gamma: 0.9614368796527718
+  tau: 0.02180447621701219
+  exploration_fraction: 0.22312989708132197
+  exploration_final_eps: 0.07779507474203744
+  target_update_interval: 4333
+  train_freq: 5
+  layer_size: 330
+  n_layers: 4
+  activation_fn: tanh
+
+
+Tuning A2C on JAX env with SB3...
+[I 2025-07-28 18:16:01,411] A new study created in RDB with name: jax_a2c_tuning
+Tuning A2C:   0%|                                                                                                                                                                                   | 0/50 [00:00<?, ?it/s]C:\Users\benva\OneDrive\Documents\MATLAB\myenv\Lib\site-packages\stable_baselines3\common\on_policy_algorithm.py:150: UserWarning: You are trying to run A2C on the GPU, but it is primarily intended to run on the CPU when not using a CNN policy (you are using ActorCriticPolicy which should be a MlpPolicy). See https://github.com/DLR-RM/stable-baselines3/issues/1245 for more info. You can pass `device='cpu'` or `export CUDA_VISIBLE_DEVICES=` to force using the CPU.Note: The model will train, but the GPU utilization will be poor and the training might take longer than on CPU.
+  warnings.warn(
+Pruning trial 2: Optuna judged it underperforming at step 20000 with reward 496.99
+[I 2025-07-28 18:19:02,998] Trial 2 pruned. 
+Tuning A2C:   2%|███                                                                                                                                                         | 1/50 [03:01<2:28:17, 181.58s/it, best_val=–] 
+Pruning trial 0: Optuna judged it underperforming at step 20000 with reward 496.57
+[I 2025-07-28 18:19:15,863] Trial 0 pruned. 
+Tuning A2C:   4%|██████▎                                                                                                                                                      | 2/50 [03:14<1:05:52, 82.34s/it, best_val=–] 
+[I 2025-07-28 18:22:22,185] Trial 3 finished with value: 495.4949035644531 and parameters: {'learning_rate': 0.00015725796893471976, 'gamma': 0.913867478730691, 'n_steps': 58, 'ent_coef': 0.012664241653451449, 'vf_coef': 0.731244938022859, 'max_grad_norm': 3.7413594527671608, 'rms_prop_eps': 0.0009277857245182926, 'use_rms_prop': False, 'layer_size': 430, 'n_layers': 1, 'activation_fn': 'elu'}. Best is trial 3 with value: 495.4949035644531.
+Tuning A2C:   6%|█████████                                                                                                                                               | 3/50 [06:20<1:41:41, 129.82s/it, best_val=495.5]
+[I 2025-07-28 18:24:01,291] Trial 1 finished with value: 498.4847412109375 and parameters: {'learning_rate': 0.00015368852129483035, 'gamma': 0.91835571870382, 'n_steps': 8, 'ent_coef': 1.5431907119475708e-07, 'vf_coef': 0.26401805775311127, 'max_grad_norm': 1.3823226341995056, 'rms_prop_eps': 5.1948621337559696e-05, 'use_rms_prop': True, 'layer_size': 98, 'n_layers': 2, 'activation_fn': 'leaky_relu'}. Best is trial 1 with value: 498.4847412109375.
+Tuning A2C:   8%|████████████▏                                                                                                                                           | 4/50 [07:59<1:30:13, 117.69s/it, best_val=498.5]
+Pruning trial 4: Optuna judged it underperforming at step 40000 with reward 498.43
+[I 2025-07-28 18:24:25,866] Trial 4 pruned. 
+Tuning A2C:  10%|███████████████▎                                                                                                                                         | 5/50 [08:24<1:03:05, 84.11s/it, best_val=498.5] 
+Pruning trial 6: Optuna judged it underperforming at step 20000 with reward 494.77
+[I 2025-07-28 18:24:57,811] Trial 6 pruned. 
+Tuning A2C:  12%|██████████████████▌                                                                                                                                        | 6/50 [08:56<48:40, 66.38s/it, best_val=498.5] 
+Pruning trial 5: Optuna judged it underperforming at step 40000 with reward 497.68
+[I 2025-07-28 18:25:12,472] Trial 5 pruned. 
+Tuning A2C:  14%|█████████████████████▋                                                                                                                                     | 7/50 [09:11<35:27, 49.47s/it, best_val=498.5] 
+Pruning trial 7: Optuna judged it underperforming at step 20000 with reward 497.20
+[I 2025-07-28 18:26:52,751] Trial 7 pruned. 
+Tuning A2C:  16%|████████████████████████▊                                                                                                                                  | 8/50 [10:51<45:57, 65.64s/it, best_val=498.5]
+Pruning trial 10: reward 38.18 below threshold 50 at 30000 steps
+[I 2025-07-28 18:29:07,933] Trial 10 pruned. 
+Tuning A2C:  18%|███████████████████████████▉                                                                                                                               | 9/50 [13:06<59:42, 87.38s/it, best_val=498.5] 
+Pruning trial 11: Optuna judged it underperforming at step 20000 with reward 101.67
+[I 2025-07-28 18:29:47,516] Trial 11 pruned. 
+Tuning A2C:  20%|██████████████████████████████▊                                                                                                                           | 10/50 [13:46<48:25, 72.63s/it, best_val=498.5] 
+[I 2025-07-28 18:30:49,063] Trial 8 finished with value: 498.69403076171875 and parameters: {'learning_rate': 0.00012801802610832105, 'gamma': 0.9604147578455978, 'n_steps': 1672, 'ent_coef': 0.035321636406876945, 'vf_coef': 0.1372555131809764, 'max_grad_norm': 3.5349255093309306, 'rms_prop_eps': 0.00027611573095956675, 'use_rms_prop': False, 'layer_size': 131, 'n_layers': 1, 'activation_fn': 'tanh'}. Best is trial 8 with value: 498.69403076171875.
+Tuning A2C:  22%|█████████████████████████████████▉                                                                                                                        | 11/50 [14:47<45:00, 69.24s/it, best_val=498.7]
+Pruning trial 9: Optuna judged it underperforming at step 40000 with reward 497.81
+[I 2025-07-28 18:32:24,454] Trial 9 pruned. 
+Tuning A2C:  24%|████████████████████████████████████▉                                                                                                                     | 12/50 [16:23<48:53, 77.19s/it, best_val=498.7]
+Pruning trial 13: reward 6.96 below threshold 20 at 20000 steps
+[I 2025-07-28 18:33:05,906] Trial 13 pruned. 
+Tuning A2C:  26%|████████████████████████████████████████                                                                                                                  | 13/50 [17:04<40:55, 66.37s/it, best_val=498.7] 
+Pruning trial 14: Optuna judged it underperforming at step 20000 with reward 497.28
+[I 2025-07-28 18:34:10,053] Trial 14 pruned. 
+Tuning A2C:  28%|███████████████████████████████████████████                                                                                                               | 14/50 [18:08<39:25, 65.70s/it, best_val=498.7] 
+Pruning trial 16: Optuna judged it underperforming at step 20000 with reward 491.29
+[I 2025-07-28 18:36:26,653] Trial 16 pruned. 
+Tuning A2C:  30%|██████████████████████████████████████████████▏                                                                                                           | 15/50 [20:25<50:47, 87.07s/it, best_val=498.7] 
+Pruning trial 17: Optuna judged it underperforming at step 20000 with reward 495.83
+[I 2025-07-28 18:36:54,621] Trial 17 pruned. 
+Tuning A2C:  32%|█████████████████████████████████████████████████▎                                                                                                        | 16/50 [20:53<39:15, 69.28s/it, best_val=498.7] 
+[I 2025-07-28 18:38:39,024] Trial 12 finished with value: 498.9404296875 and parameters: {'learning_rate': 0.000691421433969174, 'gamma': 0.9199188292787973, 'n_steps': 8, 'ent_coef': 1.1634469351626833e-07, 'vf_coef': 0.7832577554691627, 'max_grad_norm': 1.269004043043889, 'rms_prop_eps': 0.00021387343074300374, 'use_rms_prop': False, 'layer_size': 263, 'n_layers': 2, 'activation_fn': 'tanh'}. Best is trial 12 with value: 498.9404296875.
+Tuning A2C:  34%|████████████████████████████████████████████████████▎                                                                                                     | 17/50 [22:37<43:54, 79.84s/it, best_val=498.9]
+Pruning trial 19: Optuna judged it underperforming at step 20000 with reward 488.72
+[I 2025-07-28 18:39:59,418] Trial 19 pruned. 
+Tuning A2C:  36%|███████████████████████████████████████████████████████▍                                                                                                  | 18/50 [23:58<42:40, 80.01s/it, best_val=498.9] 
+[I 2025-07-28 18:40:17,060] Trial 15 finished with value: 498.46588134765625 and parameters: {'learning_rate': 0.0004070335384859307, 'gamma': 0.9407247396777184, 'n_steps': 189, 'ent_coef': 1.1269397495400204e-07, 'vf_coef': 0.133412942283779, 'max_grad_norm': 4.503002056714754, 'rms_prop_eps': 8.734726068430964e-05, 'use_rms_prop': True, 'layer_size': 209, 'n_layers': 3, 'activation_fn': 'tanh'}. Best is trial 12 with value: 498.9404296875.
+Tuning A2C:  38%|██████████████████████████████████████████████████████████▌                                                                                               | 19/50 [24:15<31:39, 61.28s/it, best_val=498.9]
+[I 2025-07-28 18:42:30,854] Trial 18 finished with value: 498.04815673828125 and parameters: {'learning_rate': 3.907622185690867e-05, 'gamma': 0.9528385355383596, 'n_steps': 83, 'ent_coef': 0.06573972410639152, 'vf_coef': 0.29863777786161955, 'max_grad_norm': 1.7956733593898013, 'rms_prop_eps': 0.0002406994763802686, 'use_rms_prop': True, 'layer_size': 32, 'n_layers': 1, 'activation_fn': 'tanh'}. Best is trial 12 with value: 498.9404296875.
+Tuning A2C:  40%|█████████████████████████████████████████████████████████████▌                                                                                            | 20/50 [26:29<41:31, 83.05s/it, best_val=498.9]
+Pruning trial 20: Optuna judged it underperforming at step 40000 with reward 498.53
+[I 2025-07-28 18:43:23,311] Trial 20 pruned. 
+Tuning A2C:  42%|████████████████████████████████████████████████████████████████▋                                                                                         | 21/50 [27:21<35:42, 73.87s/it, best_val=498.9] 
+Pruning trial 21: Optuna judged it underperforming at step 40000 with reward 497.68
+[I 2025-07-28 18:44:57,278] Trial 21 pruned. 
+Tuning A2C:  44%|███████████████████████████████████████████████████████████████████▊                                                                                      | 22/50 [28:55<37:17, 79.90s/it, best_val=498.9] 
+[I 2025-07-28 18:46:40,332] Trial 22 finished with value: 497.8659362792969 and parameters: {'learning_rate': 1.3460755962609158e-05, 'gamma': 0.927437099099478, 'n_steps': 98, 'ent_coef': 0.0013097863187252017, 'vf_coef': 0.9771980843406067, 'max_grad_norm': 4.181654302907979, 'rms_prop_eps': 0.0005169132958545423, 'use_rms_prop': False, 'layer_size': 274, 'n_layers': 1, 'activation_fn': 'tanh'}. Best is trial 12 with value: 498.9404296875.
+Tuning A2C:  46%|██████████████████████████████████████████████████████████████████████▊                                                                                   | 23/50 [30:38<39:04, 86.85s/it, best_val=498.9]
+Pruning trial 25: reward 19.42 below threshold 20 at 20000 steps
+[I 2025-07-28 18:48:04,484] Trial 25 pruned. 
+Tuning A2C:  48%|█████████████████████████████████████████████████████████████████████████▉                                                                                | 24/50 [32:03<37:17, 86.04s/it, best_val=498.9] 
+Pruning trial 23: Optuna judged it underperforming at step 40000 with reward 495.01
+[I 2025-07-28 18:48:54,389] Trial 23 pruned. 
+Tuning A2C:  50%|█████████████████████████████████████████████████████████████████████████████                                                                             | 25/50 [32:52<31:19, 75.20s/it, best_val=498.9] 
+Pruning trial 26: reward 17.24 below threshold 20 at 20000 steps
+[I 2025-07-28 18:49:47,048] Trial 26 pruned. 
+Tuning A2C:  52%|████████████████████████████████████████████████████████████████████████████████                                                                          | 26/50 [33:45<27:22, 68.43s/it, best_val=498.9] 
+Pruning trial 27: Optuna judged it underperforming at step 20000 with reward 497.72
+[I 2025-07-28 18:51:20,917] Trial 27 pruned. 
+Tuning A2C:  54%|███████████████████████████████████████████████████████████████████████████████████▏                                                                      | 27/50 [35:19<29:09, 76.07s/it, best_val=498.9] 
+[I 2025-07-28 18:51:52,207] Trial 24 finished with value: 498.64239501953125 and parameters: {'learning_rate': 0.00015136104311758088, 'gamma': 0.9222568824404249, 'n_steps': 1975, 'ent_coef': 7.244539937710665e-06, 'vf_coef': 0.8745548620925689, 'max_grad_norm': 1.419367906982927, 'rms_prop_eps': 0.0004961640745678979, 'use_rms_prop': False, 'layer_size': 292, 'n_layers': 2, 'activation_fn': 'relu'}. Best is trial 12 with value: 498.9404296875.
+Tuning A2C:  56%|██████████████████████████████████████████████████████████████████████████████████████▏                                                                   | 28/50 [35:50<22:57, 62.63s/it, best_val=498.9]
+Pruning trial 29: Optuna judged it underperforming at step 20000 with reward 497.78
+[I 2025-07-28 18:52:52,022] Trial 29 pruned. 
+Tuning A2C:  58%|█████████████████████████████████████████████████████████████████████████████████████████▎                                                                | 29/50 [36:50<21:37, 61.79s/it, best_val=498.9] 
+Pruning trial 30: Optuna judged it underperforming at step 20000 with reward 498.15
+[I 2025-07-28 18:55:08,989] Trial 30 pruned. 
+Tuning A2C:  60%|████████████████████████████████████████████████████████████████████████████████████████████▍                                                             | 30/50 [39:07<28:06, 84.34s/it, best_val=498.9] 
+Pruning trial 31: Optuna judged it underperforming at step 20000 with reward 497.39
+[I 2025-07-28 18:55:21,111] Trial 31 pruned. 
+Tuning A2C:  62%|███████████████████████████████████████████████████████████████████████████████████████████████▍                                                          | 31/50 [39:19<19:50, 62.68s/it, best_val=498.9] 
+Pruning trial 28: Optuna judged it underperforming at step 40000 with reward 495.31
+[I 2025-07-28 18:55:27,246] Trial 28 pruned. 
+Tuning A2C:  64%|██████████████████████████████████████████████████████████████████████████████████████████████████▌                                                       | 32/50 [39:25<13:42, 45.71s/it, best_val=498.9] 
+Pruning trial 32: Optuna judged it underperforming at step 20000 with reward 494.81
+[I 2025-07-28 18:56:16,455] Trial 32 pruned. 
+Tuning A2C:  66%|█████████████████████████████████████████████████████████████████████████████████████████████████████▋                                                    | 33/50 [40:15<13:14, 46.76s/it, best_val=498.9] 
+Pruning trial 34: Optuna judged it underperforming at step 20000 with reward 496.64
+[I 2025-07-28 18:58:24,728] Trial 34 pruned. 
+Tuning A2C:  68%|████████████████████████████████████████████████████████████████████████████████████████████████████████▋                                                 | 34/50 [42:23<18:59, 71.22s/it, best_val=498.9] 
+Pruning trial 35: Optuna judged it underperforming at step 40000 with reward 496.37
+[I 2025-07-28 19:01:23,741] Trial 35 pruned. 
+Tuning A2C:  70%|███████████████████████████████████████████████████████████████████████████████████████████████████████████                                              | 35/50 [45:22<25:53, 103.55s/it, best_val=498.9] 
+Pruning trial 37: Optuna judged it underperforming at step 20000 with reward 497.47
+[I 2025-07-28 19:01:31,538] Trial 37 pruned. 
+Tuning A2C:  72%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                                           | 36/50 [45:30<17:27, 74.83s/it, best_val=498.9]
+Pruning trial 33: Optuna judged it underperforming at step 40000 with reward 498.06
+[I 2025-07-28 19:01:42,525] Trial 33 pruned. 
+Tuning A2C:  74%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉                                        | 37/50 [45:41<12:03, 55.68s/it, best_val=498.9] 
+Pruning trial 36: Optuna judged it underperforming at step 40000 with reward 497.93
+[I 2025-07-28 19:02:18,046] Trial 36 pruned. 
+Tuning A2C:  76%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                     | 38/50 [46:16<09:55, 49.63s/it, best_val=498.9] 
+Pruning trial 39: Optuna judged it underperforming at step 20000 with reward 497.93
+[I 2025-07-28 19:04:17,503] Trial 39 pruned. 
+Tuning A2C:  78%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                  | 39/50 [48:16<12:56, 70.58s/it, best_val=498.9] 
+Pruning trial 41: Optuna judged it underperforming at step 20000 with reward 497.94
+[I 2025-07-28 19:04:38,285] Trial 41 pruned. 
+Tuning A2C:  80%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▏                              | 40/50 [48:36<09:16, 55.64s/it, best_val=498.9] 
+Pruning trial 38: Optuna judged it underperforming at step 40000 with reward 496.82
+[I 2025-07-28 19:07:08,547] Trial 38 pruned. 
+Tuning A2C:  82%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                           | 41/50 [51:07<12:36, 84.03s/it, best_val=498.9] 
+Pruning trial 42: Optuna judged it underperforming at step 20000 with reward 492.71
+[I 2025-07-28 19:07:23,118] Trial 42 pruned. 
+Tuning A2C:  84%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▎                        | 42/50 [51:21<08:25, 63.19s/it, best_val=498.9] 
+Pruning trial 40: Optuna judged it underperforming at step 40000 with reward 497.98
+[I 2025-07-28 19:07:35,815] Trial 40 pruned. 
+Tuning A2C:  86%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▍                     | 43/50 [51:34<05:36, 48.04s/it, best_val=498.9] 
+Pruning trial 43: Optuna judged it underperforming at step 40000 with reward 497.15
+[I 2025-07-28 19:10:16,768] Trial 43 pruned. 
+Tuning A2C:  88%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌                  | 44/50 [54:15<08:11, 81.92s/it, best_val=498.9] 
+Pruning trial 44: Optuna judged it underperforming at step 20000 with reward 490.74
+[I 2025-07-28 19:10:29,268] Trial 44 pruned. 
+Tuning A2C:  90%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▌               | 45/50 [54:27<05:05, 61.09s/it, best_val=498.9] 
+Pruning trial 45: Optuna judged it underperforming at step 20000 with reward 493.03
+[I 2025-07-28 19:10:34,622] Trial 45 pruned. 
+Tuning A2C:  92%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▋            | 46/50 [54:33<02:57, 44.37s/it, best_val=498.9] 
+Pruning trial 46: Optuna judged it underperforming at step 20000 with reward 496.54
+[I 2025-07-28 19:10:38,884] Trial 46 pruned. 
+Tuning A2C:  94%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊         | 47/50 [54:37<01:37, 32.34s/it, best_val=498.9] 
+Pruning trial 47: Optuna judged it underperforming at step 20000 with reward 492.05
+[I 2025-07-28 19:12:49,491] Trial 47 pruned. 
+Tuning A2C:  96%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊      | 48/50 [56:48<02:03, 61.82s/it, best_val=498.9] 
+Pruning trial 48: Optuna judged it underperforming at step 20000 with reward 496.59
+[I 2025-07-28 19:13:12,078] Trial 48 pruned. 
+Tuning A2C:  98%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉   | 49/50 [57:10<00:50, 50.05s/it, best_val=498.9] 
+Pruning trial 49: Optuna judged it underperforming at step 20000 with reward 494.57
+[I 2025-07-28 19:13:14,800] Trial 49 pruned. 
+Tuning A2C: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [57:13<00:00, 35.85s/it, best_val=498.9] 
+Tuning A2C: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [57:13<00:00, 68.67s/it, best_val=498.9] 
+Best reward: 498.94
+  learning_rate: 0.000691421433969174
+  gamma: 0.9199188292787973
+  n_steps: 8
+  ent_coef: 1.1634469351626833e-07
+  vf_coef: 0.7832577554691627
+  max_grad_norm: 1.269004043043889
+  rms_prop_eps: 0.00021387343074300374
+  use_rms_prop: False
+  layer_size: 263
+  n_layers: 2
+  activation_fn: tanh

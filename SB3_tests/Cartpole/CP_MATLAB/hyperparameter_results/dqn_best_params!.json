@@ -1,0 +1,18 @@
+{
+    "best_params": {
+        "learning_rate": 0.0007932736361202702,
+        "buffer_size": 149542,
+        "batch_size": 160,
+        "gamma": 0.9837425057320124,
+        "tau": 0.019599990379977943,
+        "exploration_fraction": 0.2891246310035712,
+        "exploration_final_eps": 0.022754873912448813,
+        "target_update_interval": 2401,
+        "train_freq": 1,
+        "n_layers": 5,
+        "layer_size": 256,
+        "activation_fn": "tanh"
+    },
+    "best_value": 445.53035252593855,
+    "n_trials": 50
+}
