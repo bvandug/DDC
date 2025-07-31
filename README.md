@@ -21,17 +21,38 @@ The project focuses on evaluating:
 *WLLNAT033@myuct.ac.za*
 ___
 
-##STRUCTURE FOR DRL METHODS EXPLAINED
-To view the current DRL work look inside the SB3 tests folder.
-The systems inside are:
+# Structure for DRL Methods Explained
 
--BC: buck converter
--BBC: buck boost converter
--Inverted pendulum
--Cartpole
+To explore the current DRL work, browse the `SB3_tests` folder in this repository.
 
-Setting up MATLAB is a complex process which we will document at a later time fully.
-To use the Python simulation environments, use the requirements.txt file and create a venv
+## Systems Included
+
+- **BC**: Buck Converter  
+- **BBC**: Buck-Boost Converter  
+- **Inverted Pendulum**  
+- **Cartpole**
+
+## MATLAB Setup
+
+> ⚠️ Setting up MATLAB is a complex process.  
+> Full documentation will be provided in a dedicated guide later.
+
+## Python Simulation Environments
+
+To run the Python simulation environments:
+
+1. **Clone or pull** this repo so that you have the latest `SB3_tests` folder.  
+2. **Create and activate** a virtual environment:
+
+   ```bash
+   # macOS / Linux
+   python3 -m venv venv
+   source venv/bin/activate
+
+   # Windows (PowerShell)
+   python -m venv venv
+   .\venv\Scripts\Activate
+
 
 
 
