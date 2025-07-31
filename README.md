@@ -1,18 +1,41 @@
-# Data-Driven Control
+# Evaluating DRL for control systems
 
-This project compares the performance of data-driven control methods, Q-Learning and NEAT, with one another, as well as traditional PID control. The methods are applied to non-linear binary control systems, specifically the inverted pendulum and DC-DC buck converters.
+This project builds on another comparing the performance of data-driven control methods, Q-Learning and NEAT, with one another, as well as traditional PID control.
+
+The project focuses on evaluating:
+-The Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on control systems.
+-Creating simulation environments that will train SB3 models faster but with similar fidelity
 
 ## Authors
-**Matthew Fleischman**<br>
+**Benjamin Ruijsch van Dugteren**<br>
 *University of Cape Town* <br>
-*FLSMAT002@myuct.ac.za* 
+*RJSBEN001@myuct.ac.za*
 <br>
 
-**Ariel J. Levy**<br>
+**Nicholas Cristaudo**<br>
 *University of Cape Town* <br>
-*LVYARI002@myuct.ac.za*
+*CRSNIC014@myuct.ac.za*
+
+**Nathan Wells**<br>
+*University of Cape Town* <br>
+*WLLNAT033@myuct.ac.za*
 ___
 
+##STRUCTURE FOR DRL METHODS EXPLAINED
+To view the current DRL work look inside the SB3 tests folder.
+The systems inside are:
+
+-BC: buck converter
+-BBC: buck boost converter
+-Inverted pendulum
+-Cartpole
+
+Setting up MATLAB is a complex process which we will document at a later time fully.
+To use the Python simulation environments, use the requirements.txt file and create a venv
+
+
+
+##CONTENT BELOW IS FOR PREVIOUS PROJECT
 ## Table of Contents
 - [Installation](#installation)
 - [Usage](#usage)
