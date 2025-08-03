@@ -1,0 +1,44 @@
+{
+    "A2C": {
+        "total_reward": 1959.813232421875,
+        "stabilisation_time_ms": 0.8,
+        "stabilization_duration_ms": 99.20000000000002,
+        "steady_state_error_V": -0.022825203835964203,
+        "overshoot_V": 0.07468414306640625
+    },
+    "PPO": {
+        "total_reward": 1953.3555908203125,
+        "stabilisation_time_ms": 0.8500000000000001,
+        "stabilization_duration_ms": 99.15,
+        "steady_state_error_V": -0.04715733602643013,
+        "overshoot_V": 0.2234020233154297
+    },
+    "SAC": {
+        "total_reward": 1950.180908203125,
+        "stabilisation_time_ms": 1.1,
+        "stabilization_duration_ms": 98.9,
+        "steady_state_error_V": 0.057876817882061005,
+        "overshoot_V": 0.11818504333496094
+    },
+    "TD3": {
+        "total_reward": 1952.400146484375,
+        "stabilisation_time_ms": 0.9000000000000001,
+        "stabilization_duration_ms": 99.10000000000001,
+        "steady_state_error_V": 0.07176157832145691,
+        "overshoot_V": 0.13159561157226562
+    },
+    "DDPG": {
+        "total_reward": 1954.85986328125,
+        "stabilisation_time_ms": 1.0,
+        "stabilization_duration_ms": 99.0,
+        "steady_state_error_V": 0.03468915820121765,
+        "overshoot_V": 0.19847488403320312
+    },
+    "DQN": {
+        "total_reward": 1961.31396484375,
+        "stabilisation_time_ms": 0.9500000000000001,
+        "stabilization_duration_ms": 99.05,
+        "steady_state_error_V": 0.025031480938196182,
+        "overshoot_V": 0.08506202697753906
+    }
+}
