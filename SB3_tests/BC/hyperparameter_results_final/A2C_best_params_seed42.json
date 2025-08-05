@@ -1,9 +1,0 @@
-[
-    {
-        "n_layers": 1, "layer_size": 115, "activation_fn": "tanh",
-        "learning_rate": 0.00324216113440775, "gamma": 0.9299591477007767,
-        "ent_coef": 1.8756945609332168e-05, "vf_coef": 0.4490098411745866,
-        "max_grad_norm": 3.0314754648510203, "n_steps": 454, "gae_lambda": 0.9324082185363809
-    }
-
-]

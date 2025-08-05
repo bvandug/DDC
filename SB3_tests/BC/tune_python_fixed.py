@@ -16,25 +16,26 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 
+# Assumes your environment file is named 'PYBCEnv.py' and is accessible
 from PYBCEnv import BuckConverterEnv as BCPyEnv
 
 # --- CONSTANTS ---
+TOTAL_TIMESTEPS_PER_TRIAL = 100000
 EVAL_INTERVAL = 10000
-# MODIFIED: Increased pruning threshold
-MIN_RESOURCES_FOR_PRUNING = 40000
+MIN_RESOURCES_FOR_PRUNING = 20000
 TB_ROOT = "./buck_converter_tuning_logs/"
 os.makedirs(TB_ROOT, exist_ok=True)
 
 def define_hyperparameters(trial: optuna.Trial, algo_name: str):
     """Defines the CORE hyperparameter search space for a given algorithm."""
     algo = algo_name.lower()
-
+    
     if algo in ["a2c", "ppo"]:
         n_layers = trial.suggest_int("n_layers", 1, 3)
         layer_size = trial.suggest_int("layer_size", 64, 512, log=True)
         activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu"])
         activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[activation_fn_name]
-
+        
         net_arch = dict(pi=[layer_size] * n_layers, vf=[layer_size] * n_layers)
         policy_kwargs = {"net_arch": net_arch, "activation_fn": activation_fn}
         params = {
@@ -61,7 +62,7 @@ def define_hyperparameters(trial: optuna.Trial, algo_name: str):
 
     elif algo == "sac":
         n_layers = trial.suggest_int("n_layers", 1, 3)
-        layer_size = trial.suggest_int("layer_size", 32, 256, log=True)
+        layer_size = trial.suggest_int("layer_size", 32, 256, log=True) 
         activation_fn_name = trial.suggest_categorical("activation_fn", ["tanh", "relu", "leaky_relu", "elu"])
         activation_map = {"tanh": nn.Tanh, "relu": nn.ReLU, "leaky_relu": nn.LeakyReLU, "elu": nn.ELU}
         activation_fn = activation_map[activation_fn_name]
@@ -101,15 +102,20 @@ def define_hyperparameters(trial: optuna.Trial, algo_name: str):
             "target_noise_clip": trial.suggest_float("target_noise_clip", 0.3, 0.7),
             "policy_kwargs": policy_kwargs,
         }
-
+        
+        # --- CORRECTED LOGIC FOR TRAIN_FREQ AND GRADIENT_STEPS ---
+        # 1. Sample both from their full, static list of choices
         gradient_steps = trial.suggest_categorical("gradient_steps", [1, 4, 8, 16, 32, 64, 128])
         train_freq = trial.suggest_categorical("train_freq", [1, 4, 8, 16, 32, 64, 128, 256])
+
+        # 2. After sampling, enforce the constraint by correcting invalid combinations
         if train_freq < gradient_steps:
+            # If the combination is invalid, adjust train_freq to a valid value.
             train_freq = gradient_steps
 
         params["gradient_steps"] = gradient_steps
         params["train_freq"] = train_freq
-
+        
         return params
 
     elif algo == "ddpg":
@@ -136,15 +142,14 @@ def define_hyperparameters(trial: optuna.Trial, algo_name: str):
     else:
         raise ValueError(f"Unsupported algorithm: {algo_name}")
 
-def objective(trial: optuna.Trial, algo_name: str, total_timesteps: int):
+def objective(trial: optuna.Trial, algo_name: str):
     """
     The objective function for Optuna to minimize/maximize.
     """
-    seed = 42
+    seed = random.randint(0, 1_000_000)
     set_random_seed(seed)
     trial.set_user_attr("seed", seed)
-
-    print(f"\n[INFO] Starting Trial {trial.number} for {algo_name.upper()} with Seed: {seed} ({total_timesteps} steps)")
+    print(f"\n[INFO] Starting Trial {trial.number} with Seed: {seed}")
 
     train_env_fn = lambda: Monitor(BCPyEnv(use_randomized_goal=True))
     train_env = DummyVecEnv([train_env_fn])
@@ -154,19 +159,19 @@ def objective(trial: optuna.Trial, algo_name: str, total_timesteps: int):
     hyperparams = define_hyperparameters(trial, algo_name)
     hyperparams['seed'] = seed
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
+    
     if algo_name.lower() in ["sac", "td3", "ddpg"]:
         hyperparams["learning_starts"] = 10000
 
     model_class = globals()[algo_name.upper()]
-    model = model_class("MlpPolicy", train_env, device=device, verbose=0,
+    model = model_class("MlpPolicy", train_env, device=device, verbose=0, 
                         tensorboard_log=os.path.join(TB_ROOT, algo_name), **hyperparams)
 
     timesteps_so_far = 0
     mean_reward = -np.inf
-
+    
     try:
-        while timesteps_so_far < total_timesteps:
+        while timesteps_so_far < TOTAL_TIMESTEPS_PER_TRIAL:
             model.learn(total_timesteps=EVAL_INTERVAL, reset_num_timesteps=False,
                         tb_log_name=f"trial_{trial.number}")
             timesteps_so_far += EVAL_INTERVAL
@@ -176,36 +181,40 @@ def objective(trial: optuna.Trial, algo_name: str, total_timesteps: int):
             eval_env.seed(seed)
             train_env.save("temp_vec_normalize.pkl")
             eval_env = VecNormalize.load("temp_vec_normalize.pkl", eval_env)
-            eval_env.training = False
+            eval_env.training = False 
             eval_env.norm_reward = False
-
+            
             mean_reward, _ = evaluate_policy(model, eval_env, n_eval_episodes=1)
             eval_env.close()
-
+            
+            print(f"[DEBUG] Trial {trial.number} | Timestep {timesteps_so_far} | Mean reward: {mean_reward}")
+            
             trial.report(mean_reward, timesteps_so_far)
-
+            
             if trial.should_prune():
+                print(f"[PRUNE] Trial {trial.number} pruned at {timesteps_so_far} steps.")
                 raise optuna.TrialPruned()
 
         return mean_reward
-
+        
     except (AssertionError, ValueError) as e:
         print(f"[FAIL] Trial {trial.number} failed with error: {e}")
-        return -1e9 # Return a very low value for failed trials
+        # Returning a value like -inf or a very low number can be better than pruning
+        # as it still provides information to some samplers.
+        return -1e9 # Return a very bad value instead of pruning
     finally:
         train_env.close()
         if os.path.exists("temp_vec_normalize.pkl"):
             os.remove("temp_vec_normalize.pkl")
 
-def tune_hyperparameters(algo_name, n_trials=100, n_jobs=1, total_timesteps=100000):
+def tune_hyperparameters(algo_name, n_trials=50, n_jobs=1):
     """
-    Main function to set up and run the Optuna study for a single algorithm.
+    Main function to set up and run the Optuna study.
     """
-    study_name = f"{algo_name}-bc-tuning-seed42"
+    study_name = f"{algo_name}-bc-tuning-final-seeded-v4"
     storage_name = f"sqlite:///{study_name}.db"
 
-    # CORRECTED: Pruner's warmup steps should be based on number of reports, not timesteps
-    pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=MIN_RESOURCES_FOR_PRUNING // EVAL_INTERVAL)
+    pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=MIN_RESOURCES_FOR_PRUNING)
     study = optuna.create_study(
         study_name=study_name, storage=storage_name,
         load_if_exists=True, direction="maximize", pruner=pruner
@@ -221,7 +230,7 @@ def tune_hyperparameters(algo_name, n_trials=100, n_jobs=1, total_timesteps=1000
 
     try:
         study.optimize(
-            lambda trial: objective(trial, algo_name, total_timesteps),
+            lambda trial: objective(trial, algo_name),
             n_trials=n_trials, n_jobs=n_jobs,
             callbacks=[_pbar_callback]
         )
@@ -230,65 +239,62 @@ def tune_hyperparameters(algo_name, n_trials=100, n_jobs=1, total_timesteps=1000
     finally:
         pbar.close()
 
-    # --- MODIFIED: Save all ranked trials to the new folder ---
-    results_dir = "hyperparameters_SSH"
+    results_dir = "hyperparameter_results_final"
     os.makedirs(results_dir, exist_ok=True)
-    results_file = os.path.join(results_dir, f"{algo_name}_all_trials_ranked.json")
+    results_file = os.path.join(results_dir, f"{algo_name}_best_params_seeded.json")
 
-    completed_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
-    # Sort trials by their final reward value, from best to worst
-    completed_trials.sort(key=lambda t: t.value, reverse=True)
+    all_trials_data = []
+    for trial in study.trials:
+        trial_data = {
+            "number": trial.number,
+            "value": trial.value,
+            "state": trial.state.name,
+            "params": trial.params,
+            "user_attrs": trial.user_attrs
+        }
+        all_trials_data.append(trial_data)
 
-    # Create a list of dictionaries with the desired information
-    ranked_trials_data = [
-        {"rank": i + 1, "trial_number": t.number, "value": t.value, "params": t.params}
-        for i, t in enumerate(completed_trials)
-    ]
-    
     with open(results_file, "w") as f:
-        json.dump(ranked_trials_data, f, indent=4)
-    
-    print(f"\n--- All ranked trial results saved to: {results_file} ---")
-
-    # --- Print summary of the best trial ---
+        json.dump(all_trials_data, f, indent=4)
+        
     print("\n\n" + "="*80)
-    print(f"--- BEST PARAMETERS FOR {algo_name.upper()} (Seed 42) ---")
+    print("--- INDIVIDUAL TRIAL RESULTS (BEST TO WORST) ---")
     print("="*80)
-
+    
+    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE and t.value is not None]
+    
+    if completed_trials:
+        sorted_trials = sorted(completed_trials, key=lambda t: t.value, reverse=True)
+        for i, trial in enumerate(sorted_trials):
+            seed = trial.user_attrs.get('seed', 'N/A')
+            print(f"\n--- Rank {i+1}: Trial #{trial.number} (Seed: {seed}) ---")
+            print(f"  Value (Mean Reward): {trial.value:.4f}")
+            print("  Params: ")
+            for key, value in trial.params.items():
+                print(f"    {key:<20}: {value}")
+    else:
+        print("No trials completed successfully.")
+            
+    print("\n" + "="*80)
+    print(f"--- Best parameters for {algo_name} ---")
+    
     try:
         best_trial = study.best_trial
         print(f"Best value (mean reward): {best_trial.value:.4f}")
-        print(f"Best trial was #{best_trial.number}")
-        print("Best hyperparameters:")
+        best_seed = best_trial.user_attrs.get('seed', 'N/A')
+        print(f"Best trial was #{best_trial.number} with seed {best_seed}")
         for key, value in best_trial.params.items():
             print(f"  {key}: {value}")
+        return study.best_params
     except (ValueError, AttributeError):
-         print("No best trial found for this run.")
+         print("No best trial found.")
+         return None
+
 
 if __name__ == "__main__":
-    ALGORITHMS_TO_TUNE = ["A2C", "PPO", "SAC", "TD3", "DDPG"]
-
-    for algorithm in ALGORITHMS_TO_TUNE:
-        print("\n" + "#"*80)
-        print(f"# STARTING HYPERPARAMETER TUNING FOR: {algorithm}")
-        
-        if algorithm in ["A2C", "PPO"]:
-            timesteps_for_trial = 200000
-        else:
-            timesteps_for_trial = 100000
-        
-        print(f"# Total timesteps per trial: {timesteps_for_trial}")
-        print("#"*80 + "\n")
-
-        tune_hyperparameters(
-            algo_name=algorithm,
-            n_trials=100,
-            n_jobs=1,
-            total_timesteps=timesteps_for_trial
-        )
-
-        print(f"\n--- Finished tuning for {algorithm} ---")
-
-    print("\n\n" + "#"*80)
-    print("# ALL HYPERPARAMETER TUNING COMPLETE")
-    print("#"*80)
+    ALGORITHM_TO_TUNE = "TD3"
+    tune_hyperparameters(
+        algo_name=ALGORITHM_TO_TUNE,
+        n_trials=50, 
+        n_jobs=1 
+    )
