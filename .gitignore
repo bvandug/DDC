@@ -1,7 +1,0 @@
-# Python virtual environments
-venv/
-.env/      # if you named your venv ".env"
-.venv/
-myenv/
-new-env/
-myvenv/
