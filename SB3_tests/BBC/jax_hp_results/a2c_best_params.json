@@ -1,0 +1,17 @@
+{
+  "best_params": {
+    "learning_rate": 1.2778028167224885e-05,
+    "gamma": 0.961707126415519,
+    "n_steps": 1040,
+    "ent_coef": 7.804729669614359e-06,
+    "vf_coef": 0.13867699538142236,
+    "max_grad_norm": 3.946760180523307,
+    "gae_lambda": 0.8814094174688841,
+    "rms_prop_eps": 2.2032810428869103e-05,
+    "use_rms_prop": true,
+    "layer_size": 55,
+    "n_layers": 1,
+    "activation_fn": "relu"
+  },
+  "best_value": -49424.55878829956
+}

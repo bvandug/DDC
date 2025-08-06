@@ -153,11 +153,11 @@ def main(algo_name="ppo",
         # pass to the wrapper under its new argument name
         env = DiscretizedActionWrapper(env, torque_values=torque_values)
     # Directories and file names
-    model_base_dir     = os.path.join("jax", prefix + algo_name)
+    model_base_dir     = os.path.join("jax_models", prefix + algo_name)
     os.makedirs(model_base_dir, exist_ok=True)
     model_path         = os.path.join(model_base_dir, prefix + "best_model")
     replay_buffer_path = os.path.join(model_base_dir, prefix + "best_model_replay_buffer")
-    tensorboard_log_dir = os.path.join("jax_logs", prefix + algo_name)
+    tensorboard_log_dir = os.path.join("jax_train_logs", prefix + algo_name)
 
     print(f"📁 Saving models to: {model_base_dir}")
     print(f"📊 TensorBoard logs to: {tensorboard_log_dir}")

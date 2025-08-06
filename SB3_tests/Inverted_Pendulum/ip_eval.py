@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from ip_simulink_env import SimulinkEnv
+from ip_simulink_env import SimulinkEnv, DiscretizedActionWrapper
 from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO, DQN
 import matplotlib.pyplot as plt
 
@@ -254,22 +254,35 @@ def evaluate_full_metrics(
 if __name__ == "__main__":
     env = SimulinkEnv()
     models = {
-        "A2C": "models/a2c/best_model_50000.zip"
+        "DQN": "IP_JAX/jax_models/dqn/best_model.zip"
         # ,
         # 'SAC': 'ip_jax/jax/sac/best_model.zip',
         # 'DQN': 'ip_jax/jax/dqn/best_model.zip',
-        # 'PPO': 'ip_jax/jax/ppo/best_model.zip',
+        # 'PPO': 'IP_JAX/jax_models/ppo/best_model.zip',
         # 'DDPG': 'ip_jax/jax/ddpg/best_model.zip',
         # 'TD3': 'ip_jax/jax/td3/best_model.zip'
     }
     results = {}
     for name, path in models.items():
         print(f"\n=== Evaluating {name} ===")
+        # 1) Create the base SimulinkEnv
+        env = SimulinkEnv()
+
+        # 2) If it’s DQN, apply the exact same DiscretizedActionWrapper
+        if name == "DQN":
+            # SimulinkEnv.action_space.high[0] is  2.0 by default
+            max_torque = float(env.action_space.high[0])
+            torque_values = np.linspace(-max_torque, max_torque, 21)
+            env = DiscretizedActionWrapper(env, force_values=torque_values)
+
+        # 3) Load your model
         ModelClass = globals()[name]
-        if name in ("PPO"):
+        if name in ("PPO", "A2C"):
             model = ModelClass.load(path, device="cpu")
         else:
             model = ModelClass.load(path)
+
+        # 4) Run evaluation
         results[name] = evaluate_full_metrics(
             model,
             env,
