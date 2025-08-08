@@ -4,6 +4,28 @@ import matlab.engine
 import numpy as np
 import matplotlib.pyplot as plt
 
+class DiscretizeActionWrapper(gym.ActionWrapper):
+    """
+    A wrapper to discretize a continuous action space for DQN.
+    """
+    def __init__(self, env, n_bins=17):
+        super().__init__(env)
+        self.n_bins = n_bins
+        self.action_space = spaces.Discrete(self.n_bins)
+        self.continuous_actions = np.linspace(
+            self.env.action_space.low[0],
+            self.env.action_space.high[0],
+            self.n_bins
+        )
+
+    def action(self, action):
+        """
+        Translates the discrete action from the agent into its
+        corresponding continuous value for the underlying environment.
+        """
+        continuous_action = self.continuous_actions[action]
+        return np.array([continuous_action], dtype=np.float32)
+
 class BCSimulinkEnv(gym.Env):
     """
     Robust environment for controlling a Buck Converter in Simulink.
