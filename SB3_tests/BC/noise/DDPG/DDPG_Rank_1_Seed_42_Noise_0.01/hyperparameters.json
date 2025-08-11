@@ -1,0 +1,14 @@
+{
+    "rank": 1,
+    "n_layers": 3,
+    "layer_size": 132,
+    "activation_fn": "tanh",
+    "action_noise_sigma": 0.1892751990632762,
+    "learning_rate": 3.984749428410908e-05,
+    "buffer_size": 153741,
+    "batch_size": 128,
+    "gamma": 0.9683432382369432,
+    "tau": 0.01904684256059171,
+    "train_freq": 32,
+    "gradient_steps": 16
+}

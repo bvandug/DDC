@@ -16,8 +16,7 @@ class BuckConverterEnv(gym.Env):
                  fixed_goal_voltage: float = 30.0,
                  target_voltage_min: float = 28.5,
                  target_voltage_max: float = 31.5,
-                 voltage_noise_std: float = 0.0,
-                 goal_noise_std: float = 0.0):
+                 voltage_noise_std: float = 0.0): # <-- REMOVED goal_noise_std
         super(BuckConverterEnv, self).__init__()
 
         # Core simulation parameters
@@ -35,7 +34,6 @@ class BuckConverterEnv(gym.Env):
 
         # Sensor noise parameters
         self.voltage_noise_std = voltage_noise_std
-        self.goal_noise_std = goal_noise_std
 
         # Physical parameters of a buck converter
         self.V_in = 48.0 # Source voltage
@@ -88,15 +86,17 @@ class BuckConverterEnv(gym.Env):
         self.ax_duty.grid(True)
 
     def _get_obs(self):
-        # Add Gaussian noise to simulate imperfect sensors
+        # --- MODIFIED SECTION ---
+        # Add Gaussian noise to simulate imperfect voltage sensor
         noisy_v_out = self.v_out + self.np_random.normal(0, self.voltage_noise_std)
-        noisy_goal = self.goal + self.np_random.normal(0, self.goal_noise_std)
         
-        error = noisy_v_out - noisy_goal
+        # The goal is now always the true, clean goal
+        error = noisy_v_out - self.goal 
         step_duration = self.dt * self.frame_skip
         derivative_error = (error - self.prev_error) / step_duration if step_duration > 0 else 0.0
         
-        return np.array([noisy_v_out, error, derivative_error, noisy_goal], dtype=np.float32)
+        # Return observation with the clean goal
+        return np.array([noisy_v_out, error, derivative_error, self.goal], dtype=np.float32)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -142,7 +142,6 @@ class BuckConverterEnv(gym.Env):
         truncated = self.current_step >= self.max_episode_steps
         self.prev_error = noisy_error
 
-        # Rich info dictionary for detailed logging
         info = {
             "goal": self.goal,
             "true_voltage": self.v_out,

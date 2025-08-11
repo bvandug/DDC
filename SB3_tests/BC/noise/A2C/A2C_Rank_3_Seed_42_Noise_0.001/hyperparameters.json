@@ -1,0 +1,13 @@
+{
+    "rank": 3,
+    "n_layers": 1,
+    "layer_size": 100,
+    "activation_fn": "relu",
+    "learning_rate": 0.004627189994055962,
+    "gamma": 0.9464734604761008,
+    "ent_coef": 1.5005587871905613e-05,
+    "vf_coef": 0.6933384386464978,
+    "max_grad_norm": 1.1798883043031796,
+    "n_steps": 112,
+    "gae_lambda": 0.9786634896219476
+}

@@ -1,0 +1,15 @@
+{
+    "rank": 1,
+    "n_layers": 2,
+    "layer_size": 309,
+    "activation_fn": "tanh",
+    "learning_rate": 0.00025853041708717625,
+    "buffer_size": 121708,
+    "learning_starts": 7202,
+    "batch_size": 128,
+    "gamma": 0.9159261928463776,
+    "exploration_fraction": 0.13204826185966512,
+    "exploration_final_eps": 0.10800385063818738,
+    "train_freq": 1,
+    "target_update_interval": 510
+}

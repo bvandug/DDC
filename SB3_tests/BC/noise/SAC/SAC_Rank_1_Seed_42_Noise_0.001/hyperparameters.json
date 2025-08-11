@@ -1,0 +1,12 @@
+{
+    "rank": 1,
+    "n_layers": 3,
+    "layer_size": 105,
+    "activation_fn": "leaky_relu",
+    "learning_rate": 0.0004988313346799755,
+    "buffer_size": 150306,
+    "batch_size": 256,
+    "tau": 0.00661542279269948,
+    "gamma": 0.932069775803889,
+    "ent_coef": "auto"
+}

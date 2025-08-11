@@ -1,5 +1,5 @@
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import matlab.engine
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,7 +29,7 @@ class DiscretizeActionWrapper(gym.ActionWrapper):
 class BCSimulinkEnv(gym.Env):
     """
     Robust environment for controlling a Buck Converter in Simulink.
-    This version includes enhanced plotting with tolerance bands.
+    This version is updated for compatibility with the Gymnasium library.
     """
     def __init__(self, model_name="bcSim", dt=5e-6, max_episode_time=0.1,
                  grace_period_steps=50,
@@ -40,8 +40,11 @@ class BCSimulinkEnv(gym.Env):
                  target_voltage_min = 28.5,
                  target_voltage_max = 31.5):
         
+        super().__init__() # Updated super call for gymnasium
+
         print("Starting MATLAB engine...")
-        self.eng = matlab.engine.start_matlab()
+        # Start with a clean session, ensure it's non-graphical
+        self.eng = matlab.engine.start_matlab("-nodesktop -licmode onlinelicensing")
         print(f"Loading {model_name}...")
         self.eng.load_system(model_name, nargout=0)
         self.eng.set_param(model_name, 'FastRestart', 'on', nargout=0)
@@ -49,7 +52,8 @@ class BCSimulinkEnv(gym.Env):
         # Initializing the environment parameters
         self.model_name = model_name
         self.dt = dt
-        self.max_episode_time = max_episode_time + 0.00005 #Add an extra 0.00005 seconds to the max_episode_time to avoid the solver artifact
+        # Add a small buffer to avoid floating point issues with the final step
+        self.max_episode_time = max_episode_time + (dt * 0.5) 
         self.frame_skip = frame_skip
         self.enable_plotting = enable_plotting
         self.grace_period_steps = grace_period_steps
@@ -70,15 +74,13 @@ class BCSimulinkEnv(gym.Env):
         self.observation_space = spaces.Box(low=-high, high=high, shape=(4,), dtype=np.float32)
 
         self.prev_error = 0
-        self._np_random = None
+        self.np_random, _ = gym.utils.seeding.np_random()
 
         if self.enable_plotting:
             self._setup_plot()
 
     def _setup_plot(self):
-        """
-        Sets up the live plot, including tolerance bands for the target voltage.
-        """
+        """Sets up the live plot, including tolerance bands for the target voltage."""
         print("Setting up the live plot...")
         plt.ion()
         self.fig, (self.ax_voltage, self.ax_duty) = plt.subplots(2, 1, figsize=(12, 9), sharex=True)
@@ -105,7 +107,6 @@ class BCSimulinkEnv(gym.Env):
         self.ax_duty.legend(loc='best')
         self.ax_duty.grid(True)
         
-        # Data storage lists
         self._times, self._voltages, self._goals, self._duties = [], [], [], []
         self._plus_0_5v, self._minus_0_5v = [], []
         self._plus_1v, self._minus_1v = [], []
@@ -115,9 +116,7 @@ class BCSimulinkEnv(gym.Env):
         self.goal = voltage
 
     def get_data(self):
-        """
-        Gets the data from the simulation.
-        """
+        """Gets the data from the simulation."""
         voltage_out = self.eng.eval("out.voltage", nargout=1)
         time_out = self.eng.eval("out.tout", nargout=1)
         final_voltage = voltage_out[-1][0] if not isinstance(voltage_out, float) else voltage_out
@@ -125,17 +124,12 @@ class BCSimulinkEnv(gym.Env):
         return final_voltage, final_time
 
     def reset(self, seed=None, options=None):
-        """
-        Resets the environment.
-        """
+        """Resets the environment to an initial state."""
         super().reset(seed=seed)
-        if seed is not None:
-            self.np_random, _ = gym.utils.seeding.np_random(seed)
             
         self.current_time = 0.0
         self.steps_taken = 0
 
-        # Set the goal voltage for the episode
         if self.use_randomized_goal:
             self.goal = self.np_random.uniform(self.target_voltage_min, self.target_voltage_max)
         else:
@@ -143,53 +137,37 @@ class BCSimulinkEnv(gym.Env):
 
         self.eng.set_param(f'{self.model_name}/Goal', 'Value', str(self.goal), nargout=0)
 
-        # Run a tiny simulation to get the initial state at t=0
         self.eng.set_param(self.model_name, 'FastRestart', 'off', 'LoadInitialState', 'off', nargout=0)
-        self.eng.eval(f"out = sim('{self.model_name}', 'StopTime','1e-6', 'SaveFinalState','on', 'StateSaveName','xFinal');"
-                      "xFinal = out.xFinal;", nargout=0)
+        self.eng.eval(f"out = sim('{self.model_name}', 'StopTime','1e-6', 'SaveFinalState','on', 'StateSaveName','xFinal'); xFinal = out.xFinal;", nargout=0)
         self.eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
         initial_voltage, _ = self.get_data()
 
         self.prev_error = initial_voltage - self.goal
 
         if self.enable_plotting:
-            # Clear all data lists from the previous episode
-            for data_list in [self._times, self._voltages, self._goals, self._duties, 
-                              self._plus_0_5v, self._minus_0_5v, self._plus_1v, self._minus_1v]:
+            for data_list in [self._times, self._voltages, self._goals, self._duties, self._plus_0_5v, self._minus_0_5v, self._plus_1v, self._minus_1v]:
                 data_list.clear()
 
-            # Append initial data points
             self._times.append(0.0)
             self._voltages.append(initial_voltage)
             self._goals.append(self.goal)
-            self._duties.append(0.5)
-            self._plus_0_5v.append(self.goal + 0.5)
-            self._minus_0_5v.append(self.goal - 0.5)
-            self._plus_1v.append(self.goal + 1.0)
-            self._minus_1v.append(self.goal - 1.0)
-
-            # Update the plot to show the starting point
+            self._duties.append(0.5) # Assume initial duty cycle
+            self._update_plot_tolerances()
             self._update_plot_data()
-            for ax in (self.ax_voltage, self.ax_duty): ax.relim(); ax.autoscale_view()
-            self.fig.canvas.draw(); self.fig.canvas.flush_events()
 
         observation = np.array([initial_voltage, self.prev_error, 0.0, self.goal], dtype=np.float32)
-        return observation, {}
+        info = {} # Gymnasium reset returns an info dictionary
+        return observation, info
 
     def step(self, action):
-        """
-        Simulates the agent taking one step in the environment.
-        """
+        """Simulates the agent taking one step in the environment."""
         self.steps_taken += 1
         duty_cycle = float(np.clip(action[0], 0.1, 0.9))
         stop_time = self.current_time + (self.dt * self.frame_skip)
         
         self.eng.set_param(f"{self.model_name}/DutyCycleInput", 'Value', str(duty_cycle), nargout=0)
         self.eng.set_param(self.model_name, 'FastRestart', 'off', nargout=0)
-        self.eng.eval(
-            f"out = sim('{self.model_name}', 'LoadInitialState','on', 'InitialState','xFinal',"
-            f"'StopTime','{stop_time}', 'SaveFinalState','on', 'StateSaveName','xFinal');"
-            "xFinal = out.xFinal;", nargout=0)
+        self.eng.eval(f"out = sim('{self.model_name}', 'LoadInitialState','on', 'InitialState','xFinal', 'StopTime','{stop_time}', 'SaveFinalState','on', 'StateSaveName','xFinal'); xFinal = out.xFinal;", nargout=0)
         self.eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
 
         voltage, time = self.get_data()
@@ -198,19 +176,14 @@ class BCSimulinkEnv(gym.Env):
         step_duration = self.dt * self.frame_skip
         derivative_error = (error - self.prev_error) / step_duration
 
-        # Calculate the reward
-        reward = 1.0 / (1.0 + error**2)
-        reward -= 0.01
+        reward = 1.0 / (1.0 + error**2) - 0.01
+        
+        truncated = bool(self.current_time >= self.max_episode_time)
+        terminated = False
 
-        # Termination condition if episode reached end time
-        terminated = bool(self.current_time >= self.max_episode_time)
-        truncated = False
-
-        # Hard voltage termination boundaries
-        if self.steps_taken > self.grace_period_steps:
-            if (voltage < -5.0) or (voltage > 53.0):
-                reward -= 25.0
-                truncated = True
+        if self.steps_taken > self.grace_period_steps and not (-5.0 < voltage < 53.0):
+            reward -= 25.0
+            terminated = True
 
         self.prev_error = error
         observation = np.array([voltage, error, derivative_error, self.goal], dtype=np.float32)
@@ -220,14 +193,18 @@ class BCSimulinkEnv(gym.Env):
             self._voltages.append(voltage)
             self._goals.append(self.goal)
             self._duties.append(duty_cycle)
-            self._plus_0_5v.append(self.goal + 0.5)
-            self._minus_0_5v.append(self.goal - 0.5)
-            self._plus_1v.append(self.goal + 1.0)
-            self._minus_1v.append(self.goal - 1.0)
-            
+            self._update_plot_tolerances()
             self._update_plot_data()
 
-        return observation, reward, terminated, truncated, {}
+        info = {} # Info dictionary for Gymnasium
+        return observation, reward, terminated, truncated, info
+
+    def _update_plot_tolerances(self):
+        """Helper to update tolerance band data for plotting."""
+        self._plus_0_5v.append(self.goal + 0.5)
+        self._minus_0_5v.append(self.goal - 0.5)
+        self._plus_1v.append(self.goal + 1.0)
+        self._minus_1v.append(self.goal - 1.0)
 
     def _update_plot_data(self):
         """Helper function to update all lines on the plot."""
@@ -245,8 +222,8 @@ class BCSimulinkEnv(gym.Env):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-
     def render(self):
+        # The plotting is handled live in the step/reset methods
         pass
 
     def close(self):

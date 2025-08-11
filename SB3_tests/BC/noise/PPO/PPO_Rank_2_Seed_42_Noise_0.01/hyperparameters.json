@@ -1,0 +1,16 @@
+{
+    "rank": 2,
+    "n_layers": 3,
+    "layer_size": 148,
+    "activation_fn": "tanh",
+    "learning_rate": 0.0001830572579280076,
+    "gamma": 0.9763544512197304,
+    "ent_coef": 2.964544717414107e-08,
+    "vf_coef": 0.6977323388095654,
+    "max_grad_norm": 3.2852985886011443,
+    "n_steps": 2048,
+    "batch_size": 128,
+    "n_epochs": 18,
+    "clip_range": 0.2077936161045162,
+    "gae_lambda": 0.9310857040746142
+}

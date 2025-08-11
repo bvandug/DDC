@@ -84,14 +84,14 @@ if __name__ == "__main__":
         drive_base_path = "/content/drive/MyDrive/DDC"
     else:
         # If not in Colab, save to a local folder named 'DDC'
-        drive_base_path = "./DDC"
+        drive_base_path = "./DDC_Temp"
 
     # CHOOSE THE MODEL TO TRAIN
-    MODEL_TO_TRAIN = 'SAC'
+    MODEL_TO_TRAIN = 'A2C'
     USE_RANDOMIZED_VOLTAGE = True
     FIXED_VOLTAGE = 30.0
-    total_timesteps = 100000 
-    MAX_EPISODE_STEPS = 2000
+    total_timesteps = 400000 
+    MAX_EPISODE_STEPS = 600
     GRACE_PERIOD = 50
 
     training_mode = "Randomized" if USE_RANDOMIZED_VOLTAGE else "Fixed"
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         print("--- Mode: Randomized Voltage (20V-35V) ---")
         env_fn = lambda: BuckConverterEnv(
             frame_skip=10, grace_period_steps=GRACE_PERIOD, max_episode_steps=MAX_EPISODE_STEPS,
-            use_randomized_goal=True, target_voltage_min=27.5, target_voltage_max=32.5
+            use_randomized_goal=True, target_voltage_min=28.5, target_voltage_max=31.5, voltage_noise_std = 0.01
         )
     else:
         print(f"--- Mode: Fixed Voltage ({FIXED_VOLTAGE}V) ---")

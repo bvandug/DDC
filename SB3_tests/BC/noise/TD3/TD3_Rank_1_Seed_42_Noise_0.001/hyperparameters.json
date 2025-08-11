@@ -1,0 +1,17 @@
+{
+    "rank": 1,
+    "n_layers": 3,
+    "layer_size": 256,
+    "activation_fn": "relu",
+    "action_noise_sigma": 0.28111990104794127,
+    "learning_rate": 0.0003252676129966604,
+    "buffer_size": 101461,
+    "batch_size": 326,
+    "tau": 0.016287309398475194,
+    "gamma": 0.9118527469761414,
+    "policy_delay": 4,
+    "target_policy_noise": 0.12838497740816027,
+    "target_noise_clip": 0.5650877741516667,
+    "gradient_steps": 8,
+    "train_freq": 8
+}
