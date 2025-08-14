@@ -134,6 +134,11 @@ class JAXBuckBoostConverterEnv(gym.Env):
         if abs(self.state[0]) > self.I_L_MAX * 1.2:
             terminated = True
             reward -= 100.0
+        
+        # add this block:
+        if abs(vC) > self.VOLTAGE_CUTOFF:
+            terminated = True
+            reward    -= self.VOLTAGE_PENALTY
 
         truncated = False
         self.prev_error = error

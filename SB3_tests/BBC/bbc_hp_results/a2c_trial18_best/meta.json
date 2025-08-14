@@ -1,0 +1,24 @@
+{
+  "trial": 18,
+  "timesteps": 100000,
+  "topk_avg": 122.112737,
+  "params": {
+    "learning_rate": 0.00011462534443603404,
+    "gamma": 0.9895981469963332,
+    "n_steps": 256,
+    "ent_coef": 2.2660344572106653e-05,
+    "vf_coef": 0.9563813424699981,
+    "gae_lambda": 0.9508555649074769,
+    "max_grad_norm": 0.6897808681300729,
+    "rms_prop_eps": 1.2723092019742775e-06,
+    "use_rms_prop": true
+  },
+  "policy_kwargs": {
+    "net_arch": "{'pi': [288, 224], 'vf': [352, 256]}",
+    "activation_fn": "<class 'torch.nn.modules.activation.ELU'>",
+    "log_std_init": "-1.8406506983932853",
+    "ortho_init": "False",
+    "optimizer_class": "<class 'torch.optim.rmsprop.RMSprop'>",
+    "optimizer_kwargs": "{'alpha': 0.99, 'eps': 1.2723092019742775e-06, 'weight_decay': 0}"
+  }
+}

@@ -28,7 +28,7 @@ class DiscretizedActionWrapper(gym.ActionWrapper):
 
 
 class SimulinkEnv(gym.Env):
-    metadata = {"render.modes": []}
+    metadata = {"render_modes": []}
 
     def __init__(
         self,
@@ -37,6 +37,7 @@ class SimulinkEnv(gym.Env):
         max_episode_time: float = 5,
         angle_threshold: float = np.pi / 2,
         seed: int = None,  # Add seed parameter
+        eval_obs_noise_std: float = 0.0,   # single scalar σ
     ):
         super().__init__()
 
@@ -47,6 +48,8 @@ class SimulinkEnv(gym.Env):
 
         # Add JAX-style seeding to match your JAX implementation exactly
         self.rng = jax.random.PRNGKey(seed if seed is not None else 0)
+        self.obs_noise_std = float(eval_obs_noise_std)        # NEW
+        self.np_rng = np.random.RandomState(int(seed or 0))   # NEW: RNG for noise
 
         # 🔄 Instance-specific MATLAB engine
         print("Starting MATLAB engine...")
@@ -107,8 +110,12 @@ class SimulinkEnv(gym.Env):
         time_lst = [t[0] for t in t2d]
         return angle_lst, vel_lst, time_lst
 
-    def reset(self):
+    def reset(self, *, seed=None, options=None):
         self.current_time = 0.0
+                # Gymnasium: reseed RNGs if a seed is provided
+        if seed is not None:
+            self.rng = jax.random.PRNGKey(int(seed))
+            self.np_rng = np.random.RandomState(int(seed))
 
         # Stop simulation completely
         self.eng.set_param(self.model_name, "SimulationCommand", "stop", nargout=0)
@@ -158,7 +165,12 @@ class SimulinkEnv(gym.Env):
         t = time_lst[-1]
         vel = vel_lst[-1]
 
-        return np.array([theta, vel], dtype=np.float32)
+        obs = np.array([theta, vel], dtype=np.float32)
+        if self.obs_noise_std > 0.0:
+            obs += self.np_rng.normal(0.0, self.obs_noise_std, size=obs.shape).astype(np.float32)
+
+        return obs, {"time": float(time_lst[-1])}
+
 
     def step(self, action):
         torque = float(np.clip(action, self.action_space.low, self.action_space.high))
@@ -187,12 +199,15 @@ class SimulinkEnv(gym.Env):
         vel = vel_lst[-1]
         obs = np.array([theta, vel], dtype=np.float32)
 
-        reward = np.cos(theta)
+        if self.obs_noise_std > 0.0:
+            obs += self.np_rng.normal(0.0, self.obs_noise_std, size=obs.shape).astype(np.float32)
 
-        done = abs(theta) > self.angle_threshold or t >= self.max_episode_time
+        reward = float(np.cos(theta))
+        terminated = bool(abs(theta) > self.angle_threshold)   # Gymnasium
+        truncated  = bool(t >= self.max_episode_time)          # Gymnasium
         self.current_time = t
+        return obs, reward, terminated, truncated, {"time": t}
 
-        return obs, reward, done, {"time": t}
 
     def render(self, mode="human"):
         pass
@@ -227,7 +242,7 @@ class SimulinkEnv(gym.Env):
         slxc_file = f"{base_name}.slxc"
 
         for filename in [autosave_file, slxc_file]:
-            full_path = os.path.join(os.getcwd(), filename)
+            full_path = os.path.join(os.getcwd(), filename) 
             if os.path.exists(full_path):
                 try:
                     os.remove(full_path)

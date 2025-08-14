@@ -1,0 +1,26 @@
+{
+    "best_params": {
+        "learning_rate": 0.00034573935916030205,
+        "gamma": 0.9588378229024117,
+        "n_steps": 64,
+        "ent_coef": 1.1246638990170106e-05,
+        "vf_coef": 0.9354867063289528,
+        "gae_lambda": 0.9385365733485583,
+        "max_grad_norm": 0.9766583733305687,
+        "rms_prop_eps": 8.457460033731485e-05,
+        "use_rms_prop": true,
+        "activation_fn": "relu",
+        "n_layers": 3,
+        "log2_base_width": 8.808464322482344,
+        "shape": "flat",
+        "tie_pi_vf": true,
+        "pi_scale": 1.1387472392728024,
+        "log_std_init": -0.7452538561440891,
+        "ortho_init": false
+    },
+    "best_value": 4333.5627448000005,
+    "n_trials": 50,
+    "best_trial_number": 8,
+    "best_artifacts_dir": "./bbc_hp_results\\a2c_trial8_best",
+    "notes": "Final score is mean of last 5 evals (top-k avg each)."
+}

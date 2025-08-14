@@ -1,0 +1,11 @@
+{
+  "layer_size": 504,
+  "n_layers": 1,
+  "activation_fn": "Tanh",
+  "n_steps": 206,
+  "gamma": 0.9831755041038456,
+  "ent_coef": 0.0003482815612924655,
+  "vf_coef": 0.7317333685560196,
+  "max_grad_norm": 4.212450657640025,
+  "learning_rate": 0.00017727716322916338
+}

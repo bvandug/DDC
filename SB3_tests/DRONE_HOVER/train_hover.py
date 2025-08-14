@@ -7,26 +7,30 @@ from gym_pybullet_drones.envs.HoverAviary import HoverAviary
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 
 # === Configuration (hard-coded parameters) ===
-NUM_ENVS = 4
-TOTAL_TIMESTEPS = 500_000
+NUM_ENVS = 8
+TOTAL_TIMESTEPS = 100_000
 DRONE_MODEL = DroneModel.CF2X
 PHYSICS = Physics.PYB
 USE_GUI = True
 SEED = 42
 
-# A2C Hyperparameters tuned for a larger network
-N_STEPS       = 256       # more steps per update for stable gradients
-GAMMA         = 0.995     # high discount for long-horizon hover
-ENT_COEF      = 0.001     # small entropy bonus to aid exploration
-VF_COEF       = 0.5       # balance policy vs value loss
-MAX_GRAD_NORM = 0.5       # tighter gradient clipping for stability
-LEARNING_RATE = 7e-4      # moderate learning rate
-
-# Larger network architecture
-# 4 hidden layers: 512 → 512 → 256 → 128, with ReLU activations
+# A2C Hyperparameters tuned for a 3-layer network (logical defaults):
+# - Larger batch for stability: n_steps = 256
+# - Emphasize long-horizon control: gamma = 0.995
+# - Light exploration bonus: ent_coef = 0.001
+# - Standard value loss weight: vf_coef = 0.5
+# - Tighter gradient clipping: max_grad_norm = 0.5
+# - Moderate learning rate: learning_rate = 3e-4
+N_STEPS       = 256
+GAMMA         = 0.995
+ENT_COEF      = 0.001
+VF_COEF       = 0.5
+MAX_GRAD_NORM = 0.5
+LEARNING_RATE = 3e-4
+# Network architecture from best trial: single hidden layer of width 504, Tanh activation
 policy_kwargs = dict(
-    net_arch=dict(pi=[512, 512, 256, 128], vf=[512, 512, 256, 128]),
-    activation_fn=nn.ReLU
+    net_arch=dict(pi=[256,256], vf=[256,256]),
+    activation_fn=nn.Tanh
 )
 
 # Logging & save dirs

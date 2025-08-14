@@ -1,0 +1,138 @@
+(venv) PS C:\Users\benva\OneDrive\Documents\MATLAB\SB3_tests\BBC> python .\vectune.py
+Tuning A2C on Buck-Boost… (2M steps/trial)
+[I 2025-08-08 02:12:04,489] A new study created in RDB with name: bbc_a2c_tuning_2M
+Tuning A2C:   0%|                                                                                                                                                                                    | 0/50 [00:00<?, ?it/s][I 2025-08-08 02:18:11,801] Trial 0 finished with value: 43588.1676372 and parameters: {'learning_rate': 0.00026558664205371646, 'gamma': 0.9840344734732354, 'n_steps': 16, 'ent_coef': 9.750044223611787e-05, 'vf_coef': 0.30295891842998296, 'gae_lambda': 0.9734580944716938, 'max_grad_norm': 0.9506687081769851, 'rms_prop_eps': 1.1240116246528498e-06, 'use_rms_prop': True, 'activation_fn': 'tanh', 'arch_mode': 'param', 'pi_layers': 2, 'vf_layers': 2, 'pi_width': 128, 'vf_width': 256, 'log_std_init': -0.9976900953049488, 'ortho_init': True}. Best is trial 0 with value: 43588.1676372.
+Tuning A2C:   2%|███                                                                                                                                                    | 1/50 [06:07<4:59:58, 367.31s/it, best_val=43588.2]
+[I 2025-08-08 02:20:18,321] Trial 1 pruned. 
+Tuning A2C:   4%|██████                                                                                                                                                 | 2/50 [08:13<3:00:32, 225.67s/it, best_val=43588.2]
+[I 2025-08-08 02:20:49,219] Trial 2 pruned. 
+Tuning A2C:   6%|█████████                                                                                                                                              | 3/50 [08:44<1:47:06, 136.73s/it, best_val=43588.2]
+[I 2025-08-08 02:21:18,032] Trial 3 pruned. 
+Tuning A2C:   8%|████████████▏                                                                                                                                           | 4/50 [09:13<1:12:09, 94.13s/it, best_val=43588.2]
+C:\Users\benva\OneDrive\Documents\MATLAB\venv\Lib\site-packages\optuna\distributions.py:518: UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [64, 64] which is of type list.
+  warnings.warn(message)
+C:\Users\benva\OneDrive\Documents\MATLAB\venv\Lib\site-packages\optuna\distributions.py:518: UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [128, 128] which is of type list.
+  warnings.warn(message)
+C:\Users\benva\OneDrive\Documents\MATLAB\venv\Lib\site-packages\optuna\distributions.py:518: UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [256, 256] which is of type list.
+  warnings.warn(message)
+C:\Users\benva\OneDrive\Documents\MATLAB\venv\Lib\site-packages\optuna\distributions.py:518: UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [128, 128, 128] which is of type list.
+  warnings.warn(message)
+C:\Users\benva\OneDrive\Documents\MATLAB\venv\Lib\site-packages\optuna\distributions.py:518: UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [256, 256, 256] which is of type list.
+  warnings.warn(message)
+C:\Users\benva\OneDrive\Documents\MATLAB\venv\Lib\site-packages\optuna\distributions.py:518: UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [256, 256, 256, 256] which is of type list.
+  warnings.warn(message)
+C:\Users\benva\OneDrive\Documents\MATLAB\venv\Lib\site-packages\optuna\distributions.py:518: UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [64, 128, 256] which is of type list.
+  warnings.warn(message)
+C:\Users\benva\OneDrive\Documents\MATLAB\venv\Lib\site-packages\optuna\distributions.py:518: UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [128, 256, 256] which is of type list.
+  warnings.warn(message)
+[I 2025-08-08 02:23:06,551] Trial 4 pruned. 
+Tuning A2C:  10%|███████████████▏                                                                                                                                        | 5/50 [11:02<1:14:29, 99.32s/it, best_val=43588.2]
+[I 2025-08-08 02:25:23,424] Trial 5 pruned. 
+Tuning A2C:  12%|██████████████████                                                                                                                                     | 6/50 [13:18<1:22:11, 112.09s/it, best_val=43588.2]
+[I 2025-08-08 02:25:58,719] Trial 6 pruned. 
+Tuning A2C:  14%|█████████████████████▎                                                                                                                                  | 7/50 [13:54<1:02:20, 86.98s/it, best_val=43588.2]
+[I 2025-08-08 02:26:32,431] Trial 7 pruned. 
+Tuning A2C:  16%|████████████████████████▋                                                                                                                                 | 8/50 [14:27<49:00, 70.02s/it, best_val=43588.2]
+[I 2025-08-08 02:27:12,473] Trial 8 pruned. 
+Tuning A2C:  18%|███████████████████████████▋                                                                                                                              | 9/50 [15:07<41:26, 60.65s/it, best_val=43588.2]
+[I 2025-08-08 02:27:48,015] Trial 9 pruned. 
+Tuning A2C:  20%|██████████████████████████████▌                                                                                                                          | 10/50 [15:43<35:15, 52.90s/it, best_val=43588.2]
+[I 2025-08-08 02:29:57,512] Trial 10 pruned. 
+Tuning A2C:  22%|█████████████████████████████████▋                                                                                                                       | 11/50 [17:53<49:37, 76.34s/it, best_val=43588.2]
+[I 2025-08-08 02:31:58,239] Trial 11 pruned. 
+Tuning A2C:  24%|████████████████████████████████████▋                                                                                                                    | 12/50 [19:53<56:54, 89.84s/it, best_val=43588.2]
+[I 2025-08-08 02:32:37,866] Trial 12 pruned. 
+Tuning A2C:  26%|███████████████████████████████████████▊                                                                                                                 | 13/50 [20:33<46:01, 74.63s/it, best_val=43588.2]
+[I 2025-08-08 02:38:35,260] Trial 13 pruned. 
+Tuning A2C:  28%|██████████████████████████████████████████                                                                                                            | 14/50 [26:30<1:36:01, 160.04s/it, best_val=43588.2]
+[I 2025-08-08 02:39:09,006] Trial 14 pruned. 
+Tuning A2C:  30%|█████████████████████████████████████████████                                                                                                         | 15/50 [27:04<1:11:08, 121.97s/it, best_val=43588.2]
+[I 2025-08-08 02:39:48,791] Trial 15 pruned. 
+Tuning A2C:  32%|████████████████████████████████████████████████▉                                                                                                        | 16/50 [27:44<55:05, 97.23s/it, best_val=43588.2]
+[I 2025-08-08 02:40:27,702] Trial 16 pruned. 
+Tuning A2C:  34%|████████████████████████████████████████████████████                                                                                                     | 17/50 [28:23<43:49, 79.70s/it, best_val=43588.2]
+[I 2025-08-08 02:41:07,639] Trial 17 pruned. 
+Tuning A2C:  36%|███████████████████████████████████████████████████████                                                                                                  | 18/50 [29:03<36:07, 67.75s/it, best_val=43588.2]
+[I 2025-08-08 02:41:44,308] Trial 18 pruned. 
+Tuning A2C:  38%|██████████████████████████████████████████████████████████▏                                                                                              | 19/50 [29:39<30:10, 58.41s/it, best_val=43588.2]
+[I 2025-08-08 02:42:21,985] Trial 19 pruned. 
+Tuning A2C:  40%|█████████████████████████████████████████████████████████████▏                                                                                           | 20/50 [30:17<26:05, 52.19s/it, best_val=43588.2]
+[I 2025-08-08 02:42:55,026] Trial 20 pruned. 
+Tuning A2C:  42%|████████████████████████████████████████████████████████████████▎                                                                                        | 21/50 [30:50<22:26, 46.44s/it, best_val=43588.2]
+[I 2025-08-08 02:48:48,727] Trial 21 pruned. 
+Tuning A2C:  44%|██████████████████████████████████████████████████████████████████                                                                                    | 22/50 [36:44<1:04:42, 138.66s/it, best_val=43588.2]
+[I 2025-08-08 02:50:57,612] Trial 22 pruned. 
+Tuning A2C:  46%|█████████████████████████████████████████████████████████████████████                                                                                 | 23/50 [38:53<1:01:04, 135.72s/it, best_val=43588.2]
+[I 2025-08-08 02:51:37,271] Trial 23 pruned. 
+Tuning A2C:  48%|████████████████████████████████████████████████████████████████████████▉                                                                               | 24/50 [39:32<46:19, 106.90s/it, best_val=43588.2]
+[I 2025-08-08 02:52:18,480] Trial 24 pruned. 
+Tuning A2C:  50%|████████████████████████████████████████████████████████████████████████████▌                                                                            | 25/50 [40:13<36:19, 87.19s/it, best_val=43588.2]
+[I 2025-08-08 02:59:31,605] Trial 25 finished with value: 43595.815317600005 and parameters: {'learning_rate': 0.00022808322708211555, 'gamma': 0.980446062882027, 'n_steps': 16, 'ent_coef': 0.045824942442631994, 'vf_coef': 0.7688035746335041, 'gae_lambda': 0.8890683788935556, 'max_grad_norm': 0.5898968220855394, 'rms_prop_eps': 9.143233985628103e-06, 'use_rms_prop': True, 'activation_fn': 'tanh', 'arch_mode': 'preset', 'pi_arch': [128, 128, 128], 'vf_arch': [256, 256, 256, 256], 'log_std_init': -1.47859094928209, 'ortho_init': True}. Best is trial 25 with value: 43595.815317600005.
+Tuning A2C:  52%|██████████████████████████████████████████████████████████████████████████████                                                                        | 26/50 [47:27<1:16:23, 190.98s/it, best_val=43595.8]
+[I 2025-08-08 03:01:40,160] Trial 26 pruned. 
+Tuning A2C:  54%|█████████████████████████████████████████████████████████████████████████████████                                                                     | 27/50 [49:35<1:06:01, 172.25s/it, best_val=43595.8]
+[I 2025-08-08 03:02:18,194] Trial 27 pruned. 
+Tuning A2C:  56%|█████████████████████████████████████████████████████████████████████████████████████                                                                   | 28/50 [50:13<48:23, 131.98s/it, best_val=43595.8]
+[I 2025-08-08 03:09:02,156] Trial 28 finished with value: 43601.6478738 and parameters: {'learning_rate': 0.0001824685512605154, 'gamma': 0.9597333687810978, 'n_steps': 32, 'ent_coef': 0.005104780800599187, 'vf_coef': 0.8241159198800299, 'gae_lambda': 0.8672530611834806, 'max_grad_norm': 0.6183178676541984, 'rms_prop_eps': 1.6295771183930045e-05, 'use_rms_prop': True, 'activation_fn': 'tanh', 'arch_mode': 'param', 'pi_layers': 3, 'vf_layers': 3, 'pi_width': 256, 'vf_width': 256, 'log_std_init': -1.2000721300318555, 'ortho_init': True}. Best is trial 28 with value: 43601.6478738.
+Tuning A2C:  58%|███████████████████████████████████████████████████████████████████████████████████████                                                               | 29/50 [56:57<1:14:45, 213.58s/it, best_val=43601.6]
+[I 2025-08-08 03:11:03,665] Trial 29 pruned. 
+Tuning A2C:  60%|██████████████████████████████████████████████████████████████████████████████████████████                                                            | 30/50 [58:59<1:01:59, 185.96s/it, best_val=43601.6]
+[I 2025-08-08 03:11:43,545] Trial 30 pruned. 
+Tuning A2C:  62%|██████████████████████████████████████████████████████████████████████████████████████████████▏                                                         | 31/50 [59:39<45:00, 142.13s/it, best_val=43601.6]
+[I 2025-08-08 03:13:37,298] Trial 31 pruned. 
+Tuning A2C:  64%|████████████████████████████████████████████████████████████████████████████████████████████████                                                      | 32/50 [1:01:32<40:05, 133.62s/it, best_val=43601.6]
+[I 2025-08-08 03:20:14,544] Trial 32 finished with value: 43603.5515666 and parameters: {'learning_rate': 0.0002323486211465546, 'gamma': 0.9629315803540179, 'n_steps': 32, 'ent_coef': 0.004465163215577964, 'vf_coef': 0.32264947207221445, 'gae_lambda': 0.9410770718365616, 'max_grad_norm': 0.6157434262878816, 'rms_prop_eps': 2.8039039772448898e-05, 'use_rms_prop': True, 'activation_fn': 'tanh', 'arch_mode': 'param', 'pi_layers': 4, 'vf_layers': 4, 'pi_width': 128, 'vf_width': 128, 'log_std_init': -0.8564245211147925, 'ortho_init': True}. Best is trial 32 with value: 43603.5515666.
+Tuning A2C:  66%|█████████████████████████████████████████████████████████████████████████████████████████████████▋                                                  | 33/50 [1:08:10<1:00:16, 212.71s/it, best_val=43603.6]
+[I 2025-08-08 03:20:54,587] Trial 33 pruned. 
+Tuning A2C:  68%|██████████████████████████████████████████████████████████████████████████████████████████████████████                                                | 34/50 [1:08:50<42:54, 160.91s/it, best_val=43603.6]
+[I 2025-08-08 03:26:56,843] Trial 34 pruned. 
+Tuning A2C:  70%|█████████████████████████████████████████████████████████████████████████████████████████████████████████                                             | 35/50 [1:14:52<55:19, 221.31s/it, best_val=43603.6]
+[I 2025-08-08 03:27:34,320] Trial 35 pruned. 
+Tuning A2C:  72%|████████████████████████████████████████████████████████████████████████████████████████████████████████████                                          | 36/50 [1:15:29<38:46, 166.16s/it, best_val=43603.6]
+[I 2025-08-08 03:28:09,062] Trial 36 pruned. 
+Tuning A2C:  74%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████                                       | 37/50 [1:16:04<27:27, 126.74s/it, best_val=43603.6]
+[I 2025-08-08 03:30:11,772] Trial 37 pruned. 
+Tuning A2C:  76%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████                                    | 38/50 [1:18:07<25:06, 125.53s/it, best_val=43603.6]
+[I 2025-08-08 03:30:50,198] Trial 38 pruned. 
+Tuning A2C:  78%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                 | 39/50 [1:18:45<18:13, 99.40s/it, best_val=43603.6]
+[I 2025-08-08 03:31:27,887] Trial 39 pruned. 
+Tuning A2C:  80%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                              | 40/50 [1:19:23<13:28, 80.89s/it, best_val=43603.6]
+[I 2025-08-08 03:32:07,763] Trial 40 pruned. 
+Tuning A2C:  82%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                           | 41/50 [1:20:03<10:17, 68.58s/it, best_val=43603.6]
+[I 2025-08-08 03:34:09,586] Trial 41 pruned. 
+Tuning A2C:  84%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                        | 42/50 [1:22:05<11:16, 84.55s/it, best_val=43603.6]
+[I 2025-08-08 03:36:08,384] Trial 42 pruned. 
+Tuning A2C:  86%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                     | 43/50 [1:24:03<11:03, 94.83s/it, best_val=43603.6]
+[I 2025-08-08 03:41:50,442] Trial 43 pruned. 
+Tuning A2C:  88%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████                  | 44/50 [1:29:45<16:53, 169.00s/it, best_val=43603.6]
+[I 2025-08-08 03:44:08,943] Trial 44 pruned. 
+Tuning A2C:  90%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████               | 45/50 [1:32:04<13:19, 159.85s/it, best_val=43603.6]
+[I 2025-08-08 03:50:52,507] Trial 45 finished with value: 45235.485449600004 and parameters: {'learning_rate': 0.00017059445397194292, 'gamma': 0.9587368540382443, 'n_steps': 32, 'ent_coef': 0.012892638088546928, 'vf_coef': 0.8793421291950466, 'gae_lambda': 0.9734268789650672, 'max_grad_norm': 0.5966706921461602, 'rms_prop_eps': 8.70634312765706e-05, 'use_rms_prop': True, 'activation_fn': 'elu', 'arch_mode': 'param', 'pi_layers': 4, 'vf_layers': 4, 'pi_width': 128, 'vf_width': 128, 'log_std_init': -2.462281344853664, 'ortho_init': False}. Best is trial 45 with value: 45235.485449600004.
+Tuning A2C:  92%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████            | 46/50 [1:38:48<15:31, 232.96s/it, best_val=45235.5]
+[I 2025-08-08 03:51:29,335] Trial 46 pruned. 
+Tuning A2C:  94%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████         | 47/50 [1:39:24<08:42, 174.12s/it, best_val=45235.5]
+[I 2025-08-08 03:52:10,344] Trial 47 pruned. 
+Tuning A2C:  96%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████      | 48/50 [1:40:05<04:28, 134.19s/it, best_val=45235.5]
+[I 2025-08-08 03:52:55,494] Trial 48 pruned. 
+Tuning A2C:  98%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████   | 49/50 [1:40:51<01:47, 107.48s/it, best_val=45235.5]
+[I 2025-08-08 03:58:44,984] Trial 49 finished with value: 36577.43430379999 and parameters: {'learning_rate': 0.00024295592012892547, 'gamma': 0.980820416017403, 'n_steps': 32, 'ent_coef': 0.0022713629598691107, 'vf_coef': 0.5572695741941419, 'gae_lambda': 0.935042013473227, 'max_grad_norm': 0.4412710356678865, 'rms_prop_eps': 1.3074491441855258e-06, 'use_rms_prop': True, 'activation_fn': 'tanh', 'arch_mode': 'param', 'pi_layers': 2, 'vf_layers': 1, 'pi_width': 320, 'vf_width': 64, 'log_std_init': -2.467284916019632, 'ortho_init': True}. Best is trial 45 with value: 45235.485449600004.
+Tuning A2C: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [1:46:40<00:00, 180.08s/it, best_val=45235.5]
+Tuning A2C: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 50/50 [1:46:40<00:00, 128.01s/it, best_val=45235.5] 
+Best (mean of last 5 evals): 45235.49
+  learning_rate: 0.00017059445397194292
+  gamma: 0.9587368540382443
+  n_steps: 32
+  ent_coef: 0.012892638088546928
+  vf_coef: 0.8793421291950466
+  gae_lambda: 0.9734268789650672
+  max_grad_norm: 0.5966706921461602
+  rms_prop_eps: 8.70634312765706e-05
+  use_rms_prop: True
+  activation_fn: elu
+  arch_mode: param
+  pi_layers: 4
+  vf_layers: 4
+  pi_width: 128
+  vf_width: 128
+  log_std_init: -2.462281344853664
+  ortho_init: False

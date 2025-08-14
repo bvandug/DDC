@@ -1,0 +1,23 @@
+{
+    "best_params": {
+        "learning_rate": 0.00017059445397194292,
+        "gamma": 0.9587368540382443,
+        "n_steps": 32,
+        "ent_coef": 0.012892638088546928,
+        "vf_coef": 0.8793421291950466,
+        "gae_lambda": 0.9734268789650672,
+        "max_grad_norm": 0.5966706921461602,
+        "rms_prop_eps": 8.70634312765706e-05,
+        "use_rms_prop": true,
+        "activation_fn": "elu",
+        "arch_mode": "param",
+        "pi_layers": 4,
+        "vf_layers": 4,
+        "pi_width": 128,
+        "vf_width": 128,
+        "log_std_init": -2.462281344853664,
+        "ortho_init": false
+    },
+    "best_value": 45235.485449600004,
+    "n_trials": 50
+}

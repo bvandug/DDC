@@ -133,7 +133,9 @@ def main(algo_name="ppo",
     set_random_seed(SEED)
 
     # Determine prefix
-    prefix = f"noise_{noise_level:.3f}_" if noise else ""
+    # suffix = f"{algo_name}_" + (f"noise_{noise_level:.3f}_" if noise else "")
+    suffix = (f"noise_{noise_level:.3f}" if noise else "")
+
 
     # Create and seed the environment
     env = InvertedPendulumGymWrapper(
@@ -153,11 +155,11 @@ def main(algo_name="ppo",
         # pass to the wrapper under its new argument name
         env = DiscretizedActionWrapper(env, torque_values=torque_values)
     # Directories and file names
-    model_base_dir     = os.path.join("jax_models", prefix + algo_name)
+    model_base_dir     = os.path.join("jax_models", f"{algo_name}_" + f"{suffix}")
     os.makedirs(model_base_dir, exist_ok=True)
-    model_path         = os.path.join(model_base_dir, prefix + "best_model")
-    replay_buffer_path = os.path.join(model_base_dir, prefix + "best_model_replay_buffer")
-    tensorboard_log_dir = os.path.join("jax_train_logs", prefix + algo_name)
+    model_path         = os.path.join(model_base_dir, "best_model")
+    replay_buffer_path = os.path.join(model_base_dir, "best_model_replay_buffer")
+    tensorboard_log_dir = os.path.join("jax_train_logs", f"{algo_name}_" + f"{suffix}")
 
     print(f"📁 Saving models to: {model_base_dir}")
     print(f"📊 TensorBoard logs to: {tensorboard_log_dir}")
@@ -172,6 +174,9 @@ def main(algo_name="ppo",
             mean=np.zeros(1),
             sigma=params["action_noise_sigma"] * np.ones(1)
         )
+
+    device = "cpu" if algo_name in ["ppo", "a2c"] else ("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
 
     if os.path.exists(model_path + ".zip"):
         print(f"Loading model from {model_path}.zip...")
@@ -190,11 +195,12 @@ def main(algo_name="ppo",
             policy="MlpPolicy",
             env=env,
             seed=SEED,
-            verbose=1,
+            verbose=0,
             learning_rate=params["learning_rate"],
             gamma=params["gamma"],
             policy_kwargs=policy_kwargs,
-            tensorboard_log=tensorboard_log_dir
+            tensorboard_log=tensorboard_log_dir,
+            device=device
         )
 
         if algo_name == "td3":
@@ -226,7 +232,7 @@ def main(algo_name="ppo",
                          max_grad_norm=params["max_grad_norm"],
                          rms_prop_eps=params["rms_prop_eps"],
                          use_rms_prop=params["use_rms_prop"],
-                         device="cpu")
+                         )
         elif algo_name == "ppo":
             model = Algo(**common_kwargs,
                          n_steps=params["n_steps"],
@@ -237,7 +243,7 @@ def main(algo_name="ppo",
                          gae_lambda=params["gae_lambda"],
                          vf_coef=params["vf_coef"],
                          max_grad_norm=params["max_grad_norm"],
-                         device="cpu")
+                         )
         elif algo_name == "dqn":
             model = Algo(**common_kwargs,
                          buffer_size=params["buffer_size"],
