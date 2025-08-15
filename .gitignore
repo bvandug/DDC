@@ -7,3 +7,16 @@ new-env/
 myvenv/
 # Ignore any slprj folder anywhere in the repo
 **/slprj/
+/SB3_tests/Inverted_Pendulum/slprj/
+/SB3_tests/Cartpole/slprj/
+/SB3_tests/Inverted_Pendulum/slprj/
+/SB3_tests/BC/slprj/
+/SB3_tests/BBC/slprj/
+
+**/__pycache__/
+/SB3_tests/Inverted_Pendulum/__pycache__/
+/SB3_tests/Cartpole/__pycache__/
+/SB3_tests/Inverted_Pendulum/__pycache__/
+/SB3_tests/BC/__pycache__/
+/SB3_tests/BBC/__pycache__/
+
