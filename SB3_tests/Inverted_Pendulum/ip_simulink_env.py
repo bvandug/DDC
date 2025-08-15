@@ -4,8 +4,10 @@ import numpy as np
 import matlab.engine
 import matplotlib.pyplot as plt
 import jax
-import jax.numpy as jnp
-
+import shutil
+import tempfile
+import uuid
+import os
 
 # >>> ADDED FOR DQN --------------------------------------------------------------
 class DiscretizedActionWrapper(gym.ActionWrapper):
@@ -22,8 +24,6 @@ class DiscretizedActionWrapper(gym.ActionWrapper):
     def action(self, act_idx):
         """Convert the integer chosen by DQN into the continuous force."""
         return np.array([self.force_values[int(act_idx)]], dtype=np.float32)
-
-
 # ------------------------------------------------------------------------------
 
 
@@ -40,11 +40,6 @@ class SimulinkEnv(gym.Env):
         eval_obs_noise_std: float = 0.0,   # single scalar σ
     ):
         super().__init__()
-
-        import shutil
-        import tempfile
-        import uuid
-        import os
 
         # Add JAX-style seeding to match your JAX implementation exactly
         self.rng = jax.random.PRNGKey(seed if seed is not None else 0)
@@ -112,7 +107,7 @@ class SimulinkEnv(gym.Env):
 
     def reset(self, *, seed=None, options=None):
         self.current_time = 0.0
-                # Gymnasium: reseed RNGs if a seed is provided
+        # Gymnasium: reseed RNGs if a seed is provided
         if seed is not None:
             self.rng = jax.random.PRNGKey(int(seed))
             self.np_rng = np.random.RandomState(int(seed))

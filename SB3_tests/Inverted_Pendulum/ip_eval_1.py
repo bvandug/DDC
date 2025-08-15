@@ -133,7 +133,7 @@ def evaluate_full_metrics(
     n_episodes=5,
     target_value=0.0,
     tolerance=0.1,
-    stable_duration=0.1,
+    stable_duration=0.1,  # Now actually used for dwell time
     sim_timestep=0.01,
     live_plot=False,
     save_plots=True,
@@ -164,13 +164,20 @@ def evaluate_full_metrics(
     log_lines = []
 
     all_rewards = []
+    steady_offset_list = []  # Add this line
     stabilisation_times = []
-    steady_state_errors = []
+    steady_state_errors = []  # Now stores MAE instead of final error
     total_stable_times = []
     all_thetas = []
     all_theta_vs = []
     all_us = []
     overshoots = []
+    # New metrics
+    steady_rmse_list = []
+    steady_max_list = []
+    osc_std_list = []
+    iae_list = []
+    u_energy_list = []
 
     for ep in range(n_episodes):
 
@@ -193,9 +200,12 @@ def evaluate_full_metrics(
         done = False
         t = 0.0
         ep_reward = 0.0
-        stable_start = None
         total_stable = 0.0
         episode_thetas, episode_theta_vs, episode_us, t_vals = [], [], [], []
+        # CHANGED: New stabilization tracking variables
+        in_band_run = 0.0
+        stabilised_idx = None  # Index where continuous dwell is achieved
+
 
         # live plotting setup
         if live_plot:
@@ -250,12 +260,16 @@ def evaluate_full_metrics(
                 axs_live[3].set_title(f"Angle: {theta_deg:.1f}°")
                 plt.pause(0.001)
 
-            if abs(theta - target_value) < tolerance:
+            # CHANGED: New stabilization logic with dwell requirement
+            err = abs(theta - target_value)
+            if err < tolerance:
                 total_stable += sim_timestep
-                if stable_start is None:
-                    stable_start = t
+                in_band_run += sim_timestep
+                # Mark stabilization if dwell requirement is met
+                if stabilised_idx is None and in_band_run >= stable_duration:
+                    stabilised_idx = len(t_vals) - 1  # Current index
             else:
-                stable_start = None
+                in_band_run = 0.0  # Reset counter if leaves tolerance
 
             t += sim_timestep
 
@@ -263,43 +277,69 @@ def evaluate_full_metrics(
             plt.ioff()
             plt.close(fig_live)
 
-        stab_time = stable_start if stable_start is not None else t
-        steady_err = abs(np.degrees(theta - target_value))
+        # CHANGED: Stabilization time based on dwell requirement
+        stab_time = t_vals[stabilised_idx] if stabilised_idx is not None else t
 
-        # --- Fixed overshoot/undershoot calculation ---
+        # CHANGED: Adaptive steady-state window selection
+        tail_len = max(20, int(0.15 * len(episode_thetas)))  # At least 20 samples or 15% of run
+        if stabilised_idx is not None:
+            ss_start_idx = stabilised_idx  # From stabilization point
+        else:
+            ss_start_idx = max(0, len(episode_thetas) - tail_len)  # Fallback to tail
+        
+        # CHANGED: Compute new steady-state metrics
+        ss_thetas = np.array(episode_thetas[ss_start_idx:])
+        ss_err_deg = ss_thetas - np.degrees(target_value)
+        steady_offset = np.mean(ss_err_deg)
+        steady_mae = float(np.mean(np.abs(ss_err_deg)))
+        steady_rmse = float(np.sqrt(np.mean(ss_err_deg**2)))
+        steady_max = float(np.max(np.abs(ss_err_deg)))
+        osc_std = float(np.std(ss_thetas))
+
+        # CHANGED: Overall performance metrics
+        all_e_deg = np.array(episode_thetas) - np.degrees(target_value)
+        iae = float(np.trapz(np.abs(all_e_deg), t_vals))
+        u_energy = float(np.sum(np.square(episode_us)) * sim_timestep)
+
+        # Keep existing overshoot calculation
         setpoint_deg = np.degrees(target_value)
         theta_arr = np.asarray(episode_thetas, dtype=float)
         t_arr = np.asarray(t_vals, dtype=float)
-
         S, over_dict = signed_over_from_stepinfo(theta_arr, t_arr, setpoint_deg)
-        over = over_dict['signed_over_setpoint']  # keep your old field if you like
+        over = over_dict['signed_over_setpoint']
 
-        # lines_extra = [
-        #     f"  Overshoot(+)/Undershoot(-)  : {over:+.2f}°",
-        #     f"  (peaks wrt setpoint: +{over_dict['pos_over_setpoint']:.2f}° / {over_dict['neg_under_setpoint']:.2f}°)",
-        #     f"  (wrt final {over_dict['y_ss']:.2f}°: +{over_dict['pos_over_final']:.2f}° / {over_dict['neg_under_final']:.2f}°)",
-        # ]
-
+        # CHANGED: Append all metrics (including new ones)
         all_rewards.append(ep_reward)
         stabilisation_times.append(stab_time)
-        steady_state_errors.append(steady_err)
+        steady_offset_list.append(steady_offset)
+        steady_state_errors.append(steady_mae)  # Now MAE instead of final error
         total_stable_times.append(total_stable)
         all_thetas.append((t_vals, episode_thetas))
         all_theta_vs.append((t_vals, episode_theta_vs))
         all_us.append((t_vals, episode_us))
         overshoots.append(over)
+        # New metrics
+        steady_rmse_list.append(steady_rmse)
+        steady_max_list.append(steady_max)
+        osc_std_list.append(osc_std)
+        iae_list.append(iae)
+        u_energy_list.append(u_energy)
 
-        # logging
+        # CHANGED: Updated logging with new metrics
         lines = [
             f"Episode {ep+1}:",
             f"  Total reward                : {ep_reward:.2f}",
             f"  Stabilisation time          : {stab_time:.2f} s",
-            f"  Steady-state error          : {steady_err:.2f}°",
-            f"  Overshoot(+)/Undershoot(-)  : {over:+.2f}°",  # + overshoot, - undershoot
+            f"  Steady-state offset         : {steady_offset:+.2f}°",
+            f"  Overshoot(+)/Undershoot(-)  : {over:+.2f}°",
             f"  Total stable time           : {total_stable:.2f} s",
+            f"  Steady-state MAE            : {steady_mae:.2f}°",
+            f"  Steady-state RMSE           : {steady_rmse:.2f}°",
+            f"  Steady-state max error      : {steady_max:.2f}°",
+            f"  Oscillation (σ)             : {osc_std:.2f}°",
+            f"  IAE (|deg|·s)               : {iae:.2f}",
+            f"  Control energy              : {u_energy:.2f}",
         ]
-        # lines.extend(lines_extra)
-
         for l in lines:
             print(l)
             log_lines.append(l)
@@ -342,9 +382,14 @@ def evaluate_full_metrics(
         f"Mean Reward: {mean_r:.2f} ± {std_r:.2f} (Max: {max_r:.0f})",
         f"→ {percent_max:.1f}% of theoretical max reward",
         f"Mean Stabilisation Time             : {np.mean(stabilisation_times):.2f} s",
-        f"Mean Steady-State Error             : {np.mean(steady_state_errors):.2f}°",
-        f"Mean Overshoot/Undershoot Magnitude : {np.mean(np.abs(overshoots)):.2f}°",
+        f"Mean Steady-state offset            : {np.mean(steady_offset_list):.2f}°",  # CHANGED
         f"Mean Total Stable Time              : {np.mean(total_stable_times):.2f} s",
+        f"Mean Steady-State MAE               : {np.mean(steady_state_errors):.2f}°",
+        f"Mean Steady-State RMSE              : {np.mean(steady_rmse_list):.2f}°",
+        f"Mean Oscillation (σ)                : {np.mean(osc_std_list):.2f}°",
+        f"Mean |Overshoot/Undershoot|         : {np.mean(np.abs(overshoots)):.2f}°",  # REMOVED DUPLICATE BELOW
+        f"Mean IAE                            : {np.mean(iae_list):.2f}",
+        f"Mean Control Energy                 : {np.mean(u_energy_list):.2f}",
     ]
     for l in summary_lines:
         print(l)
@@ -405,10 +450,15 @@ def evaluate_full_metrics(
     return {
         "rewards": all_rewards,
         "stabilisation_times": stabilisation_times,
-        "steady_state_errors": steady_state_errors,
+        "steady_state_errors": steady_state_errors,  # Now MAE values
         "overshoots": overshoots,
         "total_stable_times": total_stable_times,
         "percent_of_max": percent_max,
+        "steady_rmse": steady_rmse_list,
+        "steady_max": steady_max_list,
+        "osc_std": osc_std_list,
+        "iae": iae_list,
+        "u_energy": u_energy_list
     }
 
 
@@ -431,6 +481,8 @@ if __name__ == "__main__":
     parser.add_argument("--no-save-plots", dest="no_save_plots", action="store_true")
     parser.add_argument("--env-noise", type=float, default=0.0,
                     help="Evaluation-time observation noise sigma (radians)")
+    parser.add_argument("--name-contains", default=None,
+                    help="Only evaluate runs whose folder name contains this substring (e.g., 'noise_0.001')")
 
     args = parser.parse_args()
 
@@ -448,6 +500,10 @@ if __name__ == "__main__":
         if not os.path.isdir(sub):
             continue
         algo_key = infer_algo_from_name(name)
+            # New filter: only keep runs whose name contains the given substring
+        if args.name_contains and args.name_contains not in name:
+            continue
+
         if request != "ALL":
             # only keep folders matching the requested algo
             if algo_key != request:

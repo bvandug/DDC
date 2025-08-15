@@ -100,7 +100,7 @@ class FancyTensorboardCallback(BaseCallback):
 
 
 def load_hyperparameters(algo_name):
-    path = f"jax_hp_results/{algo_name}_best_params.json"
+    path = f"final_jax_result/{algo_name}_best_params.json"
     with open(path, "r") as f:
         params = json.load(f)["best_params"]
 
