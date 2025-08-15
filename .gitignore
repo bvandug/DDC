@@ -5,3 +5,5 @@ venv/
 myenv/
 new-env/
 myvenv/
+# Ignore any slprj folder anywhere in the repo
+**/slprj/
