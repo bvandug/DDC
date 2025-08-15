@@ -167,6 +167,6 @@ Adjust these parameters according to your needs to fine-tune the performance of 
 
 ## Acknowledgements
 
-We would like to express our gratitude to our supervisor, Prof. K. Prag, for her invaluable guidance and feedback throughout this research project.
+We would like to express our gratitude to our supervisor, K. Prag, for her invaluable guidance and feedback throughout this research project.
 
   
