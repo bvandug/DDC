@@ -10,6 +10,7 @@ IP_DIR = os.path.normpath(os.path.join(ROOT, "..", "Inverted_Pendulum"))
 TRAIN_DIR = os.path.join(ROOT, "CP_JAX")
 
 TRAIN_SCRIPT   = "cp_jax_train.py"
+HP_SCRIPT      = "cp_jax_hp.py"
 CP_EVAL_SCRIPT = os.path.join(ROOT, "cp_eval.py")
 IP_EVAL_SCRIPT = os.path.join(IP_DIR, "ip_eval_1.py")
 
@@ -41,20 +42,24 @@ def spawn_powershell_window(cmd_list, cwd: str):
                             creationflags=subprocess.CREATE_NEW_CONSOLE)
 
 if __name__ == "__main__":
-    # === 1) Inverted Pendulum evals first (4 noises) ===
-    ip_procs = []
-    for nl in NOISE_LEVELS:
-        eval_cmd = [sys.executable, IP_EVAL_SCRIPT, "--algo", "all", "--episodes", str(EVAL_EPISODES)]
-        if nl != 0:
-            eval_cmd += ["--env-noise", f"{nl:.3f}"]
-        print(f"Launching IP eval PowerShell for env-noise={nl:.3f} …")
-        ip_procs.append(spawn_powershell_window(eval_cmd, cwd=IP_DIR))
+    # # === 1) Inverted Pendulum evals first (4 noises) ===
+    # ip_procs = []
+    # for nl in NOISE_LEVELS:
+    #     eval_cmd = [sys.executable, IP_EVAL_SCRIPT, "--algo", "all", "--episodes", str(EVAL_EPISODES)]
+    #     if nl != 0:
+    #         eval_cmd += ["--env-noise", f"{nl:.3f}"]
+    #     print(f"Launching IP eval PowerShell for env-noise={nl:.3f} …")
+    #     ip_procs.append(spawn_powershell_window(eval_cmd, cwd=IP_DIR))
 
-    print("Waiting for all IP eval windows to finish…")
-    for p in ip_procs:
-        p.wait()
-    print("All IP evals completed.\n")
+    # print("Waiting for all IP eval windows to finish…")
+    # for p in ip_procs:
+    #     p.wait()
+    # print("All IP evals completed.\n")
 
+
+
+    run([sys.executable, HP_SCRIPT],cwd=TRAIN_DIR)
+                
     # === 2) Cartpole trainings (algo × noise) ===
     for nl in NOISE_LEVELS:
         for algo in ALGOS:
