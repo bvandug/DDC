@@ -39,6 +39,15 @@ class PIDController:
         self.saturation_max = saturation_max
         self.in_saturation = False
 
+    def reset(self):
+        """Resets the controller's internal state for a new episode."""
+        self.integral_error = self.saturation_min
+        self.previous_error = 0
+        self.previous_time = None
+        self.in_saturation = False
+        print("  PID controller state has been reset.")
+        return True # Return a value to confirm it ran
+
     def saturation(self, signal):
         '''
         Ensures the output remains between the saturation limits.
@@ -103,13 +112,10 @@ pid_controller = PIDController(Kp=0.45, Ki=43.5, Kd=0)
 def controller_call(voltage, time):
     '''
     Calls the PID controller to compute the control signal.
-
-    Args:
-        voltage (float): Voltage error signal.
-        time (float): Current time.
-
-    Returns:
-        float: Saturated output signal.
     '''
     signal = pid_controller.update(voltage, time)
     return signal
+
+def reset_controller():
+    """Allows MATLAB to call the reset method."""
+    return pid_controller.reset()

@@ -2,7 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # --- Global Font and Style Configuration ---
-# We've removed the tick settings from here to apply them directly later.
 plt.rcParams.update({
     'font.family': 'Times New Roman',
     'font.size': 16,
@@ -12,17 +11,16 @@ plt.rcParams.update({
     'axes.titleweight': 'bold',
     'text.color': 'black',
     'axes.labelcolor': 'black',
-    'xtick.color': 'black',       # This sets the tick LABEL color
-    'ytick.color': 'black',       # This sets the tick LABEL color
+    'xtick.color': 'black',
+    'ytick.color': 'black',
     'axes.edgecolor': 'black',
     'legend.labelcolor': 'black',
 })
 
 def plot_controller_performance(file_path, goal_voltage=30.0, error_margin=0.5):
     """
-    Reads controller performance data from an XLSX file and generates a plot
-    similar to the provided example. It automatically converts a time column
-    from milliseconds to seconds.
+    Reads controller performance data from an XLSX file and generates a plot.
+    Expects time to already be in seconds.
 
     Args:
         file_path (str): The path to the XLSX data file.
@@ -30,7 +28,7 @@ def plot_controller_performance(file_path, goal_voltage=30.0, error_margin=0.5):
         error_margin (float): The acceptable voltage error margin.
     """
     try:
-        df = pd.read_excel(file_path, sheet_name='evaluation_results_30.0_A2C_dat')
+        df = pd.read_excel(file_path, sheet_name='evaluation_on_env_noise_0_01_da')
         print("Successfully loaded the Excel file.")
     except FileNotFoundError:
         print(f"Error: The file '{file_path}' was not found.")
@@ -39,40 +37,27 @@ def plot_controller_performance(file_path, goal_voltage=30.0, error_margin=0.5):
         print(f"An error occurred while reading the Excel file: {e}")
         return
 
-    # --- Time Conversion ---
-    time_col_ms = 'time_ms'
-    time_col_s = 'Time (s)'
+    time_col = 'Time (s)'  # Expecting this column already in seconds
 
-    if time_col_ms not in df.columns:
-        print(f"Error: Time column '{time_col_ms}' not found in the Excel file.")
-        time_col_ms = 'Time (ms)'
-        if time_col_ms not in df.columns:
-            print(f"Error: Fallback time column '{time_col_ms}' also not found.")
-            return
-
-    df[time_col_s] = df[time_col_ms] / 1000.0
-    print(f"Converted time column '{time_col_ms}' from milliseconds to seconds.")
+    if time_col not in df.columns:
+        print(f"Error: Expected time column '{time_col}' not found in the Excel file.")
+        return
 
     # --- Plotting Setup ---
     plt.style.use('seaborn-v0_8-whitegrid')
     fig, ax = plt.subplots(figsize=(10, 7))
 
-    # --- Manually set the outline (spines) to black ---
     ax.spines['top'].set_color('black')
     ax.spines['bottom'].set_color('black')
     ax.spines['left'].set_color('black')
     ax.spines['right'].set_color('black')
-    
-    # --- NEW: Force tick marks to be visible ---
-    # This overrides the style sheet and ensures ticks are drawn.
     ax.tick_params(axis='both', which='major', direction='out', length=6, width=1.2)
-
 
     # --- Plot Algorithm Data ---
     algorithms = ['A2C', 'SAC']
     for algo in algorithms:
         if algo in df.columns:
-            ax.plot(df[time_col_s], df[algo], label=f'{algo} Performance', linewidth=1.5)
+            ax.plot(df[time_col], df[algo], label=f'{algo} Performance', linewidth=1.5)
         else:
             print(f"Warning: Column for algorithm '{algo}' not found. It will be skipped.")
 
@@ -98,5 +83,5 @@ def plot_controller_performance(file_path, goal_voltage=30.0, error_margin=0.5):
 
 
 if __name__ == '__main__':
-    excel_file_path = 'eval_A2C_SAC.xlsx'
+    excel_file_path = 'eval_data_noise.xlsx'
     plot_controller_performance(file_path=excel_file_path)
