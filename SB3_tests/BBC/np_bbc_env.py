@@ -33,18 +33,31 @@ class JAXBuckBoostConverterEnv(gym.Env):
         grace_period_steps: int = 100,
         target_voltage: float = -30.0,
         enforce_dcm: bool = True,          # NEW: prevent negative inductor current (DCM)
+        quantize_pwm=True, 
+        quantize_mode="round"
         
     ):
         super().__init__()
 
+        # In the __init__ method of JAXBuckBoostConverterEnv
+
         # --- Circuit Parameters ---
         self.Vin       = 48.0           # Input voltage [V]
-        self.L         = 470e-6          # Inductance [H]
-        self.C         = 220e-6         # Capacitance [F]
-        self.R_load    = 20.0           # Load resistance [Ohm] (seen by vC)
-        self.Ron_sw    = 0.05           # MOSFET on-resistance [Ohm]
-        self.Ron_d     = 0.05           # Diode conduction resistance [Ohm]
-        self.Vf        = 0.7            # Diode forward drop [V]
+        self.L         = 470e-6        # Inductance [H] <-- Updated to match Simulink
+        self.C         = 220e-6         # Capacitance [F] <-- Updated to match Simulink
+        self.R_load    = 40            # Load resistance [Ohm] <-- Updated to match Simulink
+        self.Ron_sw    = 0.05            # MOSFET on-resistance [Ohm] <-- Updated to match Simulink
+        self.Ron_d     = 0.001         # Diode conduction resistance [Ohm] <-- Updated to match Simulink
+        self.Vf        = 0            # Diode forward drop [V]
+
+        # --- NEW: Parasitic Components to match Simulink ---
+        self.R_L       = 1.0            # Inductor series resistance (DCR) [Ohm]
+        self.Rd_mosfet = 0.01           # MOSFET body diode resistance [Ohm] (though rarely used in this topology)
+
+        # Note: Incorporating capacitor ESR (R_C = 1.0 Ohm) is more complex.
+        # It would require changing the state equations because the output voltage
+        # would no longer be identical to the capacitor voltage (v_out != vC).
+        # For simplicity, we'll focus on the inductor resistance first.
 
         # Simulation parameters
         self.dt                 = dt
@@ -67,6 +80,10 @@ class JAXBuckBoostConverterEnv(gym.Env):
             high=np.array([0.9], dtype=np.float32),
             dtype=np.float32
         )
+
+        #quantization parameters
+        self.quantize_pwm  = bool(quantize_pwm)
+        self.quantize_mode = str(quantize_mode)
 
         # Observation: [vC, error, d_error, target]
         high = np.array([np.finfo(np.float32).max]*4, dtype=np.float32)
@@ -93,38 +110,42 @@ class JAXBuckBoostConverterEnv(gym.Env):
     def _integrate_substep(
         self, u: int, iL: float, vC: float, dt_override: float | None = None
     ) -> tuple[float, float]:
-        """One Euler substep of the converter dynamics. If dt_override is given, use it."""
+        """One Euler substep of the converter dynamics with parasitics."""
         dt = self.dt if dt_override is None else float(dt_override)
         L  = self.L
         C  = self.C
         R  = self.R_load
 
-        if u == 1:
-            diL = (self.Vin - self.Ron_sw * iL) / L
-            dvC = (-vC / R) / C
+        if u == 1:  # Switch is ON
+            # Voltage drop now includes switch resistance AND inductor resistance
+            diL = (self.Vin - iL * (self.Ron_sw + self.R_L)) / L
+            dvC = (-vC / R) / C # Output capacitor discharges into the load
+            
             iL_new = iL + dt * diL
             vC_new = vC + dt * dvC
             if self.enforce_dcm and iL_new < 0.0:
                 iL_new = 0.0
             return iL_new, vC_new
 
-        diL_off = (vC - self.Vf - self.Ron_d * iL) / L
+        # Switch is OFF
+        # Voltage drop now includes diode resistance AND inductor resistance
+        diL_off = (vC - self.Vf - iL * (self.Ron_d + self.R_L)) / L
 
         if self.enforce_dcm and diL_off < 0.0:
             if iL + dt * diL_off <= 0.0 and iL > 0.0:
                 dt1 = iL / (-diL_off)
                 dt1 = float(np.clip(dt1, 0.0, dt))
-                dvC_on = (-iL - vC / R) / C           # diode ON portion
+                dvC_on = (-iL - vC / R) / C
                 vC_mid = vC + dt1 * dvC_on
                 dt2 = dt - dt1
                 if dt2 > 0.0:
-                    dvC_off = (-vC_mid / R) / C      # no inductor once iL hits 0
+                    dvC_off = (-vC_mid / R) / C
                     vC_new  = vC_mid + dt2 * dvC_off
                 else:
                     vC_new  = vC_mid
                 return 0.0, vC_new
 
-        dvC    = (-iL - vC / R) / C                   # regular OFF update
+        dvC    = (-iL - vC / R) / C
         iL_new = iL + dt * diL_off
         vC_new = vC + dt * dvC
 
@@ -157,26 +178,39 @@ class JAXBuckBoostConverterEnv(gym.Env):
         return obs, info
 
     def step(self, action):
-        duty = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
+        # 1) Commanded duty (clipped to action space)
+        duty_cmd = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
+        N = int(self.frame_skip)
 
-        # Cache previous state for reward progress term
+        # 2) Resolve to the duty actually applied this period
+        if self.quantize_pwm:
+            if self.quantize_mode.lower() == "floor":
+                k = int(np.floor(duty_cmd * N + 1e-12))
+            else:  # "round" (usually matches Simulink PWM better)
+                k = int(np.round(duty_cmd * N))
+            kmin = int(np.ceil(self.action_space.low[0]  * N))
+            kmax = int(np.floor(self.action_space.high[0] * N))
+            k = max(kmin, min(k, kmax))
+            duty_eff = k / N
+            full_on  = k
+            frac     = 0.0
+        else:
+            duty_eff = duty_cmd
+            on_time  = duty_eff * N * self.dt
+            full_on  = int(on_time // self.dt)
+            frac     = (on_time / self.dt) - full_on
+
+        # 3) Cache prev state
         self.prev_state = self.state.copy()
         prev_error = self.prev_error
 
-        # --- Exact-duty PWM over one full switching period ---
+        # 4) Integrate exactly one PWM period using the resolved ON schedule
         iL, vC = float(self.state[0]), float(self.state[1])
-
-        on_time = duty * self.frame_skip * self.dt              # exact ON duration this PWM period
-        full_on = int(on_time // self.dt)                       # number of full ON substeps
-        frac    = (on_time / self.dt) - full_on                 # fractional ON of the next substep in [0,1)
-
-        for k in range(self.frame_skip):
-            if k < full_on:
-                # full ON substeps
-                iL, vC = self._integrate_substep(1, iL, vC)     # dt = self.dt
+        for k_step in range(N):
+            if k_step < full_on:
+                iL, vC = self._integrate_substep(1, iL, vC)
                 self.time += self.dt
-            elif k == full_on and frac > 0.0:
-                # split this substep: ON for dt1, then OFF for dt2, so total ON-time matches 'duty'
+            elif k_step == full_on and frac > 0.0:
                 dt1 = frac * self.dt
                 dt2 = self.dt - dt1
                 if dt1 > 0.0:
@@ -186,59 +220,53 @@ class JAXBuckBoostConverterEnv(gym.Env):
                     iL, vC = self._integrate_substep(0, iL, vC, dt_override=dt2)
                     self.time += dt2
             else:
-                # remaining substeps OFF
                 iL, vC = self._integrate_substep(0, iL, vC)
                 self.time += self.dt
 
-        # Update state
+        # 5) Update state & obs
         self.state = np.array([iL, vC], dtype=float)
         self.current_step += 1
-
-        # Observations
         error   = vC - self.target_voltage
         d_error = (error - prev_error) / (self.dt * self.frame_skip)
         obs = np.array([vC, error, d_error, self.target_voltage], dtype=np.float32)
 
-        # Reward
-        reward = self.calculate_reward(duty)
+        # 6) Reward — use what the plant applied (duty_eff)
+        reward = self.calculate_reward(duty_eff)
 
-        # --- termination / truncation ---
+        # 7) Termination / truncation
         terminated = False
         truncated  = False
         if self.current_step > self.grace_period_steps:
             mag_vC = abs(vC)
-            over_il = abs(iL) > self.I_L_MAX
-            under_v = mag_vC < self.V_OUT_MIN
-            over_v  = mag_vC > self.V_OUT_MAX
-            if over_il or under_v or over_v:
+            if abs(iL) > self.I_L_MAX or (mag_vC < self.V_OUT_MIN) or (mag_vC > self.V_OUT_MAX):
                 reward -= 1000.0
                 terminated = True
         if not terminated and self.current_step >= self.max_episode_steps:
             truncated = True
 
-        # Telemetry (now includes exact duty info)
+        # 8) Clean telemetry
         info = {
             "iL": float(iL),
             "vC": float(vC),
             "mag_vC": abs(float(vC)),
             "err": float(error),
             "e_norm": float(abs(abs(vC) - abs(self.target_voltage)) / max(abs(self.target_voltage), 1e-3)),
-            "dduty": float(duty - self.prev_duty),
+            "dduty": float(duty_cmd - self.prev_duty),
             "in_band": bool(abs(abs(vC) - abs(self.target_voltage)) <= self._band_e * abs(self.target_voltage)),
-            "duty_cmd": float(duty),
-            "eff_duty": float(duty),                 # exact (up to FP error)
-            "on_steps": int(full_on),                # full ON substeps
-            "on_frac": float(frac),                  # fractional part of the boundary substep
+            "duty_cmd": float(duty_cmd),
+            "eff_duty": float(duty_eff),
+            "on_steps": int(full_on),
+            "on_frac":  float(frac),
             "frame_skip": int(self.frame_skip),
             "dt": float(self.dt),
             "T_sw": float(self.dt * self.frame_skip),
         }
 
-        # Bookkeeping
+        # 9) Bookkeeping
         self.prev_error = error
-        self.prev_duty  = duty
-
+        self.prev_duty  = duty_cmd
         return obs, float(reward), terminated, truncated, info
+
 
 
     # ---------- Reward ----------

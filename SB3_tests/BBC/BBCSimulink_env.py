@@ -178,7 +178,7 @@ class BBCSimulinkEnv(gym.Env):
         super().reset(seed=seed)
         self.time = 0.0
         self.current_step = 0
-        self.prev_duty = 0.5
+        self.prev_duty = 0.0
 
         # Choose/Set target voltage
         if self.random_target:
@@ -186,12 +186,13 @@ class BBCSimulinkEnv(gym.Env):
             self.target_voltage = float(self.np_random.uniform(low=self.target_min, high=self.target_max))
         # Push target into model
         self.eng.set_param(f"{self.model_name}/Goal", "Value", str(self.target_voltage), nargout=0)
+        self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", str(self.prev_duty), nargout=0)
 
         # (Re)initialize state by running a tiny sim to produce xFinal
         if self.use_fast_restart:
             self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
         self.eng.eval(
-            f"out = sim('{self.model_name}', 'StopTime','1e-6', 'SaveFinalState','on', 'StateSaveName','xFinal');"
+            f"out = sim('{self.model_name}', 'StopTime','0', 'SaveFinalState','on', 'StateSaveName','xFinal');"
             "xFinal = out.xFinal;",
             nargout=0,
         )
@@ -225,6 +226,7 @@ class BBCSimulinkEnv(gym.Env):
             "dt": float(self.dt),
             "T_sw": float(self.T_sw),
         }
+        print("Sim reset -> t=%.9f, vC=%.3f V" % (self.time, self.prev_vC))
         return obs, info
 
     def step(self, action):
