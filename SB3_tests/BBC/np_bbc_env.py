@@ -43,16 +43,16 @@ class JAXBuckBoostConverterEnv(gym.Env):
 
         # --- Circuit Parameters ---
         self.Vin       = 48.0           # Input voltage [V]
-        self.L         = 470e-6        # Inductance [H] <-- Updated to match Simulink
-        self.C         = 220e-6         # Capacitance [F] <-- Updated to match Simulink
-        self.R_load    = 40            # Load resistance [Ohm] <-- Updated to match Simulink
-        self.Ron_sw    = 0.05            # MOSFET on-resistance [Ohm] <-- Updated to match Simulink
-        self.Ron_d     = 0.001         # Diode conduction resistance [Ohm] <-- Updated to match Simulink
-        self.Vf        = 0            # Diode forward drop [V]
+        self.L         = 220e-6        # Inductance [H] <-- Updated to match Simulink
+        self.C         = 100e-6         # Capacitance [F] <-- Updated to match Simulink
+        self.R_load    = 20           # Load resistance [Ohm] <-- Updated to match Simulink
+        self.Ron_sw    = 0.1            # MOSFET on-resistance [Ohm] <-- Updated to match Simulink
+        self.Ron_d     = 0.01         # Diode conduction resistance [Ohm] <-- Updated to match Simulink
+        self.Vf        = 0.7            # Diode forward drop [V]
 
         # --- NEW: Parasitic Components to match Simulink ---
-        self.R_L       = 1.0            # Inductor series resistance (DCR) [Ohm]
-        self.Rd_mosfet = 0.01           # MOSFET body diode resistance [Ohm] (though rarely used in this topology)
+        self.R_L       = 0            # Inductor series resistance (DCR) [Ohm]
+        self.Rd_mosfet = 0.001        # MOSFET body diode resistance [Ohm] (though rarely used in this topology)
 
         # Note: Incorporating capacitor ESR (R_C = 1.0 Ohm) is more complex.
         # It would require changing the state equations because the output voltage
@@ -96,7 +96,7 @@ class JAXBuckBoostConverterEnv(gym.Env):
         self.prev_state   = self.state.copy()
         self.current_step = 0
         self.prev_error   = 0.0
-        self.prev_duty    = 0.5
+        self.prev_duty    = 0
 
         # Reward configuration (tunable)
         self._lam_duty  = 0.5
@@ -117,42 +117,53 @@ class JAXBuckBoostConverterEnv(gym.Env):
         R  = self.R_load
 
         if u == 1:  # Switch is ON
-            # Voltage drop now includes switch resistance AND inductor resistance
+            # ON: inductor sees Vin minus switch + DCR
             diL = (self.Vin - iL * (self.Ron_sw + self.R_L)) / L
-            dvC = (-vC / R) / C # Output capacitor discharges into the load
-            
+            # Cap only supplies the load while ON
+            dvC = (-vC / R) / C
+
             iL_new = iL + dt * diL
             vC_new = vC + dt * dvC
             if self.enforce_dcm and iL_new < 0.0:
                 iL_new = 0.0
             return iL_new, vC_new
 
-        # Switch is OFF
-        # Voltage drop now includes diode resistance AND inductor resistance
-        diL_off = (vC - self.Vf - iL * (self.Ron_d + self.R_L)) / L
+        # --- OFF ---
+        # Include diode + body-diode + DCR series R
+        Rseries_off = self.Ron_d + self.Rd_mosfet + self.R_L
+        diL_off     = (vC - self.Vf - iL * Rseries_off) / L
 
+        # If iL would hit zero inside this substep, split at the zero crossing.
         if self.enforce_dcm and diL_off < 0.0:
-            if iL + dt * diL_off <= 0.0 and iL > 0.0:
-                dt1 = iL / (-diL_off)
-                dt1 = float(np.clip(dt1, 0.0, dt))
-                dvC_on = (-iL - vC / R) / C
-                vC_mid = vC + dt1 * dvC_on
+            t_to_zero = iL / (-diL_off) if iL > 0.0 else 0.0
+            if 0.0 < t_to_zero <= dt:
+                dt1 = float(np.clip(t_to_zero, 0.0, dt))
+                # Use average inductor current (iL/2):  dvC = ((+0.5*iL) - vC/R) / C
+                dvC_phase1 = ((0.5 * iL) - vC / R) / C
+                vC_mid = vC + dt1 * dvC_phase1
+
+                # Remaining time with iL clamped at zero
                 dt2 = dt - dt1
                 if dt2 > 0.0:
-                    dvC_off = (-vC_mid / R) / C
-                    vC_new  = vC_mid + dt2 * dvC_off
+                    dvC_phase2 = (-vC_mid / R) / C
+                    vC_new = vC_mid + dt2 * dvC_phase2
                 else:
-                    vC_new  = vC_mid
+                    vC_new = vC_mid
                 return 0.0, vC_new
 
-        dvC    = (-iL - vC / R) / C
+        # No zero-cross inside this substep
+        # Correct KCL: dvC = (iL - vC/R) / C
+        dvC    = (iL - vC / R) / C
         iL_new = iL + dt * diL_off
         vC_new = vC + dt * dvC
 
+        # Numerical safety clamp
         if self.enforce_dcm and iL_new < 0.0:
             iL_new = 0.0
             vC_new = vC + dt * ((-vC / R) / C)
+
         return iL_new, vC_new
+
 
 
     # ---------- Gym API ----------
@@ -171,7 +182,8 @@ class JAXBuckBoostConverterEnv(gym.Env):
 
         error           = vC - self.target_voltage
         self.prev_error = error
-        self.prev_duty  = 0.5
+        self.prev_cmd_duty = None
+        self.prev_applied_duty = None
 
         obs = np.array([vC, error, 0.0, self.target_voltage], dtype=np.float32)
         info = {}
@@ -251,9 +263,10 @@ class JAXBuckBoostConverterEnv(gym.Env):
             "mag_vC": abs(float(vC)),
             "err": float(error),
             "e_norm": float(abs(abs(vC) - abs(self.target_voltage)) / max(abs(self.target_voltage), 1e-3)),
-            "dduty": float(duty_cmd - self.prev_duty),
+            "dduty": float(0.0 if self.prev_applied_duty is None else (duty_eff - self.prev_applied_duty)),
             "in_band": bool(abs(abs(vC) - abs(self.target_voltage)) <= self._band_e * abs(self.target_voltage)),
             "duty_cmd": float(duty_cmd),
+            "measured_duty": float(duty_eff),
             "eff_duty": float(duty_eff),
             "on_steps": int(full_on),
             "on_frac":  float(frac),
@@ -264,7 +277,8 @@ class JAXBuckBoostConverterEnv(gym.Env):
 
         # 9) Bookkeeping
         self.prev_error = error
-        self.prev_duty  = duty_cmd
+        self.prev_cmd_duty  = duty_cmd
+        self.prev_applied_duty = duty_eff
         return obs, float(reward), terminated, truncated, info
 
 
@@ -287,7 +301,7 @@ class JAXBuckBoostConverterEnv(gym.Env):
         prev_e_norm = abs(prev_v_abs - vref) / max(vref, 1e-3)
         progress    = prev_e_norm - e_norm  # positive if improved this step
 
-        dduty = duty - self.prev_duty
+        dduty = 0.0 if self.prev_applied_duty is None else (duty - self.prev_applied_duty)
 
         # Smooth, bounded tracking term (Gaussian-like)
         r_track = float(np.exp(-5.0 * (e_norm ** 2)))

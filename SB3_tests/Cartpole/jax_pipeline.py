@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
 
 
-    run([sys.executable, HP_SCRIPT],cwd=TRAIN_DIR)
+    # run([sys.executable, HP_SCRIPT],cwd=TRAIN_DIR)
                 
     # === 2) Cartpole trainings (algo × noise) ===
     for nl in NOISE_LEVELS:
@@ -70,16 +70,16 @@ if __name__ == "__main__":
                  "--noise-level", str(nl)],
                 cwd=TRAIN_DIR)
 
-    # === 3) Cartpole evals (4 noises) ===
-    cp_procs = []
-    for nl in NOISE_LEVELS:
-        eval_cmd = [sys.executable, CP_EVAL_SCRIPT, "--algo", "all", "--episodes", str(EVAL_EPISODES)]
-        if nl != 0:
-            eval_cmd += ["--env-noise", f"{nl:.3f}"]  # omit for 0 (default)
-        print(f"Launching CP eval PowerShell for env-noise={nl:.3f} …")
-        cp_procs.append(spawn_powershell_window(eval_cmd, cwd=ROOT))
+    # # === 3) Cartpole evals (4 noises) ===
+    # cp_procs = []
+    # for nl in NOISE_LEVELS:
+    #     eval_cmd = [sys.executable, CP_EVAL_SCRIPT, "--algo", "all", "--episodes", str(EVAL_EPISODES)]
+    #     if nl != 0:
+    #         eval_cmd += ["--env-noise", f"{nl:.3f}"]  # omit for 0 (default)
+    #     print(f"Launching CP eval PowerShell for env-noise={nl:.3f} …")
+    #     cp_procs.append(spawn_powershell_window(eval_cmd, cwd=ROOT))
 
-    print("Waiting for all CP eval windows to finish…")
-    for p in cp_procs:
-        p.wait()
-    print("All CP evals completed.")
+    # print("Waiting for all CP eval windows to finish…")
+    # for p in cp_procs:
+    #     p.wait()
+    # print("All CP evals completed.")

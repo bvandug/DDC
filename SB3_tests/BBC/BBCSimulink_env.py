@@ -59,6 +59,8 @@ class BBCSimulinkEnv(gym.Env):
         target_max: float = -28.0,
         enable_plotting: bool = False,
         use_fast_restart: bool = True,
+        quantize_pwm: bool = True,
+        quantize_mode: str = 'round',
     ) -> None:
         super().__init__()
 
@@ -67,6 +69,10 @@ class BBCSimulinkEnv(gym.Env):
         self.dt = float(dt)
         self.frame_skip = int(frame_skip)
         self.T_sw = self.dt * self.frame_skip
+        self.quantize_pwm = bool(quantize_pwm)
+        self.quantize_mode = str(quantize_mode)
+        self.prev_cmd_duty = None
+        self.prev_applied_duty = None
         self.max_episode_time = float(max_episode_time)
         self.grace_period_steps = int(grace_period_steps)
         self.random_target = bool(random_target)
@@ -122,6 +128,8 @@ class BBCSimulinkEnv(gym.Env):
         # Toggle FR off so we can provide/load state, then back on for speed
         if self.use_fast_restart:
             self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
+        self.eng.set_param(self.model_name, 'SolverType', 'Fixed-step', nargout=0)
+        self.eng.set_param(self.model_name, 'FixedStep', str(self.dt), nargout=0)
         self.eng.eval(
             f"out = sim('{self.model_name}', 'LoadInitialState','on', 'InitialState','xFinal',"
             f"'StopTime','{stop_time}', 'SaveFinalState','on', 'StateSaveName','xFinal');"
@@ -178,7 +186,8 @@ class BBCSimulinkEnv(gym.Env):
         super().reset(seed=seed)
         self.time = 0.0
         self.current_step = 0
-        self.prev_duty = 0.0
+        self.prev_cmd_duty = 0
+        self.prev_applied_duty = 0
 
         # Choose/Set target voltage
         if self.random_target:
@@ -186,11 +195,13 @@ class BBCSimulinkEnv(gym.Env):
             self.target_voltage = float(self.np_random.uniform(low=self.target_min, high=self.target_max))
         # Push target into model
         self.eng.set_param(f"{self.model_name}/Goal", "Value", str(self.target_voltage), nargout=0)
-        self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", str(self.prev_duty), nargout=0)
+        self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", '0.0', nargout=0)
 
         # (Re)initialize state by running a tiny sim to produce xFinal
         if self.use_fast_restart:
             self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
+        self.eng.set_param(self.model_name, 'SolverType', 'Fixed-step', nargout=0)
+        self.eng.set_param(self.model_name, 'FixedStep', str(self.dt), nargout=0)
         self.eng.eval(
             f"out = sim('{self.model_name}', 'StopTime','0', 'SaveFinalState','on', 'StateSaveName','xFinal');"
             "xFinal = out.xFinal;",
@@ -220,8 +231,9 @@ class BBCSimulinkEnv(gym.Env):
             "e_norm": float(abs(abs(vC) - abs(self.target_voltage)) / max(abs(self.target_voltage), 1e-3)),
             "dduty": 0.0,
             "in_band": bool(abs(abs(vC) - abs(self.target_voltage)) <= self._band_e * abs(self.target_voltage)),
-            "duty_cmd": float(self.prev_duty),
-            "eff_duty": float(self.prev_duty),
+            "duty_cmd": 0.0,
+            "eff_duty": 0.0,
+            "measured_duty": 0.0,
             "frame_skip": int(self.frame_skip),
             "dt": float(self.dt),
             "T_sw": float(self.T_sw),
@@ -230,10 +242,23 @@ class BBCSimulinkEnv(gym.Env):
         return obs, info
 
     def step(self, action):
-        duty = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
+        duty_cmd = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
 
-        # Apply duty to model for exactly one PWM period
-        self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", str(duty), nargout=0)
+        # Quantize to PWM resolution like NumPy env
+        if self.quantize_pwm:
+            N = int(self.frame_skip)
+            if self.quantize_mode.lower().startswith('f'):
+                on_steps = int(np.floor(duty_cmd * N))
+            else:
+                on_steps = int(np.round(duty_cmd * N))
+            on_steps = int(np.clip(on_steps, 0, N))
+            eff_duty = on_steps / float(N)
+        else:
+            eff_duty = duty_cmd
+            N = int(self.frame_skip)
+            on_steps = int(np.round(eff_duty * N))
+        # Apply 'eff_duty' for exactly one PWM period
+        self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", str(eff_duty), nargout=0)
         stop_time = self.time + self.T_sw
         self._sim_to(stop_time)
 
@@ -247,7 +272,7 @@ class BBCSimulinkEnv(gym.Env):
         obs = np.array([vC, error, d_error, self.target_voltage], dtype=np.float32)
 
         # Reward (mirrors np env)
-        reward = self._calculate_reward(duty=duty, vC=vC, iL=iL)
+        reward = self._calculate_reward(duty=eff_duty, vC=vC, iL=iL)
 
         # Termination / truncation
         terminated = False
@@ -274,10 +299,13 @@ class BBCSimulinkEnv(gym.Env):
             "mag_vC": float(abs(vC)),
             "err": float(error),
             "e_norm": float(abs(abs(vC) - abs(self.target_voltage)) / max(abs(self.target_voltage), 1e-3)),
-            "dduty": float(duty - self.prev_duty),
+            "dduty": float(0.0 if self.prev_applied_duty is None else (eff_duty - self.prev_applied_duty)),
             "in_band": bool(abs(abs(vC) - abs(self.target_voltage)) <= self._band_e * abs(self.target_voltage)),
-            "duty_cmd": float(duty),
-            "eff_duty": float(duty),
+            "duty_cmd": float(duty_cmd),
+            "eff_duty": float(eff_duty),
+            "measured_duty": float(eff_duty),
+            "on_steps": int(on_steps),
+            "on_frac": float(eff_duty * self.frame_skip - on_steps),
             "frame_skip": int(self.frame_skip),
             "dt": float(self.dt),
             "T_sw": float(self.T_sw),
@@ -285,14 +313,15 @@ class BBCSimulinkEnv(gym.Env):
 
         # Bookkeeping + optional plotting
         self.prev_error = error
-        self.prev_duty = duty
         self.prev_vC = vC
         self.last_iL = iL
+        self.prev_cmd_duty = duty_cmd
+        self.prev_applied_duty = eff_duty
 
         if self.enable_plotting:
             self._times.append(self.time)
             self._vcs.append(vC)
-            self._duties.append(duty)
+            self._duties.append(eff_duty)
 
         return obs, float(reward), terminated, truncated, info
 
@@ -310,7 +339,7 @@ class BBCSimulinkEnv(gym.Env):
         in_band = abs(v_abs - vref) <= self._band_e * vref
         band_bonus = 0.1 if in_band else 0.0
 
-        dduty = duty - self.prev_duty
+        dduty = 0.0 if self.prev_applied_duty is None else (duty - self.prev_applied_duty)
         r = (
             r_track
             + 0.5 * progress

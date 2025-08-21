@@ -75,7 +75,7 @@ def run_one(env_np, env_sim, duties, sim_extra_steps=1, sim_drop_last=1):
         rec_np["iL"][k] = float(info.get("iL", np.nan))
         rec_np["err"][k] = float(info.get("err", o[1]))
         rec_np["r"][k] = float(r); rec_np["term"][k] = bool(te); rec_np["trunc"][k] = bool(tr)
-        if te:  # trim if NP ends early
+        if te or tr:  # trim if NP ends early
             for key in rec_np: rec_np[key] = rec_np[key][:k+1]
             steps = k+1
             break
@@ -128,10 +128,9 @@ def run_one(env_np, env_sim, duties, sim_extra_steps=1, sim_drop_last=1):
 
     drop = max(0, int(sim_drop_last))
     if drop and sim_steps > drop:
-        for key in rec_sm: rec_sm[key] = rec_sm[key][:-drop]
-        sim_steps -= drop
         for key in rec_sm:
             rec_sm[key] = rec_sm[key][:-drop]
+        sim_steps -= drop
 
 
     # ---- Align and return ----
