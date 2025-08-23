@@ -475,7 +475,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo", required=True,  # e.g., dqn, ddpg, ppo, a2c, sac, td3, or all
                         help="Algorithm to eval (dqn, ddpg, ppo, a2c, sac, td3, or all)")
-    parser.add_argument("--root", default=os.path.join("CP_JAX", "jax"),
+    parser.add_argument("--root", default=os.path.join("CP_JAX", "jax_clean"),
                         help="Folder with per-run subfolders (default: ip_jax/jax_models)")
     parser.add_argument("--episodes", type=int, default=5)
     parser.add_argument("--no-save-plots", dest="no_save_plots", action="store_true")
@@ -525,7 +525,7 @@ if __name__ == "__main__":
         # DQN needs discrete action mapping
         if algo_key == "DQN":
             max_torque = float(env.action_space.high[0])
-            torque_values = np.linspace(-max_torque, max_torque, 21)
+            torque_values = np.linspace(-max_torque, max_torque, 5)
             env = DiscretizedActionWrapper(env, force_values=torque_values)
 
         ModelClass = ALGOS[algo_key]

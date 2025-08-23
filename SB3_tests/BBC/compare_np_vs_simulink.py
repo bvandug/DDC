@@ -387,10 +387,10 @@ def main():
         max_episode_steps=args.max_steps,
         grace_period_steps=args.grace_steps,
         target_voltage=args.target,
-        enforce_dcm=args.enforce_dcm,
+        # enforce_dcm=args.enforce_dcm,
         # >>> add these <<<
-        quantize_pwm=True,
-        quantize_mode="round",   # or "floor" if your Sim PWM floors
+        # quantize_pwm=True,
+        # quantize_mode="round",   # or "floor" if your Sim PWM floors
     )
 
     env_sim = BBCSimulinkEnv(

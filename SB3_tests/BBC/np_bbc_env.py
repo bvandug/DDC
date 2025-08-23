@@ -4,331 +4,319 @@ import numpy as np
 
 class JAXBuckBoostConverterEnv(gym.Env):
     """
-    Discrete-time inverting buck-boost converter environment with PWM resolved
-    over a full switching period per RL step (frame_skip * dt == T_sw).
+    Inverting buck-boost, switch-level (MOSFET + external diode) with DCM naturally enforced.
+    One RL step = one full PWM period (frame_skip * dt). Output is NEGATIVE (inverting).
+
+    Internal states:
+      iL : inductor current (A)
+      uC : ideal capacitor voltage (V)  [across the capacitor element]
+      vC : node/output voltage (V)      [what you measure; includes ESR drop]
+
+    Series capacitor model: ESR (R_C) in series with ideal C to ground.
+      vC = uC + R_C * iC
+      ON  : iC = - vC / R
+      OFF : iC = -(iL + irr) - vC / R    (currents to ground counted positive)
 
     Observation: [vC, error, d_error, target]
-      vC      : output capacitor voltage (can be negative for inverting)
-      error   : vC - target_voltage
-      d_error : derivative of error over the previous RL step
-      target  : target_voltage (constant feature)
-
-    Action: duty cycle in [0.1, 0.9]
-    Reward: smooth, monotonic tracking with band bonus, progress term,
-            and small penalties on duty slew and inductor current magnitude.
-
-    Termination:
-      - After grace period, terminate on |iL| > I_L_MAX or
-        |vC| < V_OUT_MIN or |vC| > V_OUT_MAX, with a large penalty.
-      - Truncate on max_episode_steps.
+    Action: duty in [duty_min, duty_max], quantized to N=frame_skip "on" ticks (PWM-like).
     """
 
-    metadata = {"render.modes": []}
+    metadata = {}
 
     def __init__(
         self,
-        dt: float = 5e-6,
+        dt: float = 5e-6,                 # Discrete 5e-06 s
+        frame_skip: int = 26,             # 26 -> 7.692 kHz @ 5e-6
         max_episode_steps: int = 4000,
-        frame_skip: int = 20,
         grace_period_steps: int = 100,
+
         target_voltage: float = -30.0,
-        enforce_dcm: bool = True,          # NEW: prevent negative inductor current (DCM)
-        quantize_pwm=True, 
-        quantize_mode="round"
-        
+
+        # Power stage (match Simulink)
+        Vin: float = 48.0,
+        L: float = 220e-6,
+        C: float = 100e-6,
+        R_load: float = 5.1,
+
+        # Parasitics
+        Ron_sw: float = 0.1,              # MOSFET on-resistance
+        R_L: float = 0,                 # inductor DCR
+        Vf: float = 0.7,                  # diode forward drop
+        Ron_d: float = 0.001,             # diode on-resistance
+        R_C: float = 0,                 # capacitor ESR
+
+        # Optional extras
+        G_off: float = 0.0,               # leakage to ground (A/V)
+
+        enable_rr: bool = False,          # reverse-recovery (very crude pulse model)
+        Qrr: float = 0.0,                 # coulombs
+        trr: float = 0.0,                 # seconds
+
+        # PWM quantization
+        duty_min: float = 0.1,
+        duty_max: float = 0.9,
+        pwm_rounding: str = "round",
     ):
         super().__init__()
 
-        # In the __init__ method of JAXBuckBoostConverterEnv
+        # --- circuit ---
+        self.Vin, self.L, self.C = float(Vin), float(L), float(C)
+        self.R = float(R_load)
+        self.Ron_sw, self.R_L = float(Ron_sw), float(R_L)
+        self.Vf, self.Ron_d = float(Vf), float(Ron_d)
+        self.R_C = float(R_C)
+        self.G_off = float(G_off)
 
-        # --- Circuit Parameters ---
-        self.Vin       = 48.0           # Input voltage [V]
-        self.L         = 220e-6        # Inductance [H] <-- Updated to match Simulink
-        self.C         = 100e-6         # Capacitance [F] <-- Updated to match Simulink
-        self.R_load    = 20           # Load resistance [Ohm] <-- Updated to match Simulink
-        self.Ron_sw    = 0.1            # MOSFET on-resistance [Ohm] <-- Updated to match Simulink
-        self.Ron_d     = 0.01         # Diode conduction resistance [Ohm] <-- Updated to match Simulink
-        self.Vf        = 0.7            # Diode forward drop [V]
+        # reverse-recovery state
+        self.enable_rr, self.Qrr, self.trr = bool(enable_rr), float(Qrr), float(trr)
+        self._rr_timer = 0.0
+        self._rr_i0 = 0.0
+        self._rr_elapsed = 0.0
 
-        # --- NEW: Parasitic Components to match Simulink ---
-        self.R_L       = 0            # Inductor series resistance (DCR) [Ohm]
-        self.Rd_mosfet = 0.001        # MOSFET body diode resistance [Ohm] (though rarely used in this topology)
+        # --- timing / limits ---
+        self.dt, self.N = float(dt), int(frame_skip)
+        self.Tsw = self.dt * self.N
+        self.frame_skip = self.N
+        self.max_episode_steps = int(max_episode_steps)
+        self.grace_period_steps = int(grace_period_steps)
 
-        # Note: Incorporating capacitor ESR (R_C = 1.0 Ohm) is more complex.
-        # It would require changing the state equations because the output voltage
-        # would no longer be identical to the capacitor voltage (v_out != vC).
-        # For simplicity, we'll focus on the inductor resistance first.
+        self.target_voltage = float(target_voltage)
+        self.I_L_MAX = 20.0
+        self.V_OUT_MAX = abs(self.target_voltage) * 2.0
+        self.V_OUT_MIN = abs(self.target_voltage) * 0.05
 
-        # Simulation parameters
-        self.dt                 = dt
-        self.frame_skip         = frame_skip
-        self.grace_period_steps = grace_period_steps
-        self.max_episode_steps  = max_episode_steps
-        self.target_voltage     = float(target_voltage)
-        self.enforce_dcm        = bool(enforce_dcm)
+        # numerical guards (keep obs/reward finite)
+        self.V_CLAMP = 1e6
+        self.I_CLAMP = 1e3
 
-        # Safety limits (scale with |target|)
-        self.I_L_MAX   = 20.0  # [A]
-        self.V_OUT_MAX = abs(self.target_voltage) * 1.5
-        self.V_OUT_MIN = abs(self.target_voltage) * 0.1
-
-        self.exact_duty = True
-
-        # Action: duty cycle
+        # action / obs spaces
+        self.duty_min, self.duty_max = float(duty_min), float(duty_max)
+        self.pwm_rounding = pwm_rounding.lower()
         self.action_space = spaces.Box(
-            low=np.array([0.1], dtype=np.float32),
-            high=np.array([0.9], dtype=np.float32),
-            dtype=np.float32
+            low=np.array([self.duty_min], np.float32),
+            high=np.array([self.duty_max], np.float32),
+            dtype=np.float32,
         )
-
-        #quantization parameters
-        self.quantize_pwm  = bool(quantize_pwm)
-        self.quantize_mode = str(quantize_mode)
-
-        # Observation: [vC, error, d_error, target]
         high = np.array([np.finfo(np.float32).max]*4, dtype=np.float32)
-        low  = -high
-        self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
+        self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
-        # --- State ---
-        self.time         = 0.0
-        self.state        = np.zeros(2, dtype=float)   # [iL, vC]
-        self.prev_state   = self.state.copy()
-        self.current_step = 0
-        self.prev_error   = 0.0
-        self.prev_duty    = 0
+        self.reset()
 
-        # Reward configuration (tunable)
-        self._lam_duty  = 0.5
-        self._lam_i     = 0.05
-        self._band_e    = 0.02  # ±2% band (tweak to 0.03–0.05 if you prefer wider)
-        self._clip_low  = -3.0  # widen if using obs-only normalization
-        self._clip_high =  2.0
+    # ---------- helpers ----------
 
-    # ---------- Helpers ----------
+    def _alpha(self):
+        # vC * (1 + R_C/R) = uC          (ON)
+        # vC * (1 + R_C/R) = uC - R_C*(iL+irr)  (OFF; see KCL below)
+        return 1.0 + (self.R_C / max(self.R, 1e-12))
 
-    def _integrate_substep(
-        self, u: int, iL: float, vC: float, dt_override: float | None = None
-    ) -> tuple[float, float]:
-        """One Euler substep of the converter dynamics with parasitics."""
-        dt = self.dt if dt_override is None else float(dt_override)
-        L  = self.L
-        C  = self.C
-        R  = self.R_load
+    # ---------- core switch-level integrator (with ESR) ----------
 
-        if u == 1:  # Switch is ON
-            # ON: inductor sees Vin minus switch + DCR
-            diL = (self.Vin - iL * (self.Ron_sw + self.R_L)) / L
-            # Cap only supplies the load while ON
-            dvC = (-vC / R) / C
+    def _on_step(self, iL, uC, dt):
+        """
+        Switch ON: diode reverse-biased; inductor isolated from the output node.
+        ON KCL: iC = - vC / R
+        Algebra: vC = uC + R_C*iC  =>  vC = uC / alpha
+        """
+        alpha = self._alpha()
+        v = uC / alpha
 
-            iL_new = iL + dt * diL
-            vC_new = vC + dt * dvC
-            if self.enforce_dcm and iL_new < 0.0:
-                iL_new = 0.0
-            return iL_new, vC_new
+        # Inductor (to Vin via MOSFET Ron + DCR); charges up
+        diL = (self.Vin - iL*(self.Ron_sw + self.R_L)) / self.L
 
-        # --- OFF ---
-        # Include diode + body-diode + DCR series R
-        Rseries_off = self.Ron_d + self.Rd_mosfet + self.R_L
-        diL_off     = (vC - self.Vf - iL * Rseries_off) / L
+        # Capacitor internal voltage discharges into load
+        iC = -v / self.R
+        # include leakage to ground (leaving node) if any: i_leak = G_off * v
+        # KCL already uses only iC here (no node injection), so leakage is just another sink through v
+        # We fold leakage into iC equivalently:
+        iC -= self.G_off * v
 
-        # If iL would hit zero inside this substep, split at the zero crossing.
-        if self.enforce_dcm and diL_off < 0.0:
-            t_to_zero = iL / (-diL_off) if iL > 0.0 else 0.0
-            if 0.0 < t_to_zero <= dt:
-                dt1 = float(np.clip(t_to_zero, 0.0, dt))
-                # Use average inductor current (iL/2):  dvC = ((+0.5*iL) - vC/R) / C
-                dvC_phase1 = ((0.5 * iL) - vC / R) / C
-                vC_mid = vC + dt1 * dvC_phase1
+        duC = (iC / self.C)
 
-                # Remaining time with iL clamped at zero
-                dt2 = dt - dt1
-                if dt2 > 0.0:
-                    dvC_phase2 = (-vC_mid / R) / C
-                    vC_new = vC_mid + dt2 * dvC_phase2
-                else:
-                    vC_new = vC_mid
-                return 0.0, vC_new
+        iL_new = iL + dt*diL
+        uC_new = uC + dt*duC
+        v_new  = uC_new / alpha
+        return iL_new, uC_new, v_new
 
-        # No zero-cross inside this substep
-        # Correct KCL: dvC = (iL - vC/R) / C
-        dvC    = (iL - vC / R) / C
-        iL_new = iL + dt * diL_off
-        vC_new = vC + dt * dvC
+    def _off_step(self, iL, uC, dt):
+        """
+        OFF: inductor discharges through the diode into the node.
+        Sign convention (currents leaving node positive):
+            iC = -(iL + irr) - v/R - G_off*v
+        ESR algebra:
+            v = uC + R_C*iC  ->  v*(1 + R_C/R) = uC - R_C*(iL + irr)
+            => v = (uC - R_C*(iL + irr)) / alpha,  alpha = 1 + R_C/R
+        Enforce DCM by splitting the substep when iL would cross zero.
+        """
+        irr = 0.0
+        if self.enable_rr and self._rr_timer > 0.0:
+            self._rr_elapsed = getattr(self, "_rr_elapsed", 0.0)
+            irr = -self._rr_i0 * np.exp(-(self._rr_elapsed / max(self.trr, 1e-12)))
+            self._rr_elapsed += dt
+            if self._rr_elapsed >= self.trr:
+                self._rr_timer = 0.0
+                irr = 0.0
 
-        # Numerical safety clamp
-        if self.enforce_dcm and iL_new < 0.0:
+        alpha = self._alpha()
+
+        # Algebraic node voltage in OFF with ESR (correct sign!)
+        v = (uC - self.R_C * (iL + irr)) / alpha
+
+        # Inductor slope while diode conducts: vL = v - Vf - iL*Rseries
+        Rseries = self.Ron_d + self.R_L
+        diL = (v - self.Vf - iL*Rseries) / self.L
+        iL_pred = iL + dt*diL
+
+        # Will current hit zero within this substep?
+        if (diL < 0.0) and (iL > 0.0) and (iL_pred < 0.0):
+            # Phase 1: conduct until zero
+            dt1 = iL / (-diL)
+            iC1  = -(iL + irr) - v/self.R - self.G_off * v
+            duC1 = (iC1 / self.C)
+            uC1  = uC + dt1*duC1
+
+            # start reverse-recovery at turn-off (optional)
+            if self.enable_rr and self.Qrr > 0 and self.trr > 0:
+                self._rr_timer = 1.0
+                self._rr_elapsed = 0.0
+                self._rr_i0 = (self.Qrr / self.trr) * 2.0
+
+            # Phase 2: DCM (iL = 0)
+            dt2 = dt - dt1
+            if dt2 > 0.0:
+                v_mid = uC1 / alpha
+                iC2  = -(0.0 + irr) - v_mid/self.R - self.G_off * v_mid
+                duC2 = (iC2 / self.C)
+                uC2  = uC1 + dt2*duC2
+            else:
+                uC2 = uC1
+
+            v_new = uC2 / alpha
+            return 0.0, uC2, v_new
+
+        # No zero-cross this substep (still conducting)
+        iC   = -(iL + irr) - v/self.R - self.G_off * v
+        duC  = (iC / self.C)
+        uC_new = uC + dt*duC
+        iL_new = iL_pred
+        if iL_new < 0.0:      # numerical guard
             iL_new = 0.0
-            vC_new = vC + dt * ((-vC / R) / C)
-
-        return iL_new, vC_new
-
+            v_new  = uC_new / alpha
+        else:
+            v_new  = (uC_new - self.R_C * (iL_new + irr)) / alpha
+        return iL_new, uC_new, v_new
 
 
     # ---------- Gym API ----------
 
-    def reset(self, *, seed: int | None = None, options: dict | None = None):
+    def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
+        self.time = 0.0
+        self.step_count = 0
+        self._rr_timer = 0.0
+        self._rr_elapsed = 0.0
 
-        self.time         = 0.0
-        self.current_step = 0
+        # cold start
+        self.iL = 0.0
+        self.uC = 0.0
+        self.vC = 0.0
 
-        # Start near zero state
-        iL = 0.0
-        vC = 0.0
-        self.state      = np.array([iL, vC], dtype=float)
-        self.prev_state = self.state.copy()
-
-        error           = vC - self.target_voltage
-        self.prev_error = error
-        self.prev_cmd_duty = None
+        self.prev_vC = self.vC
+        self.prev_error = self.vC - getattr(self, "target_voltage", -30.0)
         self.prev_applied_duty = None
 
-        obs = np.array([vC, error, 0.0, self.target_voltage], dtype=np.float32)
-        info = {}
-        return obs, info
+        obs = np.array([self.vC, self.prev_error, 0.0, self.target_voltage], np.float32)
+        return obs, {}
 
     def step(self, action):
-        # 1) Commanded duty (clipped to action space)
-        duty_cmd = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
-        N = int(self.frame_skip)
-
-        # 2) Resolve to the duty actually applied this period
-        if self.quantize_pwm:
-            if self.quantize_mode.lower() == "floor":
-                k = int(np.floor(duty_cmd * N + 1e-12))
-            else:  # "round" (usually matches Simulink PWM better)
-                k = int(np.round(duty_cmd * N))
-            kmin = int(np.ceil(self.action_space.low[0]  * N))
-            kmax = int(np.floor(self.action_space.high[0] * N))
-            k = max(kmin, min(k, kmax))
-            duty_eff = k / N
-            full_on  = k
-            frac     = 0.0
+        duty_cmd = float(np.clip(action[0], self.duty_min, self.duty_max))
+        if self.pwm_rounding == "floor":
+            k_on = int(np.floor(duty_cmd * self.N + 1e-12))
         else:
-            duty_eff = duty_cmd
-            on_time  = duty_eff * N * self.dt
-            full_on  = int(on_time // self.dt)
-            frac     = (on_time / self.dt) - full_on
+            k_on = int(np.round(duty_cmd * self.N))
+        k_on = min(max(k_on, int(np.ceil(self.duty_min*self.N))), int(np.floor(self.duty_max*self.N)))
+        duty_eff = k_on / self.N
 
-        # 3) Cache prev state
-        self.prev_state = self.state.copy()
-        prev_error = self.prev_error
+        # integrate one full switching period
+        iL, uC, vC = self.iL, self.uC, self.vC
+        self._rr_timer = 0.0
 
-        # 4) Integrate exactly one PWM period using the resolved ON schedule
-        iL, vC = float(self.state[0]), float(self.state[1])
-        for k_step in range(N):
-            if k_step < full_on:
-                iL, vC = self._integrate_substep(1, iL, vC)
-                self.time += self.dt
-            elif k_step == full_on and frac > 0.0:
-                dt1 = frac * self.dt
-                dt2 = self.dt - dt1
-                if dt1 > 0.0:
-                    iL, vC = self._integrate_substep(1, iL, vC, dt_override=dt1)
-                    self.time += dt1
-                if dt2 > 0.0:
-                    iL, vC = self._integrate_substep(0, iL, vC, dt_override=dt2)
-                    self.time += dt2
+        # NEW: accumulate period averages
+        vC_sum = 0.0
+        iL_sum = 0.0
+
+        for k in range(self.N):
+            if k < k_on:
+                iL, uC, vC = self._on_step(iL, uC, self.dt)
             else:
-                iL, vC = self._integrate_substep(0, iL, vC)
-                self.time += self.dt
+                iL, uC, vC = self._off_step(iL, uC, self.dt)
+            self.time += self.dt
+            # accumulate after state update
+            vC_sum += vC
+            iL_sum += iL
 
-        # 5) Update state & obs
-        self.state = np.array([iL, vC], dtype=float)
-        self.current_step += 1
-        error   = vC - self.target_voltage
-        d_error = (error - prev_error) / (self.dt * self.frame_skip)
-        obs = np.array([vC, error, d_error, self.target_voltage], dtype=np.float32)
+        # update & clamp state (existing code)
+        self.iL = float(np.clip(iL, -self.I_CLAMP, self.I_CLAMP))
+        self.uC = float(np.clip(uC, -self.V_CLAMP, self.V_CLAMP))
+        self.vC = float(np.clip(vC, -self.V_CLAMP, self.V_CLAMP))
 
-        # 6) Reward — use what the plant applied (duty_eff)
-        reward = self.calculate_reward(duty_eff)
+        self.step_count += 1
+        error = self.vC - self.target_voltage
+        d_error = (error - self.prev_error) / self.Tsw
 
-        # 7) Termination / truncation
-        terminated = False
-        truncated  = False
-        if self.current_step > self.grace_period_steps:
-            mag_vC = abs(vC)
-            if abs(iL) > self.I_L_MAX or (mag_vC < self.V_OUT_MIN) or (mag_vC > self.V_OUT_MAX):
+        v_obs = float(np.clip(self.vC, -self.V_CLAMP, self.V_CLAMP))
+        obs = np.array([v_obs, error, d_error, self.target_voltage], np.float32)
+
+        reward = self._reward(duty_eff)
+
+        terminated, truncated = False, False
+        if self.step_count > self.grace_period_steps:
+            if abs(self.iL) > self.I_L_MAX or not (self.V_OUT_MIN <= abs(self.vC) <= self.V_OUT_MAX):
                 reward -= 1000.0
                 terminated = True
-        if not terminated and self.current_step >= self.max_episode_steps:
+        if not terminated and self.step_count >= self.max_episode_steps:
             truncated = True
 
-        # 8) Clean telemetry
+        # NEW: compute means
+        vC_mean_period = vC_sum / float(self.N)
+        iL_mean_period = iL_sum / float(self.N)
+
         info = {
-            "iL": float(iL),
-            "vC": float(vC),
-            "mag_vC": abs(float(vC)),
-            "err": float(error),
-            "e_norm": float(abs(abs(vC) - abs(self.target_voltage)) / max(abs(self.target_voltage), 1e-3)),
-            "dduty": float(0.0 if self.prev_applied_duty is None else (duty_eff - self.prev_applied_duty)),
-            "in_band": bool(abs(abs(vC) - abs(self.target_voltage)) <= self._band_e * abs(self.target_voltage)),
-            "duty_cmd": float(duty_cmd),
-            "measured_duty": float(duty_eff),
-            "eff_duty": float(duty_eff),
-            "on_steps": int(full_on),
-            "on_frac":  float(frac),
-            "frame_skip": int(self.frame_skip),
-            "dt": float(self.dt),
-            "T_sw": float(self.dt * self.frame_skip),
+            "iL": self.iL,
+            "uC": self.uC,
+            "vC": self.vC,
+            "eff_duty": duty_eff,
+            "on_steps": k_on,
+            "frame_skip": self.N,
+            "dt": self.dt,
+            "T_sw": self.Tsw,
+            "R": self.R, "R_L": self.R_L, "R_C": self.R_C,
+            "Ron_sw": self.Ron_sw, "Ron_d": self.Ron_d, "Vf": self.Vf,
+            "err": error,                    # <-- add this
         }
 
-        # 9) Bookkeeping
+
         self.prev_error = error
-        self.prev_cmd_duty  = duty_cmd
         self.prev_applied_duty = duty_eff
+        self.prev_vC = self.vC
         return obs, float(reward), terminated, truncated, info
 
 
+    # ---------- reward (overflow-safe) ----------
+    def _reward(self, duty):
+        v_abs = abs(self.vC); vref = abs(self.target_voltage)
+        e = abs(v_abs - vref)
+        e_norm = e / max(vref, 1e-9)
 
-    # ---------- Reward ----------
+        exparg = -5.0 * (e_norm ** 2)
+        r_track = 0.0 if exparg < -50.0 else float(np.exp(exparg))
 
-    def calculate_reward(self, duty: float) -> float:
-        """
-        Monotonic tracking with progress, duty slew, and iL regularization.
-        Uses magnitudes so the same shaping works for negative targets.
-        """
-        v_abs = abs(float(self.state[1]))
-        vref  = abs(self.target_voltage)
-        i_abs = abs(float(self.state[0]))
+        prev_v_abs = abs(self.prev_vC)
+        prev_norm = prev_v_abs / max(vref, 1e-9)
+        progress = (prev_norm - e_norm)
 
-        e       = abs(v_abs - vref)
-        e_norm  = e / max(vref, 1e-3)
-
-        prev_v_abs  = abs(float(self.prev_state[1]))
-        prev_e_norm = abs(prev_v_abs - vref) / max(vref, 1e-3)
-        progress    = prev_e_norm - e_norm  # positive if improved this step
-
+        band_bonus = 0.1 if abs(v_abs - vref) <= 0.02 * vref else 0.0
         dduty = 0.0 if self.prev_applied_duty is None else (duty - self.prev_applied_duty)
+        i_norm = abs(self.iL) / max(self.I_L_MAX, 1e-9)
 
-        # Smooth, bounded tracking term (Gaussian-like)
-        r_track = float(np.exp(-5.0 * (e_norm ** 2)))
-
-        # Band bonus keeps inside-band preferable
-        in_band = (abs(v_abs - vref) <= self._band_e * vref)
-        band_bonus = 0.1 if in_band else 0.0
-
-        # Regularizers
-        i_norm = i_abs / max(self.I_L_MAX, 1e-3)
-        r = (
-            r_track
-            + 0.5 * progress
-            + band_bonus
-            - self._lam_duty * (dduty ** 2)
-            - self._lam_i    * (i_norm ** 2)
-        )
-
-        # If you're using reward normalization in VecNormalize(reward=True),
-        # consider returning r without clipping to avoid double clipping.
-        r = float(np.clip(r, self._clip_low, self._clip_high))
-        return r
-
-    # ---------- Render / Close ----------
-
-    def render(self, mode: str = "human"):
-        return None
-
-    def close(self):
-        return None
+        r = r_track + 0.5*progress + band_bonus - 0.5*(dduty**2) - 0.05*(i_norm**2)
+        return float(np.clip(r, -3.0, 2.0))
