@@ -261,7 +261,7 @@ def main():
     # Env args
     parser.add_argument("--model-name", type=str, default="bbcSim")
     parser.add_argument("--dt", type=float, default=5e-6)
-    parser.add_argument("--frame-skip", type=int, default=10)
+    parser.add_argument("--frame-skip", type=int, default=26)
     parser.add_argument("--episode-time", type=float, default=0.2)
     parser.add_argument("--grace-steps", type=int, default=100)
     parser.add_argument("--target", type=float, default=-30.0)

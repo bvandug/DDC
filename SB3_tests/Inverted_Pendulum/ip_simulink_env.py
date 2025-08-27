@@ -82,6 +82,8 @@ class SimulinkEnv(gym.Env):
             initial_angle + 0.1 if abs(initial_angle) < 0.05 else initial_angle
         )
 
+        print(initial_angle)
+
         self.eng.set_param(
             f"{self.model_name}/Pendulum and Cart",
             "init",
@@ -127,6 +129,8 @@ class SimulinkEnv(gym.Env):
         initial_angle = (
             initial_angle + 0.1 if abs(initial_angle) < 0.05 else initial_angle
         )
+
+        print(initial_angle)
 
         # Set the initial angle in Simulink
         self.eng.set_param(

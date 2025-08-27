@@ -34,9 +34,9 @@ class JAXBuckBoostConverterEnv(gym.Env):
 
         # Power stage (match Simulink)
         Vin: float = 48.0,
-        L: float = 220e-6,
-        C: float = 100e-6,
-        R_load: float = 5.1,
+        L: float = 470e-6,
+        C: float = 220e-6,
+        R_load: float = 20,
 
         # Parasitics
         Ron_sw: float = 0.1,              # MOSFET on-resistance
@@ -222,39 +222,63 @@ class JAXBuckBoostConverterEnv(gym.Env):
 
         self.prev_vC = self.vC
         self.prev_error = self.vC - getattr(self, "target_voltage", -30.0)
-        self.prev_applied_duty = None
+        self.prev_applied_duty = 0.0
 
         obs = np.array([self.vC, self.prev_error, 0.0, self.target_voltage], np.float32)
         return obs, {}
 
     def step(self, action):
+        # 1) Commanded duty, band-limited
         duty_cmd = float(np.clip(action[0], self.duty_min, self.duty_max))
-        if self.pwm_rounding == "floor":
-            k_on = int(np.floor(duty_cmd * self.N + 1e-12))
-        else:
-            k_on = int(np.round(duty_cmd * self.N))
-        k_on = min(max(k_on, int(np.ceil(self.duty_min*self.N))), int(np.floor(self.duty_max*self.N)))
-        duty_eff = k_on / self.N
 
-        # integrate one full switching period
+        # 2) Continuous duty within one period (no tick quantising)
+        N = self.N
+        x = duty_cmd * N
+        k_on = int(np.floor(x + 1e-12))       # full ON substeps
+        f = float(x - k_on)                   # fractional ON in [0,1)
+        duty_eff = duty_cmd                   # applied duty equals command (unquantised)
+
+        # 3) Integrate exactly one switching period
         iL, uC, vC = self.iL, self.uC, self.vC
         self._rr_timer = 0.0
 
-        # NEW: accumulate period averages
+        # accumulate simple per-slot means (same shape as before)
         vC_sum = 0.0
         iL_sum = 0.0
 
-        for k in range(self.N):
-            if k < k_on:
-                iL, uC, vC = self._on_step(iL, uC, self.dt)
-            else:
-                iL, uC, vC = self._off_step(iL, uC, self.dt)
+        # (a) k_on full ON substeps
+        for _ in range(k_on):
+            iL, uC, vC = self._on_step(iL, uC, self.dt)
             self.time += self.dt
-            # accumulate after state update
             vC_sum += vC
             iL_sum += iL
 
-        # update & clamp state (existing code)
+        # (b) one mixed slot: ON for dt*f then OFF for dt*(1-f)
+        if f > 1e-12:
+            # fractional ON
+            iL, uC, vC = self._on_step(iL, uC, self.dt * f)
+            self.time += self.dt * f
+            # fractional OFF
+            iL, uC, vC = self._off_step(iL, uC, self.dt * (1.0 - f))
+            self.time += self.dt * (1.0 - f)
+            # count this mixed slot once in the running mean
+            vC_sum += vC
+            iL_sum += iL
+            # remaining OFF full substeps
+            for _ in range(N - k_on - 1):
+                iL, uC, vC = self._off_step(iL, uC, self.dt)
+                self.time += self.dt
+                vC_sum += vC
+                iL_sum += iL
+        else:
+            # no fractional split -> N - k_on full OFF substeps
+            for _ in range(N - k_on):
+                iL, uC, vC = self._off_step(iL, uC, self.dt)
+                self.time += self.dt
+                vC_sum += vC
+                iL_sum += iL
+
+        # 4) Update & clamp state (unchanged)
         self.iL = float(np.clip(iL, -self.I_CLAMP, self.I_CLAMP))
         self.uC = float(np.clip(uC, -self.V_CLAMP, self.V_CLAMP))
         self.vC = float(np.clip(vC, -self.V_CLAMP, self.V_CLAMP))
@@ -266,8 +290,10 @@ class JAXBuckBoostConverterEnv(gym.Env):
         v_obs = float(np.clip(self.vC, -self.V_CLAMP, self.V_CLAMP))
         obs = np.array([v_obs, error, d_error, self.target_voltage], np.float32)
 
+        # Reward exactly as before (uses duty_eff)
         reward = self._reward(duty_eff)
 
+        # Termination / truncation (unchanged)
         terminated, truncated = False, False
         if self.step_count > self.grace_period_steps:
             if abs(self.iL) > self.I_L_MAX or not (self.V_OUT_MIN <= abs(self.vC) <= self.V_OUT_MAX):
@@ -276,24 +302,29 @@ class JAXBuckBoostConverterEnv(gym.Env):
         if not terminated and self.step_count >= self.max_episode_steps:
             truncated = True
 
-        # NEW: compute means
+        # Period means (same definition as prior code)
         vC_mean_period = vC_sum / float(self.N)
         iL_mean_period = iL_sum / float(self.N)
+        on_time = duty_eff * self.frame_skip * self.dt              # exact ON duration this PWM period
+        full_on = int(on_time // self.dt)                       # number of full ON substeps
+        frac    = (on_time / self.dt) - full_on                 # fractional ON of the next substep in [0,1)
 
         info = {
-            "iL": self.iL,
-            "uC": self.uC,
-            "vC": self.vC,
-            "eff_duty": duty_eff,
-            "on_steps": k_on,
-            "frame_skip": self.N,
-            "dt": self.dt,
-            "T_sw": self.Tsw,
-            "R": self.R, "R_L": self.R_L, "R_C": self.R_C,
-            "Ron_sw": self.Ron_sw, "Ron_d": self.Ron_d, "Vf": self.Vf,
-            "err": error,                    # <-- add this
+            "iL": float(iL),
+            "vC": float(vC),
+            "mag_vC": abs(float(vC)),
+            "err": float(error),
+            "e_norm": float(abs(abs(vC) - abs(self.target_voltage)) / max(abs(self.target_voltage), 1e-3)),
+            "dduty": float(duty_cmd - self.prev_applied_duty),
+            "in_band": bool(abs(abs(vC) - abs(self.target_voltage)) <= 0.2 * abs(self.target_voltage)),
+            "duty_cmd": float(duty_cmd),         # commanded duty
+            "eff_duty": float(duty_eff),                 # exact (up to FP error)
+            "on_steps": int(full_on),                # full ON substeps
+            "on_frac": float(frac),                  # fractional part of the boundary substep
+            "frame_skip": int(self.frame_skip),
+            "dt": float(self.dt),
+            "T_sw": float(self.dt * self.frame_skip),
         }
-
 
         self.prev_error = error
         self.prev_applied_duty = duty_eff
@@ -318,5 +349,5 @@ class JAXBuckBoostConverterEnv(gym.Env):
         dduty = 0.0 if self.prev_applied_duty is None else (duty - self.prev_applied_duty)
         i_norm = abs(self.iL) / max(self.I_L_MAX, 1e-9)
 
-        r = r_track + 0.5*progress + band_bonus - 0.5*(dduty**2) - 0.05*(i_norm**2)
+        r = r_track + 0.1*progress + band_bonus - 0.5*(dduty**2) - 0.05*(i_norm**2)
         return float(np.clip(r, -3.0, 2.0))

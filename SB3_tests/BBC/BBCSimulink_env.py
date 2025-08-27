@@ -59,7 +59,7 @@ class BBCSimulinkEnv(gym.Env):
         target_max: float = -28.0,
         enable_plotting: bool = False,
         use_fast_restart: bool = True,
-        quantize_pwm: bool = True,
+        quantize_pwm: bool = False,
         quantize_mode: str = 'round',
     ) -> None:
         super().__init__()

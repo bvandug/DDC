@@ -68,11 +68,11 @@ def make_env(seed: int, rank: int = 0, k_macro: int = 1):
     def _thunk():
         e = JAXBuckBoostConverterEnv(
             dt=5e-6,
-            frame_skip=10,          # 20 kHz
+            frame_skip=26,          # 20 kHz
             max_episode_steps=4000, # 0.2 s/episode at k_macro=1
             grace_period_steps=100,
             target_voltage=-30.0,
-            enforce_dcm=True,
+            # enforce_dcm=True,
         )
         # For SAC + reward normalization, wider per-step clip helps (no double squashing)
         if hasattr(e, "_clip_low"):  e._clip_low  = -10.0
