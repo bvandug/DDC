@@ -205,7 +205,8 @@ class SimulinkEnv(gym.Env):
         terminated = bool(abs(theta) > self.angle_threshold)   # Gymnasium
         truncated  = bool(t >= self.max_episode_time)          # Gymnasium
         self.current_time = t
-        return obs, reward, terminated, truncated, {"time": t}
+        done = abs(theta) > self.angle_threshold or t >= self.max_episode_time
+        return obs, reward, done, {"time": t}
 
 
     def render(self, mode="human"):

@@ -1,0 +1,21 @@
+{
+  "best_params": {
+    "n_layers": 3,
+    "layer_size": 256,
+    "activation_fn": "relu",
+    "learning_rate": 0.00028533260496524675,
+    "buffer_size": 800000,
+    "batch_size": 512,
+    "tau": 0.014272704289474013,
+    "gamma": 0.9760416404048181,
+    "train_freq_k": 1,
+    "gradient_steps": 1,
+    "learning_starts_frac": 0.027446862409032147,
+    "policy_delay": 3,
+    "target_policy_noise": 0.1464511120522956,
+    "target_noise_clip_mult": 2.4918492186032597,
+    "action_noise_sigma": 0.06426859130004395
+  },
+  "best_value": 4387.709396,
+  "n_trials": 50
+}

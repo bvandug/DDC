@@ -55,7 +55,7 @@ class JAXBuckBoostConverterEnv(gym.Env):
         self.enforce_dcm        = bool(enforce_dcm)
 
         # Safety limits (scale with |target|)
-        self.I_L_MAX   = 20.0  # [A]
+        self.I_L_MAX   = 50.0  # [A]
         self.V_OUT_MAX = abs(self.target_voltage) * 1.5
         self.V_OUT_MIN = abs(self.target_voltage) * 0.1
 

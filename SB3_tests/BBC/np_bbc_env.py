@@ -41,6 +41,8 @@ class JAXBuckBoostConverterEnv(gym.Env):
         # Parasitics
         Ron_sw: float = 0.1,              # MOSFET on-resistance
         R_L: float = 0,                 # inductor DCR
+
+        
         Vf: float = 0.7,                  # diode forward drop
         Ron_d: float = 0.001,             # diode on-resistance
         R_C: float = 0,                 # capacitor ESR
@@ -215,6 +217,13 @@ class JAXBuckBoostConverterEnv(gym.Env):
         self._rr_timer = 0.0
         self._rr_elapsed = 0.0
 
+        #tracking for voltage and duty
+        self._ep_duty_sum = 0.0
+        self._ep_steps = 0
+        self._avg_duty = 0.0
+        self._ep_v_sum    = 0.0
+        self._avg_voltage = 0.0
+
         # cold start
         self.iL = 0.0
         self.uC = 0.0
@@ -296,7 +305,7 @@ class JAXBuckBoostConverterEnv(gym.Env):
         # Termination / truncation (unchanged)
         terminated, truncated = False, False
         if self.step_count > self.grace_period_steps:
-            if abs(self.iL) > self.I_L_MAX or not (self.V_OUT_MIN <= abs(self.vC) <= self.V_OUT_MAX):
+            if abs(self.iL) > self.I_L_MAX or not ((self.vC) <= self.V_OUT_MAX):
                 reward -= 1000.0
                 terminated = True
         if not terminated and self.step_count >= self.max_episode_steps:
@@ -324,6 +333,9 @@ class JAXBuckBoostConverterEnv(gym.Env):
             "frame_skip": int(self.frame_skip),
             "dt": float(self.dt),
             "T_sw": float(self.dt * self.frame_skip),
+            "avg_duty" : float(self._avg_duty),
+            "avg_voltage" : float(self._avg_voltage)
+
         }
 
         self.prev_error = error
@@ -332,22 +344,38 @@ class JAXBuckBoostConverterEnv(gym.Env):
         return obs, float(reward), terminated, truncated, info
 
 
-    # ---------- reward (overflow-safe) ----------
+    # ---------- reward (linear track, sign-aware, hinge beyond cap) ----------
     def _reward(self, duty):
-        v_abs = abs(self.vC); vref = abs(self.target_voltage)
-        e = abs(v_abs - vref)
-        e_norm = e / max(vref, 1e-9)
+        # --- accumulate per-episode stats (ONE step increment) ---
+        u = float(np.array(duty).reshape(-1)[0])   # scalar duty in [0,1]
+        v = float(self.vC)
 
+        self._ep_duty_sum += u
+        self._ep_v_sum    += v
+        self._ep_steps    += 1                     # <-- increment ONCE
+
+        self._avg_duty    = self._ep_duty_sum / max(self._ep_steps, 1)
+        self._avg_voltage = self._ep_v_sum    / max(self._ep_steps, 1)
+
+        vref = float(self.target_voltage)
+        e_norm = abs(v - vref) / max(abs(vref), 1e-9)
+
+        # E_CAP = 0.60
+        # FAR_SLOPE = 1.0
+        # lin = 1.0 - e_norm / E_CAP
+        # r_track = lin if lin >= 0.0 else -FAR_SLOPE * (e_norm - E_CAP)
         exparg = -5.0 * (e_norm ** 2)
         r_track = 0.0 if exparg < -50.0 else float(np.exp(exparg))
 
-        prev_v_abs = abs(self.prev_vC)
-        prev_norm = prev_v_abs / max(vref, 1e-9)
-        progress = (prev_norm - e_norm)
+        prev_e_norm = abs(float(self.prev_vC) - vref) / max(abs(vref), 1e-9)
+        progress = float(np.clip(prev_e_norm - e_norm, -1.0, 1.0))
 
-        band_bonus = 0.1 if abs(v_abs - vref) <= 0.02 * vref else 0.0
+        band_bonus = 0.1 if e_norm <= 0.02 else 0.0
+
         dduty = 0.0 if self.prev_applied_duty is None else (duty - self.prev_applied_duty)
-        i_norm = abs(self.iL) / max(self.I_L_MAX, 1e-9)
+        dduty_scale = float(np.exp(-6.0 * e_norm))
+        r = r_track + 0.1 * progress + band_bonus - 0.5 * dduty_scale * (dduty ** 2)
 
-        r = r_track + 0.1*progress + band_bonus - 0.5*(dduty**2) - 0.05*(i_norm**2)
-        return float(np.clip(r, -3.0, 2.0))
+        return float(np.clip(r, -5.0, 2.0))
+
+

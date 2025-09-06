@@ -32,7 +32,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from np_bbc_env import JAXBuckBoostConverterEnv   # NumPy env
+from np_bbc_env_work import JAXBuckBoostConverterEnv   # NumPy env
 from BBCSimulink_env import BBCSimulinkEnv        # Simulink env
 
 def duty_sequence(mode: str, steps: int, dt: float, frame_skip: int,
@@ -347,12 +347,12 @@ def main():
     ap = argparse.ArgumentParser()
     # Shared env parameters
     ap.add_argument("--dt", type=float, default=5e-6, help="Base integration step (s)")
-    ap.add_argument("--frame-skip", type=int, default=10, help="Substeps per PWM period (Tsw=dt*frame_skip)")
+    ap.add_argument("--frame-skip", type=int, default=26, help="Substeps per PWM period (Tsw=dt*frame_skip)")
     ap.add_argument("--target", type=float, default=-30.0, help="Target output voltage (V)")
     ap.add_argument("--grace-steps", type=int, default=100)
     ap.add_argument("--max-steps", type=int, default=500, help="Max episode steps (NumPy)")
     ap.add_argument("--max-episode-time", type=float, default=0.2, help="Max episode time (Simulink)")
-    ap.add_argument("--model-name", type=str, default="bbcSim", help="Simulink model name")
+    ap.add_argument("--model-name", type=str, default="bbcSim_work", help="Simulink model name")
     ap.add_argument("--enforce-dcm", action="store_true", help="NumPy env: enforce DCM (no negative iL)")
     # Sequence
     ap.add_argument("--mode", choices=["constant","sine","step"], default="constant")
@@ -376,7 +376,7 @@ def main():
     
 
     # Output
-    ap.add_argument("--out-dir", type=Path, default=Path("np_vs_simulink_out"))
+    ap.add_argument("--out-dir", type=Path, default=Path("np_vs_simulink_out_work"))
     ap.add_argument("--csv-name", type=str, default="trace.csv")
     args = ap.parse_args()
 

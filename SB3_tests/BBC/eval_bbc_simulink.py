@@ -52,6 +52,17 @@ def load_model_and_env(args):
         random_target=bool(args.random_target),
     )
 
+    # --- DQN needs a Discrete action space: wrap just like CartPole ---
+    if args.algo and args.algo.lower() == "dqn":
+        from BBCSimulink_env import DiscretizeDutyWrapper
+        lo = float(base_env.action_space.low[0])   # 0.1
+        hi = float(base_env.action_space.high[0])  # 0.9
+        base_env = DiscretizeDutyWrapper(
+            base_env,
+            n_bins=args.discrete_bins,
+            low=lo, high=hi,
+        )
+
     model = None
     env_like = base_env
     using_vec = False
@@ -84,21 +95,26 @@ def run_episode_raw(env: BBCSimulinkEnv, model, episode_idx: int, outdir: str,
                     live_plot: bool = False):
     os.makedirs(outdir, exist_ok=True)
     obs, info = env.reset()
-    target = float(obs[3])
-    T_sw = info.get("T_sw", env.T_sw)
 
-    t_list, vC_list, duty_list, iL_list = [], [], [], []
+    # Prefer info for target/T_sw; fall back to env attributes
+    target = float(info.get("target_voltage", getattr(env, "target_voltage", np.nan)))
+    T_sw = float(info.get("T_sw", getattr(env, "T_sw", 1.0)))
+
+    t_list, vC_list, duty_applied_list, duty_cmd_list, iL_list = [], [], [], [], []
     total_reward = 0.0
 
     if live_plot:
+        import matplotlib.pyplot as plt
         plt.ion()
         fig1 = plt.figure(figsize=(9, 4)); ax1 = fig1.add_subplot(111)
         line_vc, = ax1.plot([], [], label="vC (V)")
         line_vref, = ax1.plot([], [], linestyle=":", label="target (V)")
         ax1.set_xlabel("Time (s)"); ax1.set_ylabel("Voltage (V)"); ax1.legend()
+
         fig2 = plt.figure(figsize=(9, 3)); ax2 = fig2.add_subplot(111)
-        line_duty, = ax2.plot([], [], label="duty")
-        ax2.set_xlabel("Time (s)"); ax2.set_ylabel("Duty (0..1)"); ax2.set_ylim(0, 1)
+        line_duty_applied, = ax2.plot([], [], label="duty_applied")
+        line_duty_cmd, = ax2.plot([], [], linestyle="--", label="duty_cmd")
+        ax2.set_xlabel("Time (s)"); ax2.set_ylabel("Duty (0..1)"); ax2.set_ylim(0, 1); ax2.legend()
 
     t = 0.0
     while True:
@@ -111,20 +127,29 @@ def run_episode_raw(env: BBCSimulinkEnv, model, episode_idx: int, outdir: str,
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += float(reward)
 
+        # Telemetry (prefer info; fall back to env attributes)
         vC = float(info.get("vC", obs[0]))
-        duty = float(info.get("duty_cmd", action[0]))
+        duty_cmd = float(info.get("duty_cmd", float(action[0])))
+        duty_applied = float(
+            info.get("applied_duty",
+                     getattr(env, "prev_applied_duty",
+                             getattr(env, "prev_duty", duty_cmd)))
+        )
         iL = info.get("iL", None)
 
         t_list.append(t)
         vC_list.append(vC)
-        duty_list.append(duty)
+        duty_cmd_list.append(duty_cmd)
+        duty_applied_list.append(duty_applied)
         iL_list.append(np.nan if iL is None else float(iL))
 
         if live_plot:
             line_vc.set_data(t_list, vC_list)
             line_vref.set_data(t_list, [target] * len(t_list))
             ax1.relim(); ax1.autoscale_view()
-            line_duty.set_data(t_list, duty_list)
+
+            line_duty_applied.set_data(t_list, duty_applied_list)
+            line_duty_cmd.set_data(t_list, duty_cmd_list)
             ax2.relim(); ax2.autoscale_view(); ax2.set_ylim(0, 1)
             plt.pause(0.001)
 
@@ -132,39 +157,41 @@ def run_episode_raw(env: BBCSimulinkEnv, model, episode_idx: int, outdir: str,
         if terminated or truncated:
             break
 
-    return _finalize_plots(outdir, episode_idx, t_list, vC_list, duty_list, iL_list, target, total_reward)
+    return _finalize_plots(
+        outdir, episode_idx, t_list, vC_list, duty_applied_list, iL_list,
+        target, total_reward, duty_cmd_list=duty_cmd_list
+    )
+
 
 
 def run_episode_vec(venv, model, base_env: BBCSimulinkEnv, episode_idx: int, outdir: str,
                     live_plot: bool = False):
     os.makedirs(outdir, exist_ok=True)
 
-    # Reset vector env (n_envs=1)
+    # Reset vector env (n_envs=1) and DO NOT reset base_env again (avoids desync)
     obs = venv.reset()
-    # Gymnasium VecEnv returns (obs, infos) in some wrappers; support both
     if isinstance(obs, tuple):
-        obs, infos = obs
-        info0 = infos[0] if isinstance(infos, (list, tuple)) and len(infos) else infos
-    else:
-        # Pull info by resetting underlying env for target/T_sw
-        _, info0 = base_env.reset()
+        obs, _ = obs  # (obs, infos) in some wrappers
 
-    # Extract timing/target from base env
-    target = float(base_env.target_voltage)
-    T_sw = getattr(base_env, "T_sw", 1.0)
+    # These are current after venv.reset()
+    target = float(getattr(base_env, "target_voltage", np.nan))
+    T_sw = float(getattr(base_env, "T_sw", 1.0))
 
-    t_list, vC_list, duty_list, iL_list = [], [], [], []
+    t_list, vC_list, duty_applied_list, duty_cmd_list, iL_list = [], [], [], [], []
     total_reward = 0.0
 
     if live_plot:
+        import matplotlib.pyplot as plt
         plt.ion()
         fig1 = plt.figure(figsize=(9, 4)); ax1 = fig1.add_subplot(111)
         line_vc, = ax1.plot([], [], label="vC (V)")
         line_vref, = ax1.plot([], [], linestyle=":", label="target (V)")
         ax1.set_xlabel("Time (s)"); ax1.set_ylabel("Voltage (V)"); ax1.legend()
+
         fig2 = plt.figure(figsize=(9, 3)); ax2 = fig2.add_subplot(111)
-        line_duty, = ax2.plot([], [], label="duty")
-        ax2.set_xlabel("Time (s)"); ax2.set_ylabel("Duty (0..1)"); ax2.set_ylim(0, 1)
+        line_duty_applied, = ax2.plot([], [], label="duty_applied")
+        line_duty_cmd, = ax2.plot([], [], linestyle="--", label="duty_cmd")
+        ax2.set_xlabel("Time (s)"); ax2.set_ylabel("Duty (0..1)"); ax2.set_ylim(0, 1); ax2.legend()
 
     t = 0.0
     while True:
@@ -172,17 +199,15 @@ def run_episode_vec(venv, model, base_env: BBCSimulinkEnv, episode_idx: int, out
             action = np.asarray([[np.random.uniform(0.1, 0.9)]], dtype=np.float32)
         else:
             act, _ = model.predict(obs, deterministic=True)
-            # ensure shape (n_envs, action_dim)
             action = np.asarray(act, dtype=np.float32)
             if action.ndim == 1:
                 action = action.reshape(1, -1)
 
         step_out = venv.step(action)
-        # Support both Gym and Gymnasium VecEnv return signatures
+        # Handle Gym vs Gymnasium signatures
         if len(step_out) == 4:
             obs, rewards, dones, infos = step_out
-            terminated = bool(dones[0])
-            truncated = False
+            terminated = bool(dones[0]); truncated = False
             info = infos[0] if isinstance(infos, (list, tuple)) and len(infos) else {}
             reward_scalar = float(rewards[0])
         else:
@@ -193,21 +218,29 @@ def run_episode_vec(venv, model, base_env: BBCSimulinkEnv, episode_idx: int, out
 
         total_reward += reward_scalar
 
-        # Pull raw telemetry from base_env (since venv normalizes obs, not info)
-        vC = float(base_env.prev_vC)
-        duty = float(base_env.prev_duty)
-        iL = base_env.last_iL
+        # Prefer info from the step; fall back to base_env attributes
+        vC = float(info.get("vC", getattr(base_env, "prev_vC", np.nan)))
+        duty_cmd = float(info.get("duty_cmd", float(action[0][0])))
+        duty_applied = float(
+            info.get("applied_duty",
+                     getattr(base_env, "prev_applied_duty",
+                             getattr(base_env, "prev_duty", duty_cmd)))
+        )
+        iL = info.get("iL", getattr(base_env, "last_iL", None))
 
         t_list.append(t)
         vC_list.append(vC)
-        duty_list.append(duty)
+        duty_cmd_list.append(duty_cmd)
+        duty_applied_list.append(duty_applied)
         iL_list.append(np.nan if iL is None else float(iL))
 
         if live_plot:
             line_vc.set_data(t_list, vC_list)
             line_vref.set_data(t_list, [target] * len(t_list))
             ax1.relim(); ax1.autoscale_view()
-            line_duty.set_data(t_list, duty_list)
+
+            line_duty_applied.set_data(t_list, duty_applied_list)
+            line_duty_cmd.set_data(t_list, duty_cmd_list)
             ax2.relim(); ax2.autoscale_view(); ax2.set_ylim(0, 1)
             plt.pause(0.001)
 
@@ -215,34 +248,67 @@ def run_episode_vec(venv, model, base_env: BBCSimulinkEnv, episode_idx: int, out
         if terminated or truncated:
             break
 
-    return _finalize_plots(outdir, episode_idx, t_list, vC_list, duty_list, iL_list, target, total_reward)
+    return _finalize_plots(
+        outdir, episode_idx, t_list, vC_list, duty_applied_list, iL_list,
+        target, total_reward, duty_cmd_list=duty_cmd_list
+    )
 
 
-def _finalize_plots(outdir, episode_idx, t_list, vC_list, duty_list, iL_list, target, total_reward):
-    t_arr = np.asarray(t_list); vC_arr = np.asarray(vC_list)
-    duty_arr = np.asarray(duty_list); iL_arr = np.asarray(iL_list)
 
+def _finalize_plots(outdir, episode_idx, t_list, vC_list,
+                    duty_applied_list, iL_list, target, total_reward,
+                    duty_cmd_list=None):
+    t_arr = np.asarray(t_list)
+    vC_arr = np.asarray(vC_list)
+    duty_applied_arr = np.asarray(duty_applied_list)
+    iL_arr = np.asarray(iL_list)
+    duty_cmd_arr = (np.asarray(duty_cmd_list)
+                    if duty_cmd_list is not None else None)
+
+    # Voltage plot
     fig_v = plt.figure(figsize=(10, 4)); axv = fig_v.add_subplot(111)
     axv.plot(t_arr, vC_arr, label="vC (V)")
     axv.plot(t_arr, np.full_like(t_arr, target), linestyle=":", label="target (V)")
     axv.set_title(f"BBC Simulink — Episode {episode_idx} (reward={total_reward:.2f})")
     axv.set_xlabel("Time (s)"); axv.set_ylabel("Voltage (V)"); axv.legend(loc="best")
-    fig_v.tight_layout(); v_path = os.path.join(outdir, f"ep{episode_idx:02d}_voltage.png"); fig_v.savefig(v_path, dpi=160)
+    fig_v.tight_layout()
+    v_path = os.path.join(outdir, f"ep{episode_idx:02d}_voltage.png")
+    fig_v.savefig(v_path, dpi=160)
 
+    # Duty plot (applied vs command if available)
     fig_d = plt.figure(figsize=(10, 3.2)); axd = fig_d.add_subplot(111)
-    axd.plot(t_arr, duty_arr, label="duty")
-    axd.set_xlabel("Time (s)"); axd.set_ylabel("Duty (0..1)"); axd.set_ylim(0.0, 1.0); axd.legend(loc="best")
-    fig_d.tight_layout(); d_path = os.path.join(outdir, f"ep{episode_idx:02d}_duty.png"); fig_d.savefig(d_path, dpi=160)
+    axd.plot(t_arr, duty_applied_arr, label="duty_applied")
+    if duty_cmd_arr is not None:
+        axd.plot(t_arr, duty_cmd_arr, linestyle="--", label="duty_cmd")
+    axd.set_xlabel("Time (s)"); axd.set_ylabel("Duty (0..1)")
+    axd.set_ylim(0.0, 1.0); axd.legend(loc="best")
+    fig_d.tight_layout()
+    d_path = os.path.join(outdir, f"ep{episode_idx:02d}_duty.png")
+    fig_d.savefig(d_path, dpi=160)
 
+    # Inductor current (optional)
     i_path = None
     if not np.all(np.isnan(iL_arr)):
         fig_i = plt.figure(figsize=(10, 3.2)); axi = fig_i.add_subplot(111)
-        axi.plot(t_arr, iL_arr, label="iL (A)"); axi.set_xlabel("Time (s)"); axi.set_ylabel("Inductor Current (A)"); axi.legend(loc="best")
-        fig_i.tight_layout(); i_path = os.path.join(outdir, f"ep{episode_idx:02d}_iL.png"); fig_i.savefig(i_path, dpi=160)
+        axi.plot(t_arr, iL_arr, label="iL (A)")
+        axi.set_xlabel("Time (s)"); axi.set_ylabel("Inductor Current (A)")
+        axi.legend(loc="best"); fig_i.tight_layout()
+        i_path = os.path.join(outdir, f"ep{episode_idx:02d}_iL.png")
+        fig_i.savefig(i_path, dpi=160)
+
+    # Save telemetry (keep names explicit)
+    save_dict = dict(
+        t=t_arr, vC=vC_arr,
+        duty_applied=duty_applied_arr,
+        iL=iL_arr,
+        target=np.array([target], dtype=float),
+        total_reward=np.array([total_reward], dtype=float),
+    )
+    if duty_cmd_arr is not None:
+        save_dict["duty_cmd"] = duty_cmd_arr
 
     npz_path = os.path.join(outdir, f"ep{episode_idx:02d}.npz")
-    np.savez_compressed(npz_path, t=t_arr, vC=vC_arr, duty=duty_arr, iL=iL_arr,
-                        target=np.array([target], dtype=float), total_reward=np.array([total_reward], dtype=float))
+    np.savez_compressed(npz_path, **save_dict)
 
     return {
         "plots": {"voltage": v_path, "duty": d_path, "iL": i_path},
@@ -252,9 +318,10 @@ def _finalize_plots(outdir, episode_idx, t_list, vC_list, duty_list, iL_list, ta
     }
 
 
+
 def main():
     parser = argparse.ArgumentParser(description="Run BBC Simulink env for N episodes and plot (VecNormalize-aware)")
-    parser.add_argument("--episodes", type=int, default=5)
+    parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--outdir", type=str, default="plots_bbc_simulink")
     parser.add_argument("--live-plot", action="store_true")
 
@@ -270,11 +337,10 @@ def main():
     # Policy / model args
     parser.add_argument("--algo", type=str, default=None, help="a2c, ppo, ddpg, td3, sac, dqn")
     parser.add_argument("--model-path", type=str, default=None)
-    parser.add_argument("--device", type=str, default=None, help="force SB3 model device, e.g. 'cpu'")
-
-    # VecNormalize stats
     parser.add_argument("--vecnorm-path", type=str, default=None, help="Path to saved VecNormalize stats (.pkl)")
-
+    parser.add_argument("--discrete-bins", type=int, default=51, help="Used only for DQN")
+    parser.add_argument("--device", type=str, default=None, help="force SB3 model device, e.g. 'cpu'")
+    
     args = parser.parse_args()
 
     env_like, base_env, model, using_vec = load_model_and_env(args)

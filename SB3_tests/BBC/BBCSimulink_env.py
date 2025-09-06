@@ -4,6 +4,34 @@ import numpy as np
 import matlab.engine
 from typing import Optional, Tuple
 
+class DiscretizeDutyWrapper(gym.ActionWrapper):
+    """
+    Map Discrete(n_bins) -> duty in [low, high] (default [0, 1]).
+    Keeps the underlying env continuous and untouched.
+    """
+    def __init__(self, env, n_bins: int = 51, low: float = 0.0, high: float = 1.0, avoid_edges: bool = False):
+        super().__init__(env)
+        assert hasattr(env.action_space, "low") and hasattr(env.action_space, "high"), \
+            "Underlying env must have a Box action space."
+        self.n_bins = int(n_bins)
+        self.low = float(low)
+        self.high = float(high)
+        self.avoid_edges = bool(avoid_edges)
+
+        if self.avoid_edges and self.n_bins > 1:
+            # Nudge in from exact 0.0/1.0 if your plant is touchy at the edges
+            eps = 0.5 / (self.n_bins - 1)
+            lo = self.low + eps * (self.high - self.low)
+            hi = self.high - eps * (self.high - self.low)
+            self._bins = np.linspace(lo, hi, self.n_bins, dtype=np.float32)
+        else:
+            self._bins = np.linspace(self.low, self.high, self.n_bins, dtype=np.float32)
+
+        self.action_space = spaces.Discrete(self.n_bins)
+
+    def action(self, act_idx: int):
+        idx = int(np.clip(act_idx, 0, self.n_bins - 1))
+        return np.array([self._bins[idx]], dtype=np.float32)
 
 class BBCSimulinkEnv(gym.Env):
     """
@@ -50,7 +78,7 @@ class BBCSimulinkEnv(gym.Env):
         model_name: str = "bbcSim",
         *,
         dt: float = 5e-6,
-        frame_skip: int = 10,            # 20 kHz default
+        frame_skip: int = 26,            # 20 kHz default
         max_episode_time: float = 0.2,   # 0.2 s default (like np env with 4000 steps @ 50 µs)
         grace_period_steps: int = 100,
         target_voltage: float = -30.0,
@@ -245,19 +273,19 @@ class BBCSimulinkEnv(gym.Env):
         duty_cmd = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
 
         # Quantize to PWM resolution like NumPy env
-        if self.quantize_pwm:
-            N = int(self.frame_skip)
-            if self.quantize_mode.lower().startswith('f'):
-                on_steps = int(np.floor(duty_cmd * N))
-            else:
-                on_steps = int(np.round(duty_cmd * N))
-            on_steps = int(np.clip(on_steps, 0, N))
-            eff_duty = on_steps / float(N)
-        else:
-            eff_duty = duty_cmd
-            N = int(self.frame_skip)
-            on_steps = int(np.round(eff_duty * N))
-        # Apply 'eff_duty' for exactly one PWM period
+        # if self.quantize_pwm:
+        #     N = int(self.frame_skip)
+        #     if self.quantize_mode.lower().startswith('f'):
+        #         on_steps = int(np.floor(duty_cmd * N))
+        #     else:
+        #         on_steps = int(np.round(duty_cmd * N))
+        #     on_steps = int(np.clip(on_steps, 0, N))
+        #     eff_duty = on_steps / float(N)
+        # else:
+        eff_duty = duty_cmd
+        N = int(self.frame_skip)
+        on_steps = int(np.round(eff_duty * N))
+    # Apply 'eff_duty' for exactly one PWM period
         self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", str(eff_duty), nargout=0)
         stop_time = self.time + self.T_sw
         self._sim_to(stop_time)
@@ -325,32 +353,26 @@ class BBCSimulinkEnv(gym.Env):
 
         return obs, float(reward), terminated, truncated, info
 
-    # ====== Reward (mirrors np_bbc_env) ======
     def _calculate_reward(self, duty: float, vC: float, iL: Optional[float]) -> float:
-        v_abs = abs(vC)
-        vref = abs(self.target_voltage)
-        e = abs(v_abs - vref)
-        e_norm = e / max(vref, 1e-3)
+        # --- sign-aware, NumPy-parity reward ---
+        vref = float(self.target_voltage)
+        e_norm = abs(vC - vref) / max(abs(vref), 1e-9)
 
-        prev_e = abs(abs(self.prev_vC) - vref) / max(vref, 1e-3)
-        progress = prev_e - e_norm  # >0 if closer this step
+        exparg = -5.0 * (e_norm ** 2)
+        r_track = 0.0 if exparg < -50.0 else float(np.exp(exparg))
 
-        r_track = float(np.exp(-5.0 * (e_norm ** 2)))
-        in_band = abs(v_abs - vref) <= self._band_e * vref
-        band_bonus = 0.1 if in_band else 0.0
+        prev_e_norm = abs(self.prev_vC - vref) / max(abs(vref), 1e-9)
+        progress = float(np.clip(prev_e_norm - e_norm, -1.0, 1.0))
+
+        band_bonus = 0.1 if e_norm <= 0.02 else 0.0
 
         dduty = 0.0 if self.prev_applied_duty is None else (duty - self.prev_applied_duty)
-        r = (
-            r_track
-            + 0.5 * progress
-            + band_bonus
-            - self._lam_duty * (dduty ** 2)
-        )
-        if iL is not None:
-            i_norm = abs(iL) / max(self.I_L_MAX, 1e-3)
-            r -= self._lam_i * (i_norm ** 2)
+        dduty_scale = float(np.exp(-6.0 * e_norm))
 
-        return float(np.clip(r, self._clip_low, self._clip_high))
+        r = r_track + 0.1 * progress + band_bonus - 0.5 * dduty_scale * (dduty ** 2)
+
+        return float(np.clip(r, -5.0, 2.0))
+
 
     # ====== Close ======
     def close(self):

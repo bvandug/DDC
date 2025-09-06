@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Load the data from the JSON files
-with open('DQN_1.json', 'r') as f:
+with open('DQN_DQN_Rank_1_Seed_42_Noise_0_tensorboard_logs_DQN_1.json', 'r') as f:
     dqn_data = json.load(f)
 
-with open('TD3_1.json', 'r') as f:
+with open('TD3_TD3_Rank_1_Seed_42_Noise_0_tensorboard_logs_TD3_1.json', 'r') as f:
     td3_data = json.load(f)
 
 # Create pandas DataFrames
@@ -24,7 +24,7 @@ plt.plot(dqn_df['Timesteps'], dqn_df['Reward'], label='DQN', color='blue')
 plt.plot(td3_df['Timesteps'], td3_df['Reward'], label='TD3', color='red')
 
 # Add enhancements
-plt.title('Smoothed Buck Converter DQN vs. TD3 Training Convergence')
+plt.title('Buck Converter DQN vs. TD3 Training Convergence')
 plt.xlabel('Timesteps')
 plt.ylabel('Reward')
 plt.legend()
