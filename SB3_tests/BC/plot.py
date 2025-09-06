@@ -84,10 +84,12 @@ def plot_combined_performance(rl_file_path, pid_file_path, goal_voltage=30.0, er
     ax.axhline(y=lower_bound, color='k', linestyle='--', linewidth=1.5)
 
     # --- Final Touches and Labels for Main Plot ---
-    #ax.set_title('Controller Performance Comparison', weight='bold')
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Voltage (V)')
-    ax.set_xlim(left=0, right=0.05)
+    
+    # Set main plot X-axis to a normal (linear) scale
+    ax.set_xlim(0, 0.05)
+    
     ax.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, facecolor='white', edgecolor='lightgrey')
     ax.grid(False)
 
@@ -97,7 +99,7 @@ def plot_combined_performance(rl_file_path, pid_file_path, goal_voltage=30.0, er
     # Set the background color of the inset
     ax_inset.set_facecolor('whitesmoke')
     
-    # Plot A2C and SAC data on the inset axes
+    # Plot data on the inset axes
     for algo in ['A2C', 'SAC']:
         if algo in df_rl.columns:
             ax_inset.plot(df_rl['Time (s)'], df_rl[algo], linewidth=1.2, color=rl_colors.get(algo))
@@ -106,21 +108,20 @@ def plot_combined_performance(rl_file_path, pid_file_path, goal_voltage=30.0, er
     ax_inset.axhline(y=upper_bound, color='k', linestyle='--', linewidth=1.5)
     ax_inset.axhline(y=lower_bound, color='k', linestyle='--', linewidth=1.5)
             
-    # Set the zoomed-in limits to show the initial rise
-    ax_inset.set_xlim(0, 0.0015)
+    # --- Set inset X-axis to log format ---
+    ax_inset.set_xscale('log')
+    ax_inset.set_xlim(1e-4, 0.0015) # Adjusted left limit for log scale
     ax_inset.set_ylim(21, 32)
     
-    # Optional: Add grid and finer ticks for the inset
     ax_inset.grid(True, which='both', linestyle='--', linewidth=0.5)
     ax_inset.tick_params(axis='both', which='major', labelsize=10)
     
-    # Add a visible border to the inset
     for spine in ax_inset.spines.values():
         spine.set_edgecolor('black')
         spine.set_linewidth(1.0)
 
     # --- Save the plot ---
-    output_filename = 'controller_performance_comparison_with_inset.svg'
+    output_filename = 'controller_performance_swapped_scales.svg'
     plt.tight_layout()
     plt.savefig(output_filename, format='svg', bbox_inches='tight')
     print(f"\n📈 Plot saved successfully as '{output_filename}'")
