@@ -1,0 +1,19 @@
+{
+  "best_params": {
+    "n_layers": 3,
+    "layer_size": 256,
+    "activation_fn": "relu",
+    "log_std_init": -1.3906981864450987,
+    "learning_rate": 3.057114968593779e-05,
+    "buffer_size": 100000,
+    "batch_size": 256,
+    "tau": 0.016471223201206118,
+    "gamma": 0.9811593118587019,
+    "ent_coef": "auto",
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "learning_starts": 10000
+  },
+  "best_value": 4396.004011,
+  "n_trials": 50
+}
