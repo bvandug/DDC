@@ -3,6 +3,8 @@ from gymnasium import spaces
 import numpy as np
 import matlab.engine
 from typing import Optional, Tuple
+import os, shutil, tempfile, uuid
+
 
 class DiscretizeDutyWrapper(gym.ActionWrapper):
     """
@@ -78,8 +80,8 @@ class BBCSimulinkEnv(gym.Env):
         model_name: str = "bbcSim",
         *,
         dt: float = 5e-6,
-        frame_skip: int = 26,            # 20 kHz default
-        max_episode_time: float = 5,   # 0.2 s default (like np env with 4000 steps @ 50 µs)
+        frame_skip: int = 26,            
+        max_episode_time: float = 0.52,   # for 4000 steps at 5us*26 = 0.00013s
         grace_period_steps: int = 100,
         target_voltage: float = -30.0,
         random_target: bool = False,
@@ -141,11 +143,23 @@ class BBCSimulinkEnv(gym.Env):
         self.prev_vC: float = 0.0
         self.last_iL: Optional[float] = None
 
-        # --- Start MATLAB + load model ---
+       # --- Start MATLAB + unique model copy (instance-isolated) ---
         self.eng = matlab.engine.start_matlab()
-        self.eng.load_system(self.model_name, nargout=0)
+
+        # Keep the base name, then create a unique one
+        self.base_model_name = self.model_name          # e.g., "bbcSim"
+        unique_id = uuid.uuid4().hex[:8]
+        self.model_name = f"{self.base_model_name}_{unique_id}"
+
+        # Copy base .slx to a temp path with the unique name
+        self.model_path = os.path.join(tempfile.gettempdir(), f"{self.model_name}.slx")
+        shutil.copy(f"{self.base_model_name}.slx", self.model_path)
+
+        # Load the unique copy
+        self.eng.load_system(self.model_path, nargout=0)
         if self.use_fast_restart:
             self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
+
 
         # Pre-create storage for simple optional plotting (off by default)
         self._times = []
@@ -380,6 +394,7 @@ class BBCSimulinkEnv(gym.Env):
 
     # ====== Close ======
     def close(self):
+        # Try to close the model cleanly
         try:
             if self.use_fast_restart:
                 self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
@@ -388,5 +403,28 @@ class BBCSimulinkEnv(gym.Env):
             pass
         try:
             self.eng.quit()
+        except Exception:
+            pass
+
+        # --- Cleanup unique copy & caches ---
+        try:
+            if hasattr(self, "model_path") and os.path.exists(self.model_path):
+                os.remove(self.model_path)
+        except Exception:
+            pass
+
+        try:
+            slprj_model_dir = os.path.join(os.getcwd(), "slprj", self.model_name)
+            if os.path.exists(slprj_model_dir):
+                shutil.rmtree(slprj_model_dir)
+        except Exception:
+            pass
+
+        try:
+            base = os.path.splitext(self.model_name)[0]
+            for fname in (f"{base}.slx.autosave", f"{base}.slxc"):
+                fpath = os.path.join(os.getcwd(), fname)
+                if os.path.exists(fpath):
+                    os.remove(fpath)
         except Exception:
             pass

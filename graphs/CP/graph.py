@@ -24,7 +24,7 @@ plt.plot(dqn_df['Timesteps'], dqn_df['Reward'], label='DQN', color='blue')
 plt.plot(td3_df['Timesteps'], td3_df['Reward'], label='TD3', color='red')
 
 # Add enhancements
-plt.title('Cartpole DQN vs. TD3 Training Convergence')
+# plt.title('Cartpole DQN vs. TD3 Training Convergence')
 plt.xlabel('Timesteps')
 plt.ylabel('Reward')
 plt.legend()
