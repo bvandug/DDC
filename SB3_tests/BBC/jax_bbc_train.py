@@ -4,6 +4,8 @@ import os
 import argparse
 import numpy as np
 import torch.nn as nn
+import json
+import shutil
 import gymnasium as gym
 from gymnasium import spaces
 
@@ -16,6 +18,23 @@ from stable_baselines3.common.callbacks import BaseCallback
 
 from np_bbc_env import JAXBuckBoostConverterEnv
 import numpy as np
+activation_fn_map = {"relu": nn.ReLU, "tanh": nn.Tanh, "elu": nn.ELU, "leaky_relu": nn.LeakyReLU}
+
+# === IP-style HP loading (simple helpers, JSON is source of truth) ===
+def load_hyperparameters(algo_name: str):
+    path = os.path.join("bbc_hp_results", f"{algo_name.lower()}_best_params.json")
+    with open(path, "r") as f:
+        blob = json.load(f)
+    # tuner saves {"best_params": {...}}; support flat dict too
+    return blob.get("best_params", blob)
+
+def create_policy_kwargs(params: dict, algo: str | None = None):
+    net = [params["layer_size"]] * int(params["n_layers"])
+    act = activation_fn_map[params["activation_fn"].lower()]
+    if (algo or "").lower() == "a2c":
+        # A2C in this script uses separate pi/vf nets; others use shared list
+        return dict(net_arch=dict(pi=net, vf=net), activation_fn=act)
+    return dict(net_arch=net, activation_fn=act)
 
 # ===== Discretize a 1-D continuous duty command into N fixed levels (for DQN) =====
 class DiscretizedDutyWrapper(gym.ActionWrapper):
@@ -60,7 +79,7 @@ class EpisodeStatsLogger(BaseCallback):
             self.ep_idx += 1
             total_r = float(ep.get("r", np.nan))
             length  = int(ep.get("l", 0))
-            avg_duty = float(ep.get("avg_duty", np.nan))  # NEW
+            avg_duty = float(ep.get("avg_duty", np.nan))
             avg_voltage = float(ep.get("avg_voltage", np.nan))
             # CSV row
             self.log_file.write(f"{self.ep_idx},{total_r:.6f},{length},{avg_duty:.6f},{avg_voltage:.6f}\n")
@@ -69,7 +88,7 @@ class EpisodeStatsLogger(BaseCallback):
             if self.log_tensorboard:
                 self.logger.record("custom/ep_reward_raw", total_r)
                 self.logger.record("custom/ep_len_raw", length)
-                self.logger.record("custom/ep_avg_duty_raw", avg_duty)  # NEW
+                self.logger.record("custom/ep_avg_duty_raw", avg_duty)
                 self.logger.record("custom/ep_avg_voltage_raw", avg_voltage)
         return True
 
@@ -108,9 +127,10 @@ def duty_bins_uniform(dmin=0.10, dmax=0.90, n=51):
 
 def make_env(seed: int, rank: int = 0, k_macro: int = 1,
              algo_name: str = "td3",
-             dqn_bins: int = 41,
+             dqn_bins: int = 21,
              duty_min: float = 0.10,
-             duty_max: float = 0.90):
+             duty_max: float = 0.90,
+             voltage_noise_std: float = 0.0):
     def _thunk():
         e = JAXBuckBoostConverterEnv(
             dt=5e-6,
@@ -118,6 +138,7 @@ def make_env(seed: int, rank: int = 0, k_macro: int = 1,
             max_episode_steps=4000,
             grace_period_steps=200,
             target_voltage=-30.0,
+            voltage_noise_std=voltage_noise_std,
         )
         if hasattr(e, "_clip_low"):  e._clip_low  = -10.0
         if hasattr(e, "_clip_high"): e._clip_high =  10.0
@@ -141,7 +162,7 @@ def make_env(seed: int, rank: int = 0, k_macro: int = 1,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--algo", choices=["a2c", "sac", "td3", "dqn"], default="a2c")
+    parser.add_argument("--algo", choices=["a2c", "sac", "td3", "dqn", "ppo", "ddpg"], default="a2c")
     parser.add_argument("--timesteps", type=int, default=2_000_000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--n-envs", type=int, default=8, help="Parallel envs")
@@ -152,173 +173,206 @@ def main():
     parser.add_argument("--vin-min", type=float, default=46.5, help="Min input voltage for randomization")
     parser.add_argument("--vin-max", type=float, default=49.5, help="Max input voltage for randomization")
 
-    parser.add_argument("--dqn-bins", type=int, default=41, help="Number of duty bins for DQN")
+    parser.add_argument("--dqn-bins", type=int, default=21, help="Number of duty bins for DQN")
     parser.add_argument("--duty-min", type=float, default=0.10, help="Min duty for bins")
     parser.add_argument("--duty-max", type=float, default=0.90, help="Max duty for bins")
+    parser.add_argument("--voltage-noise-std", type=float, default=0.0, help="Std dev of Gaussian noise to add to voltage observation")
+    parser.add_argument(
+        "--noise",
+        type=str,
+        default="single",
+        choices=["single", "all"],
+        help="Noise mode: 'single' (use --voltage-noise-std) or 'all' (train across [0, 0.1, 0.01, 0.001])"
+    )
 
     args = parser.parse_args()
 
-    algo_name = args.algo.upper()
-    n_envs = max(1, args.n_envs)
+    # Load best params (single source of truth, like IP)
+    params = load_hyperparameters(args.algo)
 
-    # Derived discount to keep physical horizon consistent when using macro steps
-    gamma_phys_a2c = 0.995
-    gamma_phys_sac = 0.9995
-    gamma_phys_td3 = 0.99
-    gamma_a2c = gamma_phys_a2c ** args.macro_k
-    gamma_sac = gamma_phys_sac ** args.macro_k
-    gamma_td3 = gamma_phys_td3 ** args.macro_k
+    # === BEGIN minimal addition for sequential `--noise all` ===
+    def _train_one_noise(nl: float):
+        suffix = f"noise_{nl:.3f}"
+        model_base_dir = os.path.join("jax_models", f"{args.algo}_{suffix}")
+        os.makedirs(model_base_dir, exist_ok=True)
+        model_path = os.path.join(model_base_dir, "best_model")
+        replay_buffer_path = os.path.join(model_base_dir, "best_model_replay_buffer")
+        tensorboard_log = os.path.join("jax_train_logs", f"{args.algo}_{suffix}")
+        os.makedirs(tensorboard_log, exist_ok=True)
+        log_file = os.path.join(model_base_dir, f"{args.algo}_training_log.txt")
 
-    # base = trained_bbc_models/TD3
-    base = os.path.join("trained_bbc_models", algo_name)
-    os.makedirs(base, exist_ok=True)
+        print(f"\n=== Training for noise std = {nl:.3f} ===")
+        print(f"📁 Model directory: {model_base_dir}")
+        print(f"🧠 Model file:      {model_path}.zip")
+        print(f"📊 TensorBoard dir: {tensorboard_log}")
+        print(f"📝 Episode CSV:     {log_file}")
 
-    # unique run folder (e.g. TD3_15)
-    run_name = f"{algo_name}_{args.seed}"   # or use trial number if tuning
-    run_dir = os.path.join(base, run_name)
-    os.makedirs(run_dir, exist_ok=True)
-
-    # log files inside run_dir
-    log_file = os.path.join(run_dir, f"{args.algo}_training_log.txt")
-    tensorboard_log = run_dir
-
-    # ===== Vec envs =====
-    env_fns = [make_env(args.seed, i, args.macro_k,
-                        algo_name=args.algo,
-                        dqn_bins=args.dqn_bins,
-                        duty_min=args.duty_min,
-                        duty_max=args.duty_max) for i in range(n_envs)]
-    vec_cls = SubprocVecEnv if n_envs > 1 else DummyVecEnv
-    env = vec_cls(env_fns)
-
-
-    # Observation normalization is beneficial for all algorithms.
-    # Reward normalization is typically used for off-policy algorithms but can sometimes hurt.
-    # We are only normalizing observations here.
-    if args.algo in ["sac", "td3"]:
-        env = VecNormalize(env, norm_obs=True, norm_reward=False)
-    else: # A2C
+        # Single-noise vec env
+        n_envs = max(1, args.n_envs)
+        env_fns = [make_env(args.seed, i, args.macro_k,
+                            algo_name=args.algo,
+                            dqn_bins=args.dqn_bins,
+                            duty_min=args.duty_min,
+                            duty_max=args.duty_max,
+                            voltage_noise_std=nl) for i in range(n_envs)]
+        vec_cls = SubprocVecEnv if n_envs > 1 else DummyVecEnv
+        env = vec_cls(env_fns)
         env = VecNormalize(env, norm_obs=True, norm_reward=False)
 
-    # ===== Policies =====
-    model = None
-    if args.algo == "a2c":
-        policy_kwargs = dict(
-            net_arch=dict(pi=[400, 400], vf=[400, 400]),
-            activation_fn=nn.Tanh,
-            ortho_init=False,
-            log_std_init=-2.0,
-        )
-        model = A2C(
-            "MlpPolicy",
-            env,
-            learning_rate=3e-4,
-            n_steps=512,
-            gamma=gamma_a2c,
-            gae_lambda=0.90,
-            ent_coef=0.005,
-            vf_coef=1.0,
-            max_grad_norm=0.5,
-            policy_kwargs=policy_kwargs,
-            use_rms_prop=True,
-            rms_prop_eps=1e-5,
-            verbose=1,
-            tensorboard_log=tensorboard_log,
-            device=args.device,
-            seed=args.seed,
-        )
-    elif args.algo == "sac":
-        policy_kwargs = dict(net_arch=[400, 400], activation_fn=nn.Tanh)
-        model = SAC(
-            "MlpPolicy",
-            env,
-            learning_rate=0.000105,
-            buffer_size=200_000,
-            batch_size=64,
-            tau=0.00834,
-            gamma=gamma_sac,
-            train_freq=2,
-            gradient_steps=16,
-            learning_starts=10_000,
-            ent_coef="auto",
-            policy_kwargs=policy_kwargs,
-            verbose=1,
-            tensorboard_log=tensorboard_log,
-            device=args.device,
-            seed=args.seed,
-        )
-    elif args.algo == "td3":
-        act_dim = env.action_space.shape[0]
-        action_noise = NormalActionNoise(mean=np.zeros(act_dim), sigma=0.06426859130004395 * np.ones(act_dim)) #this must be turned off for deterministic eval
+        # Build/resume model using your existing per-algo params
+        policy_kwargs = create_policy_kwargs(params, args.algo)
+        AlgoMap = {"a2c": A2C, "sac": SAC, "td3": TD3, "dqn": DQN, "ppo": PPO, "ddpg": DDPG}
+        model = None
 
-        model = TD3(
-            "MlpPolicy",
-            env,                                    # VecNormalize'd SubprocVecEnv (8 envs) for parity
-            learning_rate=2.8533260496524675e-04,
-            buffer_size=800_000,
-            batch_size=512,
-            tau=0.014272704289474013,
-            gamma=0.9760416404048181,
-            train_freq=(1, "step"),
-            gradient_steps=1,
-            learning_starts=21958,                  # round from 0.0274468624 * 800000
-            policy_delay=3,
-            target_policy_noise=0.1464511120522956,
-            target_noise_clip=0.3649340891310912,  # 2.4918492186 * policy_noise, capped to [0.1, 0.8]
-            policy_kwargs=dict(net_arch=[256, 256, 256], activation_fn=nn.ReLU),
-            action_noise=action_noise,
-            device="cuda",
-            verbose=1,
-            tensorboard_log=tensorboard_log,
-            seed=args.seed,
-        )
+        if os.path.exists(model_path + ".zip"):
+            print(f"🔁 Loading existing model from {model_path}.zip")
+            model = AlgoMap[args.algo].load(
+                model_path, env=env, tensorboard_log=tensorboard_log,
+                device=args.device, seed=args.seed
+            )
+            # Resume replay buffer for off-policy algos
+            if args.algo in ["td3","sac","ddpg"] and os.path.exists(replay_buffer_path + ".pkl"):
+                try:
+                    model.load_replay_buffer(replay_buffer_path)
+                except Exception as e:
+                    print(f"⚠️ Could not load replay buffer: {e}")
+        else:
+            if args.algo == "a2c":
+                model = A2C(
+                    "MlpPolicy", env,
+                    learning_rate=float(params["learning_rate"]),
+                    n_steps=int(params["n_steps"]),
+                    gamma=float(params["gamma"]),
+                    gae_lambda=float(params["gae_lambda"]),
+                    ent_coef=float(params["ent_coef"]),
+                    vf_coef=float(params["vf_coef"]),
+                    max_grad_norm=float(params["max_grad_norm"]),
+                    policy_kwargs=policy_kwargs,
+                    use_rms_prop=bool(params["use_rms_prop"]),
+                    rms_prop_eps=float(params["rms_prop_eps"]),
+                    verbose=1, tensorboard_log=tensorboard_log,
+                    device=args.device, seed=args.seed,
+                )
+            elif args.algo == "sac":
+                model = SAC(
+                    "MlpPolicy", env,
+                    learning_rate=float(params["learning_rate"]),
+                    buffer_size=int(params["buffer_size"]),
+                    batch_size=int(params["batch_size"]),
+                    tau=float(params["tau"]),
+                    gamma=float(params["gamma"]),
+                    train_freq=int(params["train_freq"]),
+                    gradient_steps=int(params["gradient_steps"]),
+                    learning_starts=int(params["learning_starts"]),
+                    policy_kwargs=policy_kwargs,
+                    verbose=1, tensorboard_log=tensorboard_log,
+                    device=args.device, seed=args.seed,
+                )
+            if args.algo == "td3":
+                train_freq = (int(params["train_freq_k"]), "step")
+                learning_starts = int(params.get("learning_starts", max(5000, float(params.get("learning_starts_frac", 0)) * int(params["buffer_size"]))))
+                act_dim = env.action_space.shape[0]
+                sigma = float(params.get("action_noise_sigma", 0.0))
+                action_noise = NormalActionNoise(mean=np.zeros(act_dim), sigma=sigma * np.ones(act_dim)) if sigma > 0 else None
+                
+                # Calculate target_noise_clip from multiplier in JSON
+                target_policy_noise = float(params["target_policy_noise"])
+                target_noise_clip_mult = float(params["target_noise_clip_mult"])
+                target_noise_clip = target_policy_noise * target_noise_clip_mult
 
-    elif args.algo == "dqn":
-        # NOTE: Env should be wrapped with DiscretizedDutyWrapper using args.dqn_bins in [0.1, 0.9]
-        # e.g., levels = np.linspace(0.10, 0.90, args.dqn_bins, dtype=np.float32)
+                model = TD3("MlpPolicy", env,
+                            learning_rate=float(params["learning_rate"]),
+                            buffer_size=int(params["buffer_size"]),
+                            batch_size=int(params["batch_size"]),
+                            tau=float(params["tau"]),
+                            gamma=float(params["gamma"]),
+                            train_freq=train_freq,
+                            gradient_steps=int(params["gradient_steps"]),
+                            learning_starts=learning_starts,
+                            policy_delay=int(params["policy_delay"]),
+                            target_policy_noise=target_policy_noise,
+                            target_noise_clip=target_noise_clip,
+                            policy_kwargs=policy_kwargs,
+                            action_noise=action_noise,
+                            verbose=1, tensorboard_log=tensorboard_log,
+                            device="cuda", seed=args.seed)
+                
+            elif args.algo == "ddpg":
+                model = DDPG(
+                    "MlpPolicy", env,
+                    learning_rate=float(params["learning_rate"]),
+                    buffer_size=int(params["buffer_size"]),
+                    batch_size=int(params["batch_size"]),
+                    tau=float(params["tau"]),
+                    gamma=float(params["gamma"]),
+                    train_freq=int(params["train_freq"]),
+                    gradient_steps=int(params["gradient_steps"]),
+                    learning_starts=int(params["learning_starts"]),
+                    policy_kwargs=policy_kwargs,
+                    verbose=1, tensorboard_log=tensorboard_log,
+                    device=args.device, seed=args.seed,
+                )
+            elif args.algo == "ppo":
+                model = PPO(
+                    "MlpPolicy", env,
+                    learning_rate=float(params["learning_rate"]),
+                    n_steps=int(params["n_steps"]),
+                    batch_size=int(params["batch_size"]),
+                    n_epochs=int(params["n_epochs"]),
+                    gamma=float(params["gamma"]),
+                    gae_lambda=float(params["gae_lambda"]),
+                    clip_range=float(params["clip_range"]),
+                    ent_coef=float(params["ent_coef"]),
+                    vf_coef=float(params["vf_coef"]),
+                    max_grad_norm=float(params["max_grad_norm"]),
+                    policy_kwargs=policy_kwargs,
+                    verbose=1, tensorboard_log=tensorboard_log,
+                    device=args.device, seed=args.seed,
+                )
+            elif args.algo == "dqn":
+                train_freq = (int(params["train_freq_k"]), "step")
+                learning_starts = int(params.get("learning_starts", max(5000, float(params.get("learning_starts_frac", 0)) * int(params["buffer_size"]))))
+                model = DQN("MlpPolicy", env,
+                            learning_rate=float(params["learning_rate"]),
+                            buffer_size=int(params["buffer_size"]),
+                            batch_size=int(params["batch_size"]),
+                            gamma=float(params["gamma"]),
+                            tau=float(params["tau"]),
+                            train_freq=train_freq,
+                            gradient_steps=int(params["gradient_steps"]),
+                            learning_starts=learning_starts,
+                            target_update_interval=int(params["target_update_interval"]),
+                            exploration_fraction=float(params["exploration_fraction"]),
+                            exploration_initial_eps=float(params["exploration_initial_eps"]),
+                            exploration_final_eps=float(params["exploration_final_eps"]),
+                            policy_kwargs=policy_kwargs,
+                            verbose=1, tensorboard_log=tensorboard_log,
+                            device="cuda", seed=args.seed)
 
-        model = DQN(
-            "MlpPolicy",
-            env,                                    # VecNormalize'd SubprocVecEnv (8 envs) for parity
-            learning_rate=2.0e-4,                   # near TD3’s LR scale
-            buffer_size=800_000,                    # large replay works well with many bins
-            batch_size=512,
-            gamma=0.976,                            # mirrors TD3’s long horizon
-            train_freq=(1, "step"),
-            gradient_steps=1,
-            learning_starts=22_000,                 # ~0.0275 * buffer_size (like your TD3)
-            target_update_interval=3000,            # stabilize Q targets
-            exploration_initial_eps=1.0,            # start fully exploratory
-            exploration_final_eps=0.05,             # settle to modest exploration
-            exploration_fraction=0.24,              # decay over ~24% of training
-            policy_kwargs=dict(
-                net_arch=[256, 256, 256],
-                activation_fn=nn.ReLU,
-                # dueling=True                        # helpful for control
-            ),
-            device="cuda",
-            verbose=1,
-            tensorboard_log=tensorboard_log,
-            seed=args.seed,
-        )
+        # Train & save
+        cb = EpisodeStatsLogger(log_path=log_file)
+        print(f"Training {args.algo.upper()} for {args.timesteps} timesteps...")
+        model.learn(total_timesteps=int(args.timesteps), callback=cb, log_interval=10)
+        print("Training complete.")
+        model.save(model_path)
+        if args.algo in ["td3","sac","ddpg"]:
+            try:
+                model.save_replay_buffer(replay_buffer_path)
+            except Exception as e:
+                print(f"⚠️ Could not save replay buffer: {e}")
+        env.save(os.path.join(model_base_dir, f"{args.algo}_vec_normalize_final.pkl"))
+        env.close()
 
+    if args.noise == "all":
+        for _nl in [0.0, 0.001, 0.01, 0.1]:
+            _train_one_noise(_nl)
+        return
+    else:
+        # The old script had a bug where it would ignore --voltage-noise-std
+        # when --noise=single. This ensures it's used.
+        _train_one_noise(args.voltage_noise_std)
+    # === END of change ===
 
-
-
-    cb = EpisodeStatsLogger(log_path=log_file)
-    print(f"Training {algo_name} for {args.timesteps} timesteps...")
-    model.learn(
-        total_timesteps=args.timesteps,
-        callback=cb,
-        progress_bar=False,
-        log_interval=10,
-    )
-    print("Training complete.")
-    # ===== Save model + VecNormalize stats =====
-    model.save(os.path.join(run_dir, f"{args.algo}_bbc_model_final"))
-    env.save(os.path.join(run_dir, f"{args.algo}_vec_normalize_final.pkl"))
-
-    env.close()
 
 if __name__ == "__main__":
     print("Starting training...")

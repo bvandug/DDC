@@ -58,6 +58,7 @@ class JAXBuckBoostConverterEnv(gym.Env):
         duty_min: float = 0.1,
         duty_max: float = 0.9,
         pwm_rounding: str = "round",
+        voltage_noise_std: float = 0.0, 
     ):
         super().__init__()
 
@@ -101,6 +102,8 @@ class JAXBuckBoostConverterEnv(gym.Env):
         )
         high = np.array([np.finfo(np.float32).max]*4, dtype=np.float32)
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
+
+        self.voltage_noise_std = float(voltage_noise_std)
 
         self.reset()
 
@@ -233,7 +236,11 @@ class JAXBuckBoostConverterEnv(gym.Env):
         self.prev_error = self.vC - getattr(self, "target_voltage", -30.0)
         self.prev_applied_duty = 0.0
 
-        obs = np.array([self.vC, self.prev_error, 0.0, self.target_voltage], np.float32)
+        # Add noise to the initial observation as well
+        noisy_vC = self.vC + self.np_random.normal(0, self.voltage_noise_std)
+        initial_error = noisy_vC - self.target_voltage
+        self.prev_error = initial_error # Make sure prev_error is also based on noisy reading
+        obs = np.array([noisy_vC, initial_error, 0.0, self.target_voltage], np.float32)
         return obs, {}
 
     def step(self, action):
@@ -293,11 +300,20 @@ class JAXBuckBoostConverterEnv(gym.Env):
         self.vC = float(np.clip(vC, -self.V_CLAMP, self.V_CLAMP))
 
         self.step_count += 1
-        error = self.vC - self.target_voltage
+
+        # --- START: NOISE IMPLEMENTATION ---
+        # 1. Get the true voltage and add Gaussian noise to it
+        true_vC = self.vC
+        noisy_vC = true_vC + self.np_random.normal(0, self.voltage_noise_std)
+
+        # 2. The agent's perception of error is based on the NOISY voltage
+        error = noisy_vC - self.target_voltage
         d_error = (error - self.prev_error) / self.Tsw
 
-        v_obs = float(np.clip(self.vC, -self.V_CLAMP, self.V_CLAMP))
+        # 3. Construct the observation array with the noisy values
+        v_obs = float(np.clip(noisy_vC, -self.V_CLAMP, self.V_CLAMP))
         obs = np.array([v_obs, error, d_error, self.target_voltage], np.float32)
+        # --- END: NOISE IMPLEMENTATION ---
 
         # Reward exactly as before (uses duty_eff)
         reward = self._reward(duty_eff)

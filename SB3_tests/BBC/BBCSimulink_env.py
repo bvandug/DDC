@@ -79,7 +79,7 @@ class BBCSimulinkEnv(gym.Env):
         *,
         dt: float = 5e-6,
         frame_skip: int = 26,            # 20 kHz default
-        max_episode_time: float = 0.2,   # 0.2 s default (like np env with 4000 steps @ 50 µs)
+        max_episode_time: float = 5,   # 0.2 s default (like np env with 4000 steps @ 50 µs)
         grace_period_steps: int = 100,
         target_voltage: float = -30.0,
         random_target: bool = False,
@@ -89,6 +89,7 @@ class BBCSimulinkEnv(gym.Env):
         use_fast_restart: bool = True,
         quantize_pwm: bool = False,
         quantize_mode: str = 'round',
+        voltage_noise_std: float = 0.0,
     ) -> None:
         super().__init__()
 
@@ -99,6 +100,7 @@ class BBCSimulinkEnv(gym.Env):
         self.T_sw = self.dt * self.frame_skip
         self.quantize_pwm = bool(quantize_pwm)
         self.quantize_mode = str(quantize_mode)
+        self.voltage_noise_std = float(voltage_noise_std)
         self.prev_cmd_duty = None
         self.prev_applied_duty = None
         self.max_episode_time = float(max_episode_time)
@@ -241,7 +243,8 @@ class BBCSimulinkEnv(gym.Env):
         # Read initial measurement
         vC, t, iL = self._get_vC_t_iL()
         self.time = t
-        error = vC - self.target_voltage
+        noisy_vC = vC + self.np_random.normal(0.0, self.voltage_noise_std)
+        error = noisy_vC - self.target_voltage
         self.prev_error = error
         self.prev_vC = vC
         self.last_iL = iL
@@ -273,19 +276,19 @@ class BBCSimulinkEnv(gym.Env):
         duty_cmd = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
 
         # Quantize to PWM resolution like NumPy env
-        # if self.quantize_pwm:
-        #     N = int(self.frame_skip)
-        #     if self.quantize_mode.lower().startswith('f'):
-        #         on_steps = int(np.floor(duty_cmd * N))
-        #     else:
-        #         on_steps = int(np.round(duty_cmd * N))
-        #     on_steps = int(np.clip(on_steps, 0, N))
-        #     eff_duty = on_steps / float(N)
-        # else:
-        eff_duty = duty_cmd
-        N = int(self.frame_skip)
-        on_steps = int(np.round(eff_duty * N))
-    # Apply 'eff_duty' for exactly one PWM period
+        if self.quantize_pwm:
+            N = int(self.frame_skip)
+            if self.quantize_mode.lower().startswith('f'):
+                on_steps = int(np.floor(duty_cmd * N))
+            else:
+                on_steps = int(np.round(duty_cmd * N))
+            on_steps = int(np.clip(on_steps, 0, N))
+            eff_duty = on_steps / float(N)
+        else:
+            eff_duty = duty_cmd
+            N = int(self.frame_skip)
+            on_steps = int(np.round(eff_duty * N))
+        # Apply 'eff_duty' for exactly one PWM period
         self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", str(eff_duty), nargout=0)
         stop_time = self.time + self.T_sw
         self._sim_to(stop_time)
@@ -294,8 +297,9 @@ class BBCSimulinkEnv(gym.Env):
         vC, t, iL = self._get_vC_t_iL()
         self.time = t
 
-        # Observations
-        error = vC - self.target_voltage
+        #observations
+        noisy_vC = vC + self.np_random.normal(0.0, self.voltage_noise_std)
+        error = noisy_vC - self.target_voltage
         d_error = (error - self.prev_error) / self.T_sw
         obs = np.array([vC, error, d_error, self.target_voltage], dtype=np.float32)
 

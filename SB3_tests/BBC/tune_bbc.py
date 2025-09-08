@@ -239,8 +239,6 @@ def suggest_dqn(trial: optuna.Trial):
         "exploration_fraction": exploration_fraction,
         "exploration_final_eps": exploration_final_eps,
         "target_update_interval": target_update_interval,
-        # "optimize_memory_usage": True,
-        # "verbose": 1,
     }
 
 
@@ -454,7 +452,7 @@ def objective(trial: optuna.Trial, algo: str, seed: int, macro_k: int, dqn_bins:
         #     raise optuna.TrialPruned(f"Hard-pruned at {timesteps} steps: topk_avg={topk_avg:.3f} ≤ 200.")
         
         # # --- HARD PRUNE: at 500k steps if metric not above 200 ---
-        # if timesteps >= 500_000 and topk_avg <= -900.0:
+        # if timesteps >= 200_000 and topk_avg <= -900.0:
         #     model.logger.record("prune/hard_pruned", 1)
         #     model.logger.record("prune/hard_prune_at", int(timesteps))
         #     model.logger.record("prune/topk_avg_at_prune", float(topk_avg))
