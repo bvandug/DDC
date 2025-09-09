@@ -1,5 +1,3 @@
-# Updated PIDMainBBC.py with legend modification
-
 import matlab.engine
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,6 +32,7 @@ def setNoise(eng, model, noise_std_dev):
     if noise_std_dev > 0:
         noise_variance = noise_std_dev ** 2
         eng.set_param(f'{model}/Random Number', 'Variance', str(noise_variance), nargout=0)
+        # Set a new random seed for each run to ensure different noise patterns
         eng.set_param(f'{model}/Random Number', 'Seed', str(np.random.randint(1, 100000)), nargout=0)
     else:
         eng.set_param(f'{model}/Random Number', 'Variance', str(0), nargout=0)
@@ -77,11 +76,11 @@ def calculate_metrics(time_lst, voltage_lst, desired_voltage, stability_threshol
             
     return metrics
 
-def main(noise_levels_to_test = [0.0],
+def main(noise_levels_to_test = [0.0, 0.001, 0.01, 0.1],
          goal_voltages = [-30.0, -80.0, -110.0],
          model = 'bbcSimPID'):
     """
-    Method to set up MATLAB, run simulations, and generate stylized plots.
+    Method to set up MATLAB, run simulations for multiple episodes, and generate stylized plots.
     """
     print("Setting up MATLAB engine...")
     eng = matlab.engine.start_matlab()
@@ -99,52 +98,97 @@ def main(noise_levels_to_test = [0.0],
         ax.tick_params(axis='both', which='major', direction='out', length=6, width=1.2)
 
         for i, goal in enumerate(goal_voltages):
-            print(f"\nRunning simulation for Goal: {goal}V...")
-            eng.set_param(f'{model}/finalVoltage', 'Value', str(goal), nargout=0)
-            eng.py.PIDControllerBBC.reset_controller(nargout=0)
-            setNoise(eng, model, noise_level)
-            eng.eval(f"out = sim('{model}');", nargout=0)
-            
-            voltage_2d = eng.eval("out.voltage")
-            voltage_lst = [v[0] for v in voltage_2d]
-            time_2d = eng.eval("out.tout")
-            time_lst = [t[0] for t in time_2d]
-            print("  Simulation complete.")
-
+            # Define and plot error bounds once per goal voltage
             error_bound = abs(0.04 * goal)
-            metrics = calculate_metrics(time_lst, voltage_lst, goal, stability_threshold=error_bound)
-            
-            print("  Performance Metrics:")
-            if isinstance(metrics['stabilisation_time_s'], float):
-                print(f"    - Stabilisation Time: {metrics['stabilisation_time_s']:.4f} s")
-            else:
-                print(f"    - Stabilisation Time: {metrics['stabilisation_time_s']}")
-            print(f"    - Overshoot: {metrics['overshoot_v']:.2f} V")
-            if isinstance(metrics['steady_state_error_v'], float):
-                print(f"    - Steady-State Error: {metrics['steady_state_error_v']:.4f} V")
-            else:
-                 print(f"    - Steady-State Error: {metrics['steady_state_error_v']}")
-
-            plot_filename = f"plot_data_bbc_noise_{noise_level}_goal_{abs(goal)}V.csv"
-            save_plot_data(plot_filename, time_lst, voltage_lst)
-
-            ax.plot(time_lst, voltage_lst, label=f'Goal: {goal}V', linewidth=1.2, color=colors.get(goal))
             label = '±4% Error Bound' if i == 0 else ""
             ax.axhline(y=goal + error_bound, color='k', linestyle='--', linewidth=1.5, label=label)
             ax.axhline(y=goal - error_bound, color='k', linestyle='--', linewidth=1.5)
 
+            # Dictionary to store metrics from all episodes for this goal
+            all_episode_metrics = {
+                'stabilisation_time_s': [],
+                'overshoot_v': [],
+                'steady_state_error_v': []
+            }
+
+            # Run 3 episodes for each voltage goal
+            for episode in range(3):
+                print(f"\nRunning simulation for Goal: {goal}V, Episode: {episode + 1}/3...")
+                eng.set_param(f'{model}/finalVoltage', 'Value', str(goal), nargout=0)
+                eng.py.PIDControllerBBC.reset_controller(nargout=0)
+                setNoise(eng, model, noise_level)
+                eng.eval(f"out = sim('{model}');", nargout=0)
+                
+                voltage_2d = eng.eval("out.voltage")
+                voltage_lst = [v[0] for v in voltage_2d]
+                time_2d = eng.eval("out.tout")
+                time_lst = [t[0] for t in time_2d]
+                print("  Simulation complete.")
+
+                metrics = calculate_metrics(time_lst, voltage_lst, goal, stability_threshold=error_bound)
+                
+                # Store metrics for later averaging
+                all_episode_metrics['stabilisation_time_s'].append(metrics['stabilisation_time_s'])
+                all_episode_metrics['overshoot_v'].append(metrics['overshoot_v'])
+                all_episode_metrics['steady_state_error_v'].append(metrics['steady_state_error_v'])
+
+                print(f"  Performance Metrics (Episode {episode + 1}):")
+                if isinstance(metrics['stabilisation_time_s'], float):
+                    print(f"    - Stabilisation Time: {metrics['stabilisation_time_s']:.4f} s")
+                else:
+                    print(f"    - Stabilisation Time: {metrics['stabilisation_time_s']}")
+                print(f"    - Overshoot: {metrics['overshoot_v']:.2f} V")
+                if isinstance(metrics['steady_state_error_v'], float):
+                    print(f"    - Steady-State Error: {metrics['steady_state_error_v']:.4f} V")
+                else:
+                     print(f"    - Steady-State Error: {metrics['steady_state_error_v']}")
+
+                # Save data for each individual episode with a unique filename
+                plot_filename = f"plot_data_bbc_noise_{noise_level}_goal_{abs(goal)}V_ep_{episode+1}.csv"
+                save_plot_data(plot_filename, time_lst, voltage_lst)
+
+                # Plot the result, but only label the first episode for each goal to keep the legend clean
+                plot_label = f'Goal: {goal}V' if episode == 0 else ""
+                ax.plot(time_lst, voltage_lst, label=plot_label, linewidth=1.2, color=colors.get(goal))
+            
+            # --- Calculate and print average metrics after all episodes for this goal ---
+            print(f"\n  Average Metrics for Goal: {goal}V (over 3 episodes):")
+            
+            # Stabilisation Time
+            valid_stab_times = [t for t in all_episode_metrics['stabilisation_time_s'] if isinstance(t, float)]
+            if valid_stab_times:
+                avg_stab_time = np.mean(valid_stab_times)
+                std_stab_time = np.std(valid_stab_times)
+                print(f"    - Avg. Stabilisation Time: {avg_stab_time:.4f} ± {std_stab_time:.4f} s ({len(valid_stab_times)}/3 runs stabilized)")
+            else:
+                print("    - Avg. Stabilisation Time: Did not stabilize in any run")
+
+            # Overshoot
+            overshoots = all_episode_metrics['overshoot_v']
+            avg_overshoot = np.mean(overshoots)
+            std_overshoot = np.std(overshoots)
+            print(f"    - Avg. Overshoot: {avg_overshoot:.2f} ± {std_overshoot:.2f} V")
+
+            # Steady-State Error
+            valid_ss_errors = [e for e in all_episode_metrics['steady_state_error_v'] if isinstance(e, float)]
+            if valid_ss_errors:
+                avg_ss_error = np.mean(valid_ss_errors)
+                std_ss_error = np.std(valid_ss_errors)
+                print(f"    - Avg. Steady-State Error: {avg_ss_error:.4f} ± {std_ss_error:.4f} V")
+            else:
+                print("    - Avg. Steady-State Error: N/A (Could not determine from runs)")
+
+
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Voltage (V)')
-        #ax.set_title(f"BBC PID Controller Response (Noise σ = {noise_level})")
         
-        ax.set_xlim(0, 0.14)
+        ax.set_xlim(0, 0.07)
         
-        # <<< CHANGED THIS LINE FOR LEGEND POSITION AND SIZE
         ax.legend(loc='upper right', fontsize=14, frameon=True, fancybox=True, shadow=True, facecolor='white', edgecolor='lightgrey')
         
         ax.grid(False)
 
-        output_filename = f"bbc_performance_noise_{noise_level}.svg"
+        output_filename = f"bbc_performance_noise_{noise_level}`_0.07`.svg"
         plt.tight_layout()
         plt.savefig(output_filename, format='svg', bbox_inches='tight')
         print(f"\n📈 Plot saved successfully as '{output_filename}'")
@@ -155,3 +199,4 @@ def main(noise_levels_to_test = [0.0],
 
 if __name__ == '__main__':
     main()
+
