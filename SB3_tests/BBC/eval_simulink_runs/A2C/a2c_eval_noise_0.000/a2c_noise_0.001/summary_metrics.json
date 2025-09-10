@@ -3,11 +3,11 @@
   "episodes": 1,
   "training_voltage_noise_std": 0.001,
   "evaluation_voltage_noise_std": 0.0,
-  "mean_reward": 3651.6895168046467,
+  "mean_reward": 4395.084275593981,
   "std_reward": 0.0,
   "mean_length": 4000.0,
-  "mean_stabilisation_time_s": 0.51987,
-  "mean_steady_state_error_v": NaN,
-  "mean_overshoot_v": 29.6208896104128,
-  "mean_undershoot_v": 38.85204247676215
+  "mean_stabilisation_time_s": 0.0013000000000000002,
+  "mean_steady_state_error_v": -0.029732810552728233,
+  "mean_overshoot_v": 28.774330297660537,
+  "mean_undershoot_v": 4.231822972701508
 }
