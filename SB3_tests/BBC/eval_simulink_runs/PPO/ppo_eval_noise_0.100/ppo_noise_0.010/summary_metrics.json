@@ -1,0 +1,13 @@
+{
+  "algo": "ppo",
+  "episodes": 1,
+  "training_voltage_noise_std": 0.01,
+  "evaluation_voltage_noise_std": 0.1,
+  "mean_reward": 4393.541291443631,
+  "std_reward": 0.0,
+  "mean_length": 4000.0,
+  "mean_stabilisation_time_s": 0.0013000000000000002,
+  "mean_steady_state_error_v": 0.03514467314481961,
+  "mean_overshoot_v": 28.201231319273244,
+  "mean_undershoot_v": 4.020597596859524
+}

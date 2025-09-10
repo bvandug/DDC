@@ -1,0 +1,13 @@
+{
+  "algo": "ddpg",
+  "episodes": 1,
+  "training_voltage_noise_std": 0.1,
+  "evaluation_voltage_noise_std": 0.001,
+  "mean_reward": 4346.882476879284,
+  "std_reward": 0.0,
+  "mean_length": 4000.0,
+  "mean_stabilisation_time_s": 0.00221,
+  "mean_steady_state_error_v": 0.3337281942646106,
+  "mean_overshoot_v": 28.28104755254799,
+  "mean_undershoot_v": 7.662806236573616
+}

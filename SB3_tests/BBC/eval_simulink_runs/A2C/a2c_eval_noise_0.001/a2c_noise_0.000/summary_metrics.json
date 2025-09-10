@@ -1,0 +1,13 @@
+{
+  "algo": "a2c",
+  "episodes": 1,
+  "training_voltage_noise_std": 0.0,
+  "evaluation_voltage_noise_std": 0.001,
+  "mean_reward": 3665.0713586430065,
+  "std_reward": 0.0,
+  "mean_length": 4000.0,
+  "mean_stabilisation_time_s": 0.51987,
+  "mean_steady_state_error_v": NaN,
+  "mean_overshoot_v": 29.6208896104128,
+  "mean_undershoot_v": 38.85204247676215
+}
