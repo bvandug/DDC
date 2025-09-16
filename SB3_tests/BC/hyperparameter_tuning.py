@@ -17,7 +17,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from torch import nn
 from tqdm import tqdm
 
-from PYBCEnv import BuckConverterEnv as BCPyEnv, DiscretizeActionWrapper
+from BCPythonEnv import BuckConverterEnv as BCPyEnv, DiscretizeActionWrapper
 
 # CONSTANTS FOR PRUNING AND EVALUATION
 EVAL_INTERVAL = 10000
