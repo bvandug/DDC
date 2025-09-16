@@ -1,9 +1,11 @@
 import os
+import json
 from datetime import datetime
 import numpy as np
 from stable_baselines3 import SAC, A2C, TD3, PPO, DDPG, DQN
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from torch import nn
 from PYBCEnv import BuckConverterEnv, DiscretizeActionWrapper
 
 
@@ -107,26 +109,39 @@ if __name__ == "__main__":
     SEED = 42
 
     # Path Configuration for Local Execution
-    BASE_SAVE_PATH = "models"
+    BASE_MODEL_PATH = "models"
     RESULTS_LOG_DIR = "PY_BC_Results"
 
-    os.makedirs(BASE_SAVE_PATH, exist_ok=True)
+    os.makedirs(BASE_MODEL_PATH, exist_ok=True)
     os.makedirs(RESULTS_LOG_DIR, exist_ok=True)
 
     # Main Training Loop
     for model_type in MODELS_TO_TRAIN:
         for noise in NOISE_LEVELS:
             print("\n" + "=" * 80)
-            print(f"--- STARTING TRAINING: {model_type} | Noise: {noise} ---")
+            print(f"--- CONFIGURING: {model_type} | Noise: {noise} ---")
             print("=" * 80 + "\n")
 
-            # Define unique save paths for this training run
+            # Define paths for this specific training run
             save_folder_name = f"{model_type}_Seed_{SEED}_Noise_{noise}"
-            model_save_path = os.path.join(BASE_SAVE_PATH, model_type,
+            model_save_path = os.path.join(BASE_MODEL_PATH, model_type,
                                            save_folder_name)
             log_save_path = os.path.join(RESULTS_LOG_DIR, model_type)
             os.makedirs(model_save_path, exist_ok=True)
             os.makedirs(log_save_path, exist_ok=True)
+
+            # Load Hyperparameters from JSON
+            hyperparams_path = os.path.join(model_save_path,
+                                            "hyperparameters.json")
+            if not os.path.exists(hyperparams_path):
+                print(f"[SKIP] Hyperparameter file not found for "
+                      f"{model_type} with noise {noise}.")
+                print(f"Searched at: {hyperparams_path}")
+                continue
+
+            with open(hyperparams_path, 'r') as f:
+                hyperparams = json.load(f)
+            print(f"Loaded hyperparameters from {hyperparams_path}")
 
             log_file_path = os.path.join(
                 log_save_path, f"train_log_{model_type}_noise_{noise}.txt"
@@ -168,12 +183,37 @@ if __name__ == "__main__":
                 }
                 model_class = model_class_map.get(model_type)
                 if model_class is None:
-                    raise ValueError(f"Model type '{model_type}' not recognized.")
+                    raise ValueError(f"Model type '{model_type}' "
+                                     "not recognized.")
 
-                model = model_class("MlpPolicy", env, verbose=0, seed=SEED,
-                                    tensorboard_log=tensorboard_log_path)
+                # Prepare policy_kwargs from loaded hyperparameters
+                policy_kwargs = {}
+                if 'n_layers' in hyperparams and 'layer_size' in hyperparams:
+                    net_arch = [hyperparams.pop("layer_size")] * \
+                               hyperparams.pop("n_layers")
+                    if model_type in ['A2C', 'PPO']:
+                        policy_kwargs['net_arch'] = dict(pi=net_arch,
+                                                         vf=net_arch)
+                    else:
+                        policy_kwargs['net_arch'] = net_arch
+                if 'activation_fn' in hyperparams:
+                    act_fn_name = hyperparams.pop("activation_fn")
+                    policy_kwargs['activation_fn'] = {
+                        "tanh": nn.Tanh, "relu": nn.ReLU
+                    }.get(act_fn_name.lower(), nn.ReLU)
 
-                # Custom Callbacks
+                # Remove keys not directly accepted by the model constructor
+                hyperparams.pop("rank", None)
+
+                model = model_class("MlpPolicy",
+                                    env,
+                                    policy_kwargs=policy_kwargs,
+                                    verbose=0,
+                                    seed=SEED,
+                                    tensorboard_log=tensorboard_log_path,
+                                    **hyperparams)
+
+                # Callbacks
                 custom_callback = EpisodeStatsLogger(log_path=log_file_path)
                 checkpoint_callback = CheckpointCallback(
                     save_freq=20000,
