@@ -38,11 +38,9 @@ class EpisodeStatsLogger(BaseCallback):
     def _on_training_start(self) -> None:
         """Called once at the beginning of training."""
         self.log_file = open(self.log_path, "w")
-        header = f"Training started at: " \
-                 f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        header = f"Training started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         header += "-" * 80 + "\n"
-        header += (f"{'Episode':<10}{'Total Reward':<20}"
-                   f"{'Episode Length':<20}{'Goal Voltage':<20}\n")
+        header += f"{'Episode':<10}{'Total Reward':<20}{'Episode Length':<20}{'Goal Voltage':<20}\n"
         header += "-" * 80 + "\n"
         self.log_file.write(header)
         self.log_file.flush()
@@ -73,14 +71,10 @@ class EpisodeStatsLogger(BaseCallback):
                 self.logger.record("rollout/ep_length", length)
 
                 episode_num = len(self.episode_rewards)
-                goal_voltage = self.training_env.get_attr('goal',
-                                                          indices=[i])[0]
+                goal_voltage = self.training_env.get_attr('goal', indices=[i])[0]
 
                 # Log to console and file
-                log_line = (f"{episode_num:<10}"
-                            f"{reward:<20.4f}"
-                            f"{int(length):<20}"
-                            f"{goal_voltage:<20.4f}\n")
+                log_line = f"{episode_num:<10}{reward:<20.4f}{int(length):<20}{goal_voltage:<20.4f}\n"
                 print(log_line, end='')
                 self.log_file.write(log_line)
                 self.log_file.flush()
@@ -93,8 +87,7 @@ class EpisodeStatsLogger(BaseCallback):
     def _on_training_end(self) -> None:
         """Called once at the end of training."""
         footer = "-" * 80 + "\n"
-        footer += f"Training finished at: " \
-                  f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        footer += f"Training finished at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         print(footer, end='')
         self.log_file.write(footer)
         self.log_file.close()
@@ -124,18 +117,15 @@ if __name__ == "__main__":
 
             # Define paths for this specific training run
             save_folder_name = f"{model_type}_Seed_{SEED}_Noise_{noise}"
-            model_save_path = os.path.join(BASE_MODEL_PATH, model_type,
-                                           save_folder_name)
+            model_save_path = os.path.join(BASE_MODEL_PATH, model_type, save_folder_name)
             log_save_path = os.path.join(RESULTS_LOG_DIR, model_type)
             os.makedirs(model_save_path, exist_ok=True)
             os.makedirs(log_save_path, exist_ok=True)
 
             # Load Hyperparameters from JSON
-            hyperparams_path = os.path.join(model_save_path,
-                                            "hyperparameters.json")
+            hyperparams_path = os.path.join(model_save_path, "hyperparameters.json")
             if not os.path.exists(hyperparams_path):
-                print(f"[SKIP] Hyperparameter file not found for "
-                      f"{model_type} with noise {noise}.")
+                print(f"[SKIP] Hyperparameter file not found for {model_type} with noise {noise}.")
                 print(f"Searched at: {hyperparams_path}")
                 continue
 
@@ -143,9 +133,7 @@ if __name__ == "__main__":
                 hyperparams = json.load(f)
             print(f"Loaded hyperparameters from {hyperparams_path}")
 
-            log_file_path = os.path.join(
-                log_save_path, f"train_log_{model_type}_noise_{noise}.txt"
-            )
+            log_file_path = os.path.join(log_save_path, f"train_log_{model_type}_noise_{noise}.txt")
             tensorboard_log_path = os.path.join(log_save_path, "tensorboard/")
 
             env = None
@@ -167,14 +155,12 @@ if __name__ == "__main__":
                 base_env_fn = create_env_fn(noise)
 
                 if model_type == 'DQN':
-                    env_fn = lambda: DiscretizeActionWrapper(base_env_fn(),
-                                                             n_bins=17)
+                    env_fn = lambda: DiscretizeActionWrapper(base_env_fn(), n_bins=17)
                 else:
                     env_fn = base_env_fn
 
                 env = DummyVecEnv([env_fn])
-                env = VecNormalize(env, norm_obs=True, norm_reward=False,
-                                   clip_obs=10.0)
+                env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.0)
 
                 # Model Setup
                 model_class_map = {
@@ -183,24 +169,28 @@ if __name__ == "__main__":
                 }
                 model_class = model_class_map.get(model_type)
                 if model_class is None:
-                    raise ValueError(f"Model type '{model_type}' "
-                                     "not recognized.")
+                    raise ValueError(f"Model type '{model_type}' not recognized.")
 
                 # Prepare policy_kwargs from loaded hyperparameters
                 policy_kwargs = {}
                 if 'n_layers' in hyperparams and 'layer_size' in hyperparams:
-                    net_arch = [hyperparams.pop("layer_size")] * \
-                               hyperparams.pop("n_layers")
+                    net_arch = [hyperparams.pop("layer_size")] * hyperparams.pop("n_layers")
                     if model_type in ['A2C', 'PPO']:
-                        policy_kwargs['net_arch'] = dict(pi=net_arch,
-                                                         vf=net_arch)
+                        policy_kwargs['net_arch'] = dict(pi=net_arch, vf=net_arch)
                     else:
                         policy_kwargs['net_arch'] = net_arch
+
                 if 'activation_fn' in hyperparams:
-                    act_fn_name = hyperparams.pop("activation_fn")
-                    policy_kwargs['activation_fn'] = {
-                        "tanh": nn.Tanh, "relu": nn.ReLU
-                    }.get(act_fn_name.lower(), nn.ReLU)
+                    act_fn_name = hyperparams.pop("activation_fn").lower()
+                    activation_functions = {
+                        "tanh": nn.Tanh,
+                        "relu": nn.ReLU,
+                        "leaky_relu": nn.LeakyReLU,
+                        "elu": nn.ELU,
+                    }
+                    # Get the activation function, defaulting to ReLU if not found
+                    policy_kwargs['activation_fn'] = activation_functions.get(act_fn_name, nn.ReLU)
+
 
                 # Remove keys not directly accepted by the model constructor
                 hyperparams.pop("rank", None)
@@ -234,16 +224,13 @@ if __name__ == "__main__":
 
                 # Save Final Model and Normalization Stats
                 final_model_path = os.path.join(model_save_path, "final_model")
-                final_env_stats_path = os.path.join(model_save_path,
-                                                    "vec_normalize.pkl")
+                final_env_stats_path = os.path.join(model_save_path, "vec_normalize.pkl")
                 model.save(final_model_path)
                 env.save(final_env_stats_path)
-                print(f"\n--- Final model and stats saved to "
-                      f"'{model_save_path}' ---")
+                print(f"\n--- Final model and stats saved to '{model_save_path}' ---")
 
             except Exception as e:
-                print(f"\n[ERROR] An unexpected error occurred during "
-                      f"training for {model_type} with noise {noise}: {e}")
+                print(f"\n[ERROR] An unexpected error occurred during training for {model_type} with noise {noise}: {e}")
             finally:
                 if env:
                     env.close()
