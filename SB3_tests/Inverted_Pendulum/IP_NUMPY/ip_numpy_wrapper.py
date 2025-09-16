@@ -1,4 +1,10 @@
-# ip_numpy_wrapper.py (NumPy-based gym wrapper)
+"""Gymnasium wrapper for NumPy-based inverted pendulum environment.
+
+Provides a `gym.Env`-compatible interface around the NumPy physics
+functions, allowing use with Stable-Baselines3 or other RL libraries.
+Implements reset/step methods per Gymnasium API.
+"""
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -6,6 +12,19 @@ from typing import Optional
 from ip_numpy import PendulumConfig, PendulumState, reset_pendulum_env, step_pendulum_env
 
 class InvertedPendulumGymWrapper(gym.Env):
+    """
+    Gymnasium-compatible environment for NumPy pendulum dynamics.
+
+    Args:
+        config (PendulumConfig, optional): Custom pendulum parameters.
+        seed (int, optional): Random seed for reproducibility.
+
+    Attributes:
+        action_space (spaces.Box): Continuous torque space [-max, +max].
+        observation_space (spaces.Box): Observations = [theta, theta_dot].
+        state (PendulumState): Current state of the pendulum.
+        np_rng (np.random.Generator): RNG for seeding and reset reproducibility.
+    """
     metadata = {"render.modes": []}
 
     def __init__(self, config: Optional[PendulumConfig] = None, seed: Optional[int] = None):
@@ -31,12 +50,17 @@ class InvertedPendulumGymWrapper(gym.Env):
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         """
-        Resets the environment to a new random initial state.
+        Reset environment state and sample a new initial angle.
 
-        This method now follows the standard Gymnasium API. It re-seeds the
-        environment's random number generator if a new seed is provided,
-        ensuring reproducibility while allowing for random initializations
-        during training.
+        If a seed is provided, reseeds the internal RNG before generating
+        a new random initial state for the pendulum.
+
+        Args:
+            seed (int, optional): Seed to reinitialize RNG.
+            options (dict, optional): Reserved for API compliance.
+
+        Returns:
+            tuple[np.ndarray, dict]: Observation array and empty info dict.
         """
         super().reset(seed=seed)
         if seed is not None:
@@ -51,11 +75,19 @@ class InvertedPendulumGymWrapper(gym.Env):
 
     def step(self, action):
         """
-        Takes a step in the environment.
-        
-        The return signature is updated to match the Gymnasium standard.
+        Advance simulation by one step using the given action.
+
+        Args:
+            action (float): Torque to apply to the pendulum.
+
+        Returns:
+            tuple:
+                - obs (np.ndarray): [theta, theta_dot] observation.
+                - reward (float): Cosine-based reward from next state.
+                - terminated (bool): True if episode terminated (angle/time).
+                - truncated (bool): Always False (no time truncation used).
+                - info (dict): Empty dictionary for API compliance.
         """
-        
         self.state, reward = step_pendulum_env(self.state, float(action), self.config)
         terminated = bool(self.state.done)
         truncated = False
@@ -65,13 +97,19 @@ class InvertedPendulumGymWrapper(gym.Env):
         return obs, float(reward), terminated, truncated, {}
 
     def _obs(self):
-        """Helper function to get the observation from the state."""
+        """Return the current observation vector [theta, theta_dot].
+
+        Returns:
+            np.ndarray: Observation as float32 array.
+        """
         theta = self.state.theta
         theta_dot = self.state.theta_dot
         return np.array([theta, theta_dot], dtype=np.float32)
 
     def render(self, mode="human"):
+        """Render the environment (currently not implemented)."""
         pass
 
     def close(self):
+        """Close environment resources (currently no-op)."""
         pass

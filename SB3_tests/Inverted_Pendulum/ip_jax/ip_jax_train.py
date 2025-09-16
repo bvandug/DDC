@@ -1,4 +1,11 @@
-# ip_jax_train.py (seeded version)
+
+"""Training script for JAX-based inverted pendulum with Stable-Baselines3.
+
+Supports multiple SB3 RL algorithms (TD3, SAC, DDPG, PPO, A2C, DQN),
+TensorBoard logging, replay buffer checkpointing, and reproducibility
+via fixed seeds. Can train on clean or noisy observations.
+"""
+
 import os
 import json
 import argparse
@@ -38,6 +45,23 @@ OFF_POLICY_ALGOS = ["td3", "sac", "ddpg"]
 
 
 class FancyTensorboardCallback(BaseCallback):
+    """Custom Stable-Baselines3 callback for periodic model checkpointing.
+
+    Adds extra logging to TensorBoard, saves replay buffers at chosen
+    timesteps, and prints elapsed time between checkpoints.
+
+    Args:
+        save_steps (Iterable[int]): Timesteps at which to save checkpoints.
+        save_path_prefix (str): Base path for model and buffer files.
+        log_dir (str): Directory for TensorBoard logs.
+        verbose (int): Verbosity level for BaseCallback.
+
+    Attributes:
+        saved_steps (set): Tracks which checkpoints have been saved.
+        timings (dict): Maps checkpoint timesteps to durations (sec).
+        writer (SummaryWriter): TensorBoard writer instance.
+    """
+
     def __init__(self, save_steps, save_path_prefix, log_dir, verbose=0):
         super().__init__(verbose)
         self.save_steps = sorted(save_steps)
@@ -49,12 +73,21 @@ class FancyTensorboardCallback(BaseCallback):
         self.pbar = None
 
     def _on_training_start(self) -> None:
+        """Initialize progress bar and timing at start of training."""
         self.start_time = time.time()
         self.last_check_time = self.start_time
         self.total_timesteps = self.model._total_timesteps
         self.pbar = tqdm(total=self.total_timesteps, desc="Training Progress", dynamic_ncols=True)
 
     def _on_step(self) -> bool:
+        """Handle events each time step.
+
+        Updates progress bar, logs episode reward/length, and if the
+        current timestep matches a checkpoint, saves model and buffer.
+
+        Returns:
+            bool: True to continue training.
+        """
         current_time = time.time()
         self.pbar.update(1)
 
@@ -73,7 +106,7 @@ class FancyTensorboardCallback(BaseCallback):
             self.timings[self.num_timesteps] = duration
             self.last_check_time = current_time
 
-            print(f"\n📌 Checkpoint at {self.num_timesteps} steps:")
+            print(f"\n  Checkpoint at {self.num_timesteps} steps:")
             print(f"    - Model: {model_file}")
             print(f"    - Replay buffer: {buffer_file}")
             print(f"    - Elapsed: {duration:.2f} sec")
@@ -88,9 +121,10 @@ class FancyTensorboardCallback(BaseCallback):
         return True
 
     def _on_training_end(self):
+        """Close progress bar and print summary of checkpoint durations."""
         total_time = time.time() - self.start_time
         self.pbar.close()
-        print("\n🕒 Training Time Summary:")
+        print("\n Training Time Summary:")
         for step in self.save_steps:
             if step in self.timings:
                 print(f"    {step} steps: {self.timings[step]:.2f} sec")
@@ -100,6 +134,18 @@ class FancyTensorboardCallback(BaseCallback):
 
 
 def load_hyperparameters(algo_name):
+    """Load algorithm-specific hyperparameters from JSON.
+
+    Reads the best hyperparameter file from `jax_hp_results/` and
+    returns a dictionary of parameters, inferring PPO batch size if
+    it was stored as an index.
+
+    Args:
+        algo_name (str): Algorithm key (e.g. "ppo", "td3").
+
+    Returns:
+        dict: Hyperparameters for the selected algorithm.
+    """
     path = f"jax_hp_results/{algo_name}_best_params.json"
     with open(path, "r") as f:
         params = json.load(f)["best_params"]
@@ -114,16 +160,36 @@ def load_hyperparameters(algo_name):
 
 
 def create_policy_kwargs(params):
+    """Construct policy keyword arguments from hyperparameter dict.
+
+    Builds the MLP architecture and activation function used by SB3.
+
+    Args:
+        params (dict): Dictionary of tuned hyperparameters.
+
+    Returns:
+        dict: SB3-compatible `policy_kwargs` dictionary.
+    """
     return dict(
         net_arch=[params["layer_size"]] * params["n_layers"],
         activation_fn=activation_fn_map[params["activation_fn"].lower()]
     )
 
 
-def main(algo_name="ppo",
-         timesteps=100_000,
-         noise: bool = False,
-         noise_level: float = 0.01):
+def main(algo_name="ppo", timesteps=100_000, noise: bool = False,noise_level: float = 0.01):  #defaults
+    """Train a single RL algorithm on the inverted pendulum.
+
+    Sets seeds, creates environment (optionally noisy), loads
+    hyperparameters, builds and trains the model, saves final model
+    and replay buffer if applicable.
+
+    Args:
+        algo_name (str): Algorithm name ("ppo", "td3", etc.).
+        timesteps (int): Number of training timesteps.
+        noise (bool): Whether to inject Gaussian noise into obs.
+        noise_level (float): Standard deviation of observation noise.
+    """
+
     SEED = 42
 
     # Set all seeds
@@ -133,7 +199,6 @@ def main(algo_name="ppo",
     set_random_seed(SEED)
 
     # Determine prefix
-    # suffix = f"{algo_name}_" + (f"noise_{noise_level:.3f}_" if noise else "")
     suffix = (f"noise_{noise_level:.3f}" if noise else "")
 
 
@@ -161,24 +226,24 @@ def main(algo_name="ppo",
     replay_buffer_path = os.path.join(model_base_dir, "best_model_replay_buffer")
     tensorboard_log_dir = os.path.join("jax_train_logs", f"{algo_name}_" + f"{suffix}")
 
-    print(f"📁 Saving models to: {model_base_dir}")
-    print(f"📊 TensorBoard logs to: {tensorboard_log_dir}")
+    print(f"Saving models to: {model_base_dir}")
+    print(f"TensorBoard logs to: {tensorboard_log_dir}")
 
-    params = load_hyperparameters(algo_name)
+    params = load_hyperparameters(algo_name) #load hyperparameters
     policy_kwargs = create_policy_kwargs(params)
     Algo = algo_map[algo_name]
 
-    action_noise = None
+    action_noise = None 
     if algo_name in ["td3", "ddpg"]:
         action_noise = NormalActionNoise(
             mean=np.zeros(1),
             sigma=params["action_noise_sigma"] * np.ones(1)
         )
 
-    device = "cpu" if algo_name in ["ppo", "a2c"] else ("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cpu" if algo_name in ["ppo", "a2c"] else ("cuda" if torch.cuda.is_available() else "cpu") #a2c and ppo optimised for cpu
     print(f"Using device: {device}")
 
-    if os.path.exists(model_path + ".zip"):
+    if os.path.exists(model_path + ".zip"): #load in models
         print(f"Loading model from {model_path}.zip...")
         model = Algo.load(
             model_path,
@@ -262,22 +327,27 @@ def main(algo_name="ppo",
         log_dir=tensorboard_log_dir
     )
 
-    print(f"🚀 Training {algo_name.upper()} for {timesteps} timesteps...")
+    print(f"Training {algo_name.upper()} for {timesteps} timesteps...")
     model.learn(total_timesteps=timesteps, reset_num_timesteps=False,
                 callback=callback, tb_log_name="run")
 
     model.save(model_path)
-    print(f"✅ Final model saved to {model_path}.zip")
+    print(f"Final model saved to {model_path}.zip")
 
     if algo_name in OFF_POLICY_ALGOS:
         model.save_replay_buffer(replay_buffer_path)
-        print(f"✅ Final replay buffer saved to {replay_buffer_path}.pkl")
+        print(f"Final replay buffer saved to {replay_buffer_path}.pkl")
 
     env.close()
-    print("🏁 Training complete. Environment closed.")
+    print("Training complete. Environment closed.")
 
 
 if __name__ == "__main__":
+    """CLI entry point.
+
+    Parses command-line arguments, expands "all" into the full
+    algorithm list, and calls `main()` for each algorithm.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--algos",
@@ -298,7 +368,7 @@ if __name__ == "__main__":
         algos_to_run = args.algos
 
     for algo in algos_to_run:
-        print(f"\n🔄 Starting training for {algo.upper()} …")
+        print(f"\n Starting training for {algo.upper()} …")
         main(
             algo_name=algo,
             timesteps=args.timesteps,

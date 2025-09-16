@@ -1,4 +1,9 @@
-# ip_numpy_train.py (Training with NumPy env and SB3, now seeded)
+"""Training script for NumPy-based inverted pendulum environment.
+
+Supports multiple SB3 algorithms (TD3, SAC, DDPG, PPO, A2C, DQN),
+TensorBoard logging, replay buffer saving/loading, checkpointing,
+and deterministic seeding for reproducibility.
+"""
 import os
 import json
 import argparse
@@ -35,6 +40,23 @@ algo_map = {
 OFF_POLICY_ALGOS = ["td3", "sac", "ddpg"]
 
 class FancyTensorboardCallback(BaseCallback):
+    """Custom callback for periodic checkpointing and TensorBoard logging.
+
+    At specified timesteps, saves model and replay buffer (if available),
+    logs rewards and episode lengths to TensorBoard, and tracks elapsed
+    time between checkpoints.
+
+    Args:
+        save_steps (Iterable[int]): Timesteps at which to checkpoint.
+        save_path_prefix (str): Base path for model and buffer files.
+        log_dir (str): Directory for TensorBoard logs.
+        verbose (int): Verbosity level.
+
+    Attributes:
+        saved_steps (set): Set of steps already checkpointed.
+        timings (dict): Maps checkpoint steps to durations (seconds).
+        writer (SummaryWriter): TensorBoard log writer.
+    """
     def __init__(self, save_steps, save_path_prefix, log_dir, verbose=0):
         super().__init__(verbose)
         self.save_steps = sorted(save_steps)
@@ -46,12 +68,22 @@ class FancyTensorboardCallback(BaseCallback):
         self.pbar = None
 
     def _on_training_start(self) -> None:
+        """Initialise progress bar, timer, and internal counters at start."""
         self.start_time = time.time()
         self.last_check_time = self.start_time
         self.total_timesteps = self.model._total_timesteps
         self.pbar = tqdm(total=self.total_timesteps, desc="Training Progress", dynamic_ncols=True)
 
     def _on_step(self) -> bool:
+        """
+        Execute callback at each training step.
+
+        Checks if current timestep matches a checkpoint, saves model/buffer,
+        logs episode metrics to TensorBoard, and updates timing stats.
+
+        Returns:
+            bool: True to continue training.
+        """
         current_time = time.time()
         self.pbar.update(1)
 
@@ -70,7 +102,7 @@ class FancyTensorboardCallback(BaseCallback):
             self.timings[self.num_timesteps] = duration
             self.last_check_time = current_time
 
-            print(f"\n📌 Checkpoint at {self.num_timesteps} steps:")
+            print(f"\n Checkpoint at {self.num_timesteps} steps:")
             print(f"    - Model: {model_file}")
             print(f"    - Replay buffer: {buffer_file}")
             print(f"    - Elapsed: {duration:.2f} sec")
@@ -85,9 +117,10 @@ class FancyTensorboardCallback(BaseCallback):
         return True
 
     def _on_training_end(self):
+        """Close progress bar, print timing summary, and flush/close writer."""
         total_time = time.time() - self.start_time
         self.pbar.close()
-        print("\n🕒 Training Time Summary:")
+        print("\n Training Time Summary:")
         for step in self.save_steps:
             if step in self.timings:
                 print(f"    {step} steps: {self.timings[step]:.2f} sec")
@@ -96,6 +129,16 @@ class FancyTensorboardCallback(BaseCallback):
         self.writer.close()
 
 def load_hyperparameters(algo_name):
+    """Load best hyperparameters for a given algorithm from JSON.
+
+    Handles PPO special case where batch size may be stored as an index.
+
+    Args:
+        algo_name (str): Algorithm key (e.g., "ppo", "td3").
+
+    Returns:
+        dict: Dictionary of hyperparameters for SB3 model.
+    """
     path = f"jax_hp_results/{algo_name}_best_params.json"
     with open(path, "r") as f:
         params = json.load(f)["best_params"]
@@ -109,12 +152,33 @@ def load_hyperparameters(algo_name):
     return params
 
 def create_policy_kwargs(params):
+    """
+    Build SB3 policy_kwargs dictionary from hyperparameter set.
+
+    Args:
+        params (dict): Hyperparameters including architecture size and activation.
+
+    Returns:
+        dict: policy_kwargs for SB3 algorithms.
+    """
     return dict(
         net_arch=[params["layer_size"]] * params["n_layers"],
         activation_fn=activation_fn_map[params["activation_fn"].lower()]
     )
 
 def main(algo_name="ppo", timesteps=100_000):
+    """
+    Train an RL algorithm on the NumPy-based pendulum environment.
+
+    Creates environment, loads hyperparameters, builds model (or loads
+    existing checkpoint), sets up logging and checkpointing, trains
+    for specified timesteps, and saves final model and replay buffer.
+
+    Args:
+        algo_name (str): Algorithm name ("ppo", "td3", etc.).
+        timesteps (int): Number of timesteps to train.
+    """
+
     SEED = 42
 
     # Set seeds globally
@@ -133,8 +197,8 @@ def main(algo_name="ppo", timesteps=100_000):
     replay_buffer_path = os.path.join(model_base_dir, "best_model_replay_buffer")
     tensorboard_log_dir = os.path.join("ip_numpy_train_logs", algo_name)
 
-    print(f"📁 Saving models to: {model_base_dir}")
-    print(f"📊 TensorBoard logs to: {tensorboard_log_dir}")
+    print(f"Saving models to: {model_base_dir}")
+    print(f"TensorBoard logs to: {tensorboard_log_dir}")
 
     params = load_hyperparameters(algo_name)
     policy_kwargs = create_policy_kwargs(params)
@@ -234,20 +298,25 @@ def main(algo_name="ppo", timesteps=100_000):
         log_dir=tensorboard_log_dir
     )
 
-    print(f"🚀 Training {algo_name.upper()} for {timesteps} timesteps...")
+    print(f"Training {algo_name.upper()} for {timesteps} timesteps...")
     model.learn(total_timesteps=timesteps, reset_num_timesteps=False,
                 callback=callback, tb_log_name="run")
 
     model.save(model_path)
-    print(f"✅ Final model saved to {model_path}.zip")
+    print(f"Final model saved to {model_path}.zip")
 
     if algo_name in OFF_POLICY_ALGOS:
         model.save_replay_buffer(replay_buffer_path)
-        print(f"✅ Final replay buffer saved to {replay_buffer_path}.pkl")
+        print(f"Final replay buffer saved to {replay_buffer_path}.pkl")
 
     env.close()
-    print("🏁 Training complete. Environment closed.")
+    print("Training complete. Environment closed.")
 
 if __name__ == "__main__":
+    """CLI entry point.
+
+    Iterates through a predefined list of algorithms and trains each
+    for 100k timesteps using the same training pipeline.
+    """
     for algo in ["td3","ddpg","sac","ppo","a2c"]:
         main(algo_name=algo, timesteps=100_000)

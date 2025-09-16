@@ -1,3 +1,10 @@
+"""Hyperparameter tuning with stability-aware objective for JAX pendulum.
+
+Extends the original tuning script by penalizing reward variance
+to favor stable policies. Uses Optuna with SuccessiveHalvingPruner,
+parallel trials, and JSON export of best results.
+"""
+
 import optuna
 import sys
 import numpy as np
@@ -22,17 +29,50 @@ MIN_EARLY_STOPPING_RATE = 0
 
 
 def set_global_seeds(seed: int = 42):
+    """Set global seeds for reproducibility across NumPy, random, and Torch.
+
+    Args:
+        seed (int): Random seed value (default=42).
+    """
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
 
 def make_env(algo_name):
+    """Build a monitored DummyVecEnv for the selected algorithm.
+
+    Wraps `InvertedPendulumGymWrapper` and discretizes actions for DQN
+    using torque values [-10, 0, 10] for better exploration stability.
+
+    Args:
+        algo_name (str): RL algorithm name ("ppo", "td3", etc.).
+
+    Returns:
+        DummyVecEnv: Vectorized environment ready for SB3 training.
+    """
     base = InvertedPendulumGymWrapper(seed=42)
     if algo_name == "dqn":
         return DummyVecEnv([lambda: Monitor(DiscretizedActionWrapper(base, [-10.0, 0.0, 10.0]))])
     return DummyVecEnv([lambda: Monitor(base)])
 
 def objective(trial, algo_name):
+    """Optuna objective function with stability-aware reward.
+
+    Trains the model for fixed intervals, evaluates on 10 episodes,
+    computes a stability-adjusted reward = mean_reward - α·std_reward,
+    and reports it to Optuna for pruning decisions.
+
+    Args:
+        trial (optuna.Trial): Trial object for suggesting parameters.
+        algo_name (str): Algorithm being tuned.
+
+    Returns:
+        float: Stability-adjusted reward (higher = better stability).
+
+    Raises:
+        optuna.TrialPruned: When reward falls below thresholds or
+        Optuna decides the trial is unpromising.
+    """
     set_global_seeds(42)
     env = make_env(algo_name)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -170,6 +210,19 @@ def objective(trial, algo_name):
 
 
 def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
+    """Run Optuna study for a single algorithm with smooth objective.
+
+    Creates or loads a study, runs parallel trials, displays progress
+    with a live tqdm bar, and saves the best parameters/results to disk.
+
+    Args:
+        algo_name (str): Algorithm to tune.
+        n_trials (int): Number of trials (default=50).
+        n_parallel (int): Number of parallel jobs (default=4).
+
+    Returns:
+        dict: Dictionary of best hyperparameters and metadata.
+    """
     print(f"Tuning {algo_name.upper()} on JAX env with SB3...")
     storage_path = f"sqlite:///jax_optuna_smooth_{algo_name}.db"
     study = optuna.create_study(direction="maximize",
@@ -203,5 +256,10 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
     return study.best_params
 
 if __name__ == "__main__":
-    for algo in [ "ppo"]:
+    """CLI entry point.
+
+    Tunes a fixed subset of algorithms (currently PPO only) and
+    writes best parameters with stability-aware objective to JSON.
+    """
+    for algo in [ "ppo"]: #enter the algo names you want to tune here #["ppo", "td3", "ddpg", "sac", "dqn", "a2c"]
         tune_hyperparameters(algo)
