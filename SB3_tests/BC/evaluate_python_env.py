@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from stable_baselines3 import SAC, A2C, TD3, PPO, DDPG, DQN
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from PYBCEnv import BuckConverterEnv, DiscretizeActionWrapper
+from BCPythonEnv import BuckConverterEnv, DiscretizeActionWrapper
 
 
 def plot_and_save_summary(all_episode_data, target_voltage, tolerance,
