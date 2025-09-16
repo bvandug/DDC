@@ -6,7 +6,7 @@ from stable_baselines3 import SAC, A2C, TD3, PPO, DDPG, DQN
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from torch import nn
-from PYBCEnv import BuckConverterEnv, DiscretizeActionWrapper
+from BCPythonEnv import BuckConverterEnv, DiscretizeActionWrapper
 
 
 class EpisodeStatsLogger(BaseCallback):
