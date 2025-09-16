@@ -3,11 +3,11 @@
   "algo": "td3",
   "episodes": 5,
   "training_voltage_noise_std": 0.01,
-  "evaluation_voltage_noise_std": 0.0,
-  "mean_reward": 4395.339621,
-  "std_reward": 0.0,
+  "evaluation_voltage_noise_std": 0.0001,
+  "mean_reward": 4395.3594432,
+  "std_reward": 0.023973057380090628,
   "mean_stabilisation_time_s": 0.0006500000000000001,
-  "mean_steady_state_error_v": -0.19959443124719356,
-  "mean_overshoot_v": 28.14849589455265,
-  "mean_undershoot_v": 0.2305295658308566
+  "mean_steady_state_error_v": -0.19923121433688568,
+  "mean_overshoot_v": 28.148495911025613,
+  "mean_undershoot_v": 0.23061099698659931
 }

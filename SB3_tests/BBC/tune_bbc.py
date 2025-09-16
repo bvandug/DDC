@@ -124,7 +124,7 @@ class TuneConfig:
     storage_tpl: str = "sqlite:///bbc_jax_optuna_{algo}.db"
 
 
-def make_envs(seed: int, algo_name: str, macro_k: int = 1, dqn_bins: int = 7,
+def make_envs(seed: int, algo_name: str, macro_k: int = 1, dqn_bins: int = 17,
               n_envs: int = 8, duty_min: float = 0.1, duty_max: float = 0.9):
     def _thunk(rank: int):
         def _make():
@@ -166,11 +166,11 @@ def activation_from_name(name: str):
 
 
 def suggest_policy_kwargs(trial: optuna.Trial):
-    n_layers = trial.suggest_categorical("n_layers", [2, 3])  # shallow wins here
-    size = trial.suggest_categorical("layer_size", [192, 256, 320, 400])
-    act_name = trial.suggest_categorical("activation_fn", ["relu", "tanh", "elu"])  # ReLU often best
+    n_layers = trial.suggest_categorical("n_layers", [1, 3])  # shallow wins here
+    layer_size = trial.suggest_int("layer_size", 64, 512, log=True)
+    act_name = trial.suggest_categorical("activation_fn", ["tanh", "relu", "leaky_relu", "elu"])
     return {
-        "net_arch": [size] * n_layers,                 # straight architecture
+        "net_arch": [layer_size] * n_layers,                 # straight architecture
         "activation_fn": activation_from_name(act_name)
     }
 
@@ -208,37 +208,18 @@ def suggest_sac(trial: optuna.Trial):
     }
 
 
+
 def suggest_dqn(trial: optuna.Trial):
-    lr = trial.suggest_float("learning_rate", 1e-4, 2e-3, log=True)
-    buffer_size = trial.suggest_int("buffer_size", 300_000, 1_200_000, step=100_000)
-    batch_size = trial.suggest_categorical("batch_size", [256, 512])
-    gamma = trial.suggest_float("gamma", 0.965, 0.985)
-    tau = trial.suggest_float("tau", 0.01, 0.02)
-    train_freq_k = trial.suggest_categorical("train_freq_k", [1])
-    gradient_steps = trial.suggest_categorical("gradient_steps", [1, 2, 4])
-
-    ls_frac = trial.suggest_float("learning_starts_frac", 0.02, 0.08)
-    learning_starts = int(max(5_000, ls_frac * buffer_size))
-
-    exploration_initial_eps = trial.suggest_float("exploration_initial_eps", 0.5, 1.0)
-    exploration_fraction = trial.suggest_float("exploration_fraction", 0.10, 0.40)
-    exploration_final_eps = trial.suggest_float("exploration_final_eps", 0.01, 0.08)
-
-    target_update_interval = trial.suggest_int("target_update_interval", 1_000, 5_000, step=500)
-
     return {
-        "learning_rate": lr,
-        "buffer_size": buffer_size,
-        "batch_size": batch_size,
-        "gamma": gamma,
-        "tau": tau,
-        "train_freq": (train_freq_k, "step"),
-        "gradient_steps": gradient_steps,
-        "learning_starts": learning_starts,
-        "exploration_initial_eps": exploration_initial_eps,
-        "exploration_fraction": exploration_fraction,
-        "exploration_final_eps": exploration_final_eps,
-        "target_update_interval": target_update_interval,
+        "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+        "buffer_size": trial.suggest_int("buffer_size", 50_000, 200_000),
+        "learning_starts": trial.suggest_int("learning_starts", 5000, 20000),
+        "batch_size": trial.suggest_categorical("batch_size", [64, 128, 256, 512]),
+        "gamma": trial.suggest_float("gamma", 0.9, 0.9999),
+        "exploration_fraction": trial.suggest_float("exploration_fraction", 0.05, 0.5),
+        "exploration_final_eps": trial.suggest_float("exploration_final_eps", 0.01, 0.2),
+        "train_freq": trial.suggest_categorical("train_freq", [1, 4, 8, 16, 32]),
+        "target_update_interval": trial.suggest_int("target_update_interval", 500, 2000),
     }
 
 
@@ -531,11 +512,11 @@ def parse_args():
     ap.add_argument("--n-parallel", type=int, default=1)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--macro-k", type=int, default=1, help="Repeat each action for k PWM periods")
-    ap.add_argument("--dqn-bins", type=int, default=41, help="Number of duty bins for DQN (spaced in [duty_min, duty_max])")
+    ap.add_argument("--dqn-bins", type=int, default=17, help="Number of duty bins for DQN (spaced in [duty_min, duty_max])")
     ap.add_argument("--device", default=("cuda" if torch.cuda.is_available() else "cpu"))
     # Quick tweaks without editing code
-    ap.add_argument("--total-timesteps", type=int, default=1_500_000)
-    ap.add_argument("--eval-interval", type=int, default=150_000)
+    ap.add_argument("--total-timesteps", type=int, default=2_000_000)
+    ap.add_argument("--eval-interval", type=int, default=100_000)
     ap.add_argument("--n-eval-episodes", type=int, default=1)
     ap.add_argument("--n-envs", type=int, default=8, help="Parallel envs")
 
@@ -563,7 +544,7 @@ if __name__ == "__main__":
         n_jobs=args.n_parallel,
         seed=args.seed,
         macro_k=args.macro_k,
-        dqn_bins=41,
+        dqn_bins=17,
         device=args.device,
         cfg=cfg,
     )

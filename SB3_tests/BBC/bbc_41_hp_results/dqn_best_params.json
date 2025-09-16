@@ -1,0 +1,18 @@
+{
+  "best_params": {
+    "n_layers": 3,
+    "layer_size": 266,
+    "activation_fn": "leaky_relu",
+    "learning_rate": 1.853409507389634e-05,
+    "buffer_size": 145993,
+    "learning_starts": 13677,
+    "batch_size": 128,
+    "gamma": 0.9559157116001349,
+    "exploration_fraction": 0.16926110502312275,
+    "exploration_final_eps": 0.03881194904253436,
+    "train_freq": 1,
+    "target_update_interval": 1124
+  },
+  "best_value": 4330.574378,
+  "n_trials": 50
+}

@@ -221,7 +221,7 @@ if __name__ == "__main__":
     parser.add_argument("--episodes", type=int, default=5, help="Number of evaluation episodes per model.")
     parser.add_argument("--tolerance", type=float, default=0.5, help="Voltage tolerance (V) for stabilization metrics.")
     parser.add_argument("--macro-k", type=int, default=1, help="Macro-step value (k) used during training.")
-    parser.add_argument("--dqn-bins", type=int, default=21, help="Number of duty bins for DQN models.")
+    parser.add_argument("--dqn-bins", type=int, default=17, help="Number of duty bins for DQN models.")
     parser.add_argument("--eval-noise", type=float, nargs='+', default=[0.0], help="One or more evaluation-time noise std values to test against.")
     
     args = parser.parse_args()
@@ -277,4 +277,3 @@ if __name__ == "__main__":
             )
 
     print("\n🎉 All evaluations complete.")
-

@@ -28,9 +28,9 @@ class JAXBuckBoostConverterEnv(gym.Env):
         dt: float = 5e-6,                 # Discrete 5e-06 s
         frame_skip: int = 26,             # 26 -> 7.692 kHz @ 5e-6
         max_episode_steps: int = 4000,
-        grace_period_steps: int = 100,
+        grace_period_steps: int = 200,
 
-        target_voltage: float = -30.0,
+        target_voltage: float = -80.0,
 
         # Power stage (match Simulink)
         Vin: float = 48.0,
@@ -84,8 +84,8 @@ class JAXBuckBoostConverterEnv(gym.Env):
         self.grace_period_steps = int(grace_period_steps)
 
         self.target_voltage = float(target_voltage)
-        self.I_L_MAX = 20.0
-        self.V_OUT_MAX = abs(self.target_voltage) * 2.0
+        self.I_L_MAX = 100.0
+        self.V_OUT_MAX = abs(self.target_voltage) * 3.0
         self.V_OUT_MIN = abs(self.target_voltage) * 0.05
 
         # numerical guards (keep obs/reward finite)
@@ -233,7 +233,7 @@ class JAXBuckBoostConverterEnv(gym.Env):
         self.vC = 0.0
 
         self.prev_vC = self.vC
-        self.prev_error = self.vC - getattr(self, "target_voltage", -30.0)
+        self.prev_error = self.vC - getattr(self, "target_voltage", -80.0)
         self.prev_applied_duty = 0.0
 
         # Add noise to the initial observation as well
@@ -393,5 +393,4 @@ class JAXBuckBoostConverterEnv(gym.Env):
         r = r_track + 0.1 * progress + band_bonus - 0.5 * dduty_scale * (dduty ** 2)
 
         return float(np.clip(r, -5.0, 2.0))
-
 

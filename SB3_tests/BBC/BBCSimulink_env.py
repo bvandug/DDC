@@ -83,7 +83,7 @@ class BBCSimulinkEnv(gym.Env):
         frame_skip: int = 26,            
         max_episode_time: float = 0.52,   # for 4000 steps at 5us*26 = 0.00013s
         grace_period_steps: int = 100,
-        target_voltage: float = -30.0,
+        target_voltage: float = -80.0,
         random_target: bool = False,
         target_min: float = -49.0,
         target_max: float = -28.0,

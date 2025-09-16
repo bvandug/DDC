@@ -263,7 +263,7 @@ def main():
     p.add_argument("--model-path", type=str, help="Path to best_model.zip")
     p.add_argument("--stats-path", type=str, help="Path to <algo>_vec_normalize_final.pkl")
     # Discovery mode
-    p.add_argument("--root", default="jax_models",
+    p.add_argument("--root", default="jax_models_80",
                    help="Root containing trained model folders (algo-prefixed)")
 
     p.add_argument("--algo", default="all",
@@ -274,7 +274,7 @@ def main():
                    help="Number of episodes per model.")
     p.add_argument("--tolerance", type=float, default=0.5,
                    help="Voltage tolerance (V) for stabilisation metrics.")
-    p.add_argument("--dqn-bins", type=int, default=21,
+    p.add_argument("--dqn-bins", type=int, default=17,
                    help="Discrete action bins for DQN models.")
     p.add_argument("--eval-noise", type=float, nargs="+", default=[0.0],
                    help="One or more eval-time noise std values to test against.")
@@ -335,7 +335,7 @@ def main():
         for run in runs:
             run_name = run["run_name"]
             algo_key = run["algo"].upper()
-            out_dir = os.path.join("eval_simulink_runs", algo_key,
+            out_dir = os.path.join("eval_simulink_runs_80", algo_key,
                                    f"{run['algo'].lower()}_eval_noise_{eval_nl:.3f}",
                                    run_name)
             print(f"\n▶️ Evaluating: {run_name}")

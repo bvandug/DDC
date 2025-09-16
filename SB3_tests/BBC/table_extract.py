@@ -1,21 +1,32 @@
-# json_compiler.py
-# Scans the 'eval_runs' directory for all 'summary_metrics.json' files,
+
+# Scans the 'eval_simulink_runs' directory for all 'summary_metrics.json' files,
 # consolidates the data, and outputs a summary table and an Excel report.
+# Additionally computes a "Real Overshoot (V)" column from the per-episode CSVs.
 
 import os
 import json
 from pathlib import Path
+from typing import Optional, Tuple
 import pandas as pd
+import numpy as np
 
 # -------- Configuration --------
-ROOT_DIR = Path("eval_runs")            # The root folder to scan for evaluation results.
+ROOT_DIR = Path("eval_simulink_runs")            # The root folder to scan for evaluation results.
 OUTPUT_EXCEL_FILE = Path("bbc_summary_metrics.xlsx")
+CSV_NAME = "all_episodes_trajectory.csv"         # Must match evaluator output
 
-def collect_data_rows():
+def _safe_float(x) -> float:
+    try:
+        return float(x)
+    except Exception:
+        return float("nan")
+
+def collect_data_rows() -> list[dict]:
     """
     Recursively finds all 'summary_metrics.json' files and parses them.
     Crucially, it infers the algorithm, training noise, and evaluation noise
-    from the file path for accuracy.
+    from the file path for accuracy. Also attempts to compute a "real_overshoot_v"
+    from the sibling CSV if present.
     
     Returns:
         list: A list of dictionaries, where each dictionary represents a row of data.
@@ -28,13 +39,12 @@ def collect_data_rows():
             with open(json_path, 'r') as f:
                 data = json.load(f)
 
-            # --- Infer context from the path, which is more reliable ---
-            # This logic assumes a structure like: ROOT_DIR/ALGO/EVAL_CONDITION/RUN_NAME/summary.json
+            # --- Infer context from the path (ROOT/ALGO/EVAL_CONDITION/RUN_NAME/summary.json) ---
             inferred_algo = None
             inferred_training_noise = 0.0
             inferred_eval_noise = 0.0
+            run_name_part = None
 
-            # The path is split into parts. We check the parent directories.
             if len(json_path.parts) >= 4:
                 run_name_part = json_path.parts[-2]          # e.g., 'td3_noise_0.100'
                 eval_condition_part = json_path.parts[-3]    # e.g., 'td3_eval_noise_0.050'
@@ -47,18 +57,25 @@ def collect_data_rows():
                 # Infer Training Noise from the run name folder
                 try:
                     inferred_training_noise = float(run_name_part.split('noise_')[-1])
-                except (ValueError, IndexError): pass
+                except (ValueError, IndexError):
+                    pass
                 
                 # Infer Evaluation Noise from the evaluation condition folder
                 try:
                     inferred_eval_noise = float(eval_condition_part.split('eval_noise_')[-1])
-                except (ValueError, IndexError): pass
+                except (ValueError, IndexError):
+                    pass
 
             # Overwrite the data from the JSON with our inferred, more reliable values.
             data['algo'] = inferred_algo
             data['training_noise_std'] = inferred_training_noise
             data['evaluation_noise_std'] = inferred_eval_noise
-            
+            data['run_name'] = run_name_part
+
+            # --- Compute "real overshoot" from CSV if available ---
+            csv_path = json_path.parent / CSV_NAME
+            data['real_overshoot_v'] = compute_real_overshoot_from_csv(csv_path)
+
             data_rows.append(data)
 
         except json.JSONDecodeError:
@@ -68,13 +85,74 @@ def collect_data_rows():
             
     return data_rows
 
-def write_excel_report(df: pd.DataFrame, output_path: Path):
+def compute_real_overshoot_from_csv(csv_path: Path) -> float:
+    """
+    Compute a sign-aware overshoot using the evaluator's raw trajectory CSV.
+    Logic:
+      - Estimate target voltage robustly:
+          For each episode, take the last 10% of samples; compute the median.
+          The global target estimate is the median across episodes.
+      - If target_est < 0: overshoot = max(0, target_est - min(voltage))   (largest negative dip beyond target)
+        Else:               overshoot = max(0, max(voltage) - target_est)  (largest positive peak beyond target)
+      - Average overshoot across episodes.
+    Returns NaN if CSV is missing or malformed.
+    """
+    try:
+        if not csv_path.exists():
+            return float("nan")
+
+        df = pd.read_csv(csv_path)
+        required_cols = {"episode", "time_s", "voltage_v"}
+        if not required_cols.issubset(df.columns):
+            return float("nan")
+
+        overshoots = []
+        target_candidates = []
+
+        for ep, g in df.groupby("episode"):
+            g = g.sort_values("time_s")
+            n = len(g)
+            if n == 0:
+                continue
+
+            tail_n = max(1, int(0.1 * n))  # last 10%
+            tail = g.iloc[-tail_n:]
+            target_est_ep = float(tail["voltage_v"].median())
+            target_candidates.append(target_est_ep)
+
+        if len(target_candidates) == 0:
+            return float("nan")
+
+        target_est = float(np.median(target_candidates))
+        sign = -1 if target_est < 0 else 1
+
+        # Compute per-episode overshoot relative to target_est
+        for ep, g in df.groupby("episode"):
+            v = g["voltage_v"].to_numpy(dtype=float)
+            if v.size == 0:
+                continue
+
+            if sign < 0:
+                # Target negative: "overshoot" is the most negative dip beyond target (i.e., lower than target)
+                ep_ov = max(0.0, target_est - float(np.min(v)))
+            else:
+                ep_ov = max(0.0, float(np.max(v)) - target_est)
+
+            overshoots.append(ep_ov)
+
+        if len(overshoots) == 0:
+            return float("nan")
+
+        return float(np.mean(overshoots))
+
+    except Exception as e:
+        print(f"⚠️ compute_real_overshoot_from_csv error for {csv_path}: {e}")
+        return float("nan")
+
+
+def write_excel_report(df: pd.DataFrame, output_path: Path) -> None:
     """
     Writes the DataFrame to a multi-sheet Excel file with auto-sized columns.
-    
-    Args:
-        df (pd.DataFrame): The consolidated DataFrame of all results.
-        output_path (Path): The path to save the Excel file.
     """
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         df.to_excel(writer, sheet_name="All Results", index=False)
@@ -86,9 +164,10 @@ def write_excel_report(df: pd.DataFrame, output_path: Path):
 
         for sheet_name in writer.sheets:
             worksheet = writer.sheets[sheet_name]
+            # Auto-size using current frame's columns
             for i, col in enumerate(df.columns, 1):
                 max_len = max(len(str(col)), df[col].astype(str).map(len).max())
-                worksheet.column_dimensions[worksheet.cell(row=1, column=i).column_letter].width = max_len + 2
+                worksheet.column_dimensions[worksheet.cell(row=1, column=i).column_letter].width = min(max_len + 2, 60)
 
     print(f"\n✅ Successfully wrote {len(df)} rows to '{output_path}'")
     print("   - Includes an 'All Results' sheet and a separate sheet for each algorithm.")
@@ -96,6 +175,7 @@ def write_excel_report(df: pd.DataFrame, output_path: Path):
 def main():
     """
     Main function to orchestrate the data collection and report generation.
+    Adds a new 'Real Overshoot (V)' column computed from the CSVs.
     """
     if not ROOT_DIR.exists():
         print(f"❌ Error: Root directory '{ROOT_DIR}' not found. Please run the evaluation script first.")
@@ -110,19 +190,16 @@ def main():
     df = pd.DataFrame(rows)
 
     # --- Data Cleaning and Structuring ---
-    # EDIT THIS LIST to control which columns appear in the final report.
     column_order = [
         'algo',
         'training_noise_std',
         'evaluation_noise_std',
         'mean_reward',
-        # 'std_reward',
         'mean_stabilisation_time_s',
         'mean_steady_state_error_v',
-        'mean_overshoot_v',
-        # 'mean_undershoot_v',
-        'run_name',
-        # 'episodes',
+        # 'mean_overshoot_v',
+        'real_overshoot_v',          # <--- new column
+        # 'run_name',
     ]
     
     existing_columns = [col for col in column_order if col in df.columns]
@@ -137,11 +214,10 @@ def main():
         'training_noise_std': 'Training Noise',
         'evaluation_noise_std': 'Evaluation Noise',
         'mean_reward': 'Mean Reward',
-        'std_reward': 'Std Reward',
         'mean_stabilisation_time_s': 'Stabilisation Time (s)',
         'mean_steady_state_error_v': 'Steady State Error (V)',
-        'mean_overshoot_v': 'Overshoot (V)',
-        'mean_undershoot_v': 'Undershoot (V)',
+        # 'mean_overshoot_v': 'Overshoot (V)',
+        'real_overshoot_v': 'Real Overshoot (V)',
     }, inplace=True)
 
     # --- Output Generation ---
@@ -151,4 +227,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

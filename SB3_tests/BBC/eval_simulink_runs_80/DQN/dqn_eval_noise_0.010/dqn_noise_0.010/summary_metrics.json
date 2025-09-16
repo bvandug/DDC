@@ -1,0 +1,13 @@
+{
+  "algo": "dqn",
+  "episodes": 1,
+  "training_voltage_noise_std": 0.01,
+  "evaluation_voltage_noise_std": 0.01,
+  "mean_reward": -913.0809593923623,
+  "std_reward": 0.0,
+  "mean_length": 110.0,
+  "mean_stabilisation_time_s": 0.014170000000000002,
+  "mean_steady_state_error_v": NaN,
+  "mean_overshoot_v": 78.29948715801385,
+  "mean_undershoot_v": 74.30453750925872
+}

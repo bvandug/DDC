@@ -139,10 +139,10 @@ def main(algo_name="ppo",
         noise_std=noise_level
     )
 
-    # If using DQN (or similar), wrap with DiscretizedActionWrapper
-    if algo_name == "dqn":
-        force_values = np.linspace(-10.0, 10.0, 5)
-        env = DiscretizedActionWrapper(env, force_values=force_values)
+    # # If using DQN (or similar), wrap with DiscretizedActionWrapper
+    # if algo_name == "dqn":
+    #     force_values = np.linspace(-10.0, 10.0, 5)
+    #     env = DiscretizedActionWrapper(env, force_values=force_values)
 
        # Determine a canonical tag (always include a noise string)
     noise_str = f"{noise_level:.3f}" if noise else "0.000"
