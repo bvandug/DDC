@@ -65,23 +65,19 @@ class BuckConverterEnv(gym.Env):
         # Sensor noise parameters
         self.voltage_noise_std = voltage_noise_std
 
-        # Sensor noise parameters
-        self.voltage_noise_std = voltage_noise_std
-
-        # Physical parameters of a buck converter
-        self.V_in = 48.0 # Source voltage
-        self.L = 100e-6 # Inductor
-        self.C = 1000e-6 # Capacitor
-        self.R = 10.0 # Resistor
-        self.R_mosfet = 0.1 # MOSFET Resistance
-        self.Vf_diode = 0.8 # Diode
+        # Physical parameters of a non-ideal buck converter
+        self.V_in = 48.0
+        self.L = 100e-6
+        self.C = 1000e-6
+        self.R = 10.0
+        self.R_mosfet = 0.1 # Mosfet resistance
+        self.Vf_diode = 0.8 # Diode forward voltage
         self.R_diode = 0.001 # Diode resistance
         self.f_sw = 10e3 # Switching frequency
         self.T_sw = 1 / self.f_sw # Switching period
 
         # Action: duty_cycle (continuous in the range [0.1, 0.9])
         self.action_space = spaces.Box(low=0.1, high=0.9, shape=(1,), dtype=np.float32)
-
 
         # Observation: [voltage, error, derivative_error, goal]
         high = np.finfo(np.float32).max
@@ -147,6 +143,7 @@ class BuckConverterEnv(gym.Env):
             self.goal = self.np_random.uniform(self.target_voltage_min, self.target_voltage_max)
         else:
             self.goal = self.fixed_goal_voltage
+
         self.prev_error = self.v_out - self.goal
         if self.render_mode == 'human':
             self._plot_data = {'times': [], 'voltages': [], 'goals': [], 'duties': []}
