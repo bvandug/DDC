@@ -1,0 +1,74 @@
+Episode 1:
+  Total reward                : 498.37
+  Stabilisation time          : 0.36 s
+  Steady-state offset         : -0.72°
+  Overshoot(+)/Undershoot(-)  : +5.33°
+  Total stable time           : 4.74 s
+  Steady-state MAE            : 2.08°
+  Steady-state RMSE           : 2.55°
+  Steady-state max error      : 5.33°
+  Oscillation (σ)             : 2.44°
+  IAE (|deg|·s)               : 13.94
+  Control energy              : 211.60
+Episode 2:
+  Total reward                : 482.18
+  Stabilisation time          : 1.09 s
+  Steady-state offset         : -0.65°
+  Overshoot(+)/Undershoot(-)  : +39.01°
+  Total stable time           : 4.03 s
+  Steady-state MAE            : 2.05°
+  Steady-state RMSE           : 2.51°
+  Steady-state max error      : 5.21°
+  Oscillation (σ)             : 2.42°
+  IAE (|deg|·s)               : 39.07
+  Control energy              : 256.28
+Episode 3:
+  Total reward                : 499.51
+  Stabilisation time          : 0.14 s
+  Steady-state offset         : -0.71°
+  Overshoot(+)/Undershoot(-)  : +4.08°
+  Total stable time           : 4.96 s
+  Steady-state MAE            : 1.98°
+  Steady-state RMSE           : 2.44°
+  Steady-state max error      : 5.15°
+  Oscillation (σ)             : 2.33°
+  IAE (|deg|·s)               : 10.12
+  Control energy              : 202.81
+Episode 4:
+  Total reward                : 494.86
+  Stabilisation time          : 0.72 s
+  Steady-state offset         : -0.75°
+  Overshoot(+)/Undershoot(-)  : +31.09°
+  Total stable time           : 4.40 s
+  Steady-state MAE            : 2.12°
+  Steady-state RMSE           : 2.59°
+  Steady-state max error      : 5.35°
+  Oscillation (σ)             : 2.47°
+  IAE (|deg|·s)               : 21.90
+  Control energy              : 227.19
+Episode 5:
+  Total reward                : 488.99
+  Stabilisation time          : 0.92 s
+  Steady-state offset         : -0.72°
+  Overshoot(+)/Undershoot(-)  : +38.02°
+  Total stable time           : 4.20 s
+  Steady-state MAE            : 2.10°
+  Steady-state RMSE           : 2.56°
+  Steady-state max error      : 5.32°
+  Oscillation (σ)             : 2.45°
+  IAE (|deg|·s)               : 30.59
+  Control energy              : 241.16
+
+Summary Metrics:
+----------------------------------------
+Mean Reward: 492.78 ± 6.44 (Max: 500)
+→ 98.6% of theoretical max reward
+Mean Stabilisation Time             : 0.65 s
+Mean Steady-state offset            : -0.71°
+Mean Total Stable Time              : 4.47 s
+Mean Steady-State MAE               : 2.06°
+Mean Steady-State RMSE              : 2.53°
+Mean Oscillation (σ)                : 2.43°
+Mean |Overshoot/Undershoot|         : 23.51°
+Mean IAE                            : 23.12
+Mean Control Energy                 : 227.81

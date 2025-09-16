@@ -1,162 +1,430 @@
-import gym
-from gym import spaces
-import matlab.engine
+import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
-import matplotlib.pyplot as plt
+import matlab.engine
+from typing import Optional, Tuple
+import os, shutil, tempfile, uuid
+
+
+class DiscretizeDutyWrapper(gym.ActionWrapper):
+    """
+    Map Discrete(n_bins) -> duty in [low, high] (default [0, 1]).
+    Keeps the underlying env continuous and untouched.
+    """
+    def __init__(self, env, n_bins: int = 51, low: float = 0.0, high: float = 1.0, avoid_edges: bool = False):
+        super().__init__(env)
+        assert hasattr(env.action_space, "low") and hasattr(env.action_space, "high"), \
+            "Underlying env must have a Box action space."
+        self.n_bins = int(n_bins)
+        self.low = float(low)
+        self.high = float(high)
+        self.avoid_edges = bool(avoid_edges)
+
+        if self.avoid_edges and self.n_bins > 1:
+            # Nudge in from exact 0.0/1.0 if your plant is touchy at the edges
+            eps = 0.5 / (self.n_bins - 1)
+            lo = self.low + eps * (self.high - self.low)
+            hi = self.high - eps * (self.high - self.low)
+            self._bins = np.linspace(lo, hi, self.n_bins, dtype=np.float32)
+        else:
+            self._bins = np.linspace(self.low, self.high, self.n_bins, dtype=np.float32)
+
+        self.action_space = spaces.Discrete(self.n_bins)
+
+    def action(self, act_idx: int):
+        idx = int(np.clip(act_idx, 0, self.n_bins - 1))
+        return np.array([self._bins[idx]], dtype=np.float32)
 
 class BBCSimulinkEnv(gym.Env):
     """
-    Final efficient and stable version of the BBC Simulink environment.
-    There are 3 main phases of the training of an agent:
-    1. Random exploration (grace_period_steps): the agent randomly explores the environment without learning in order to create a vast amount of data
-    2. Survival: the agent learns to survive in the environment by learning to avoid the hard limits
-    3. Learning (learning_starts): the agent learns to reach the goal voltage by learning to control the duty cycle
+    Simulink-backed Buck-Boost converter env that mirrors the NumPy env's API.
+
+    Observation (float32 [4]): [vC, error, d_error, target]
+      vC      : output capacitor voltage (V) (can be negative for inverting)
+      error   : vC - target_voltage
+      d_error : derivative of error over the last RL step (V/s)
+      target  : target_voltage (constant feature per episode unless random_target=True)
+
+    Action (float32 [1]): duty cycle in [0.1, 0.9]
+
+    One RL step = exactly one full PWM period: frame_skip * dt == T_sw.
+
+    Termination/Truncation:
+      - After grace_period_steps, terminate early if soft/hard voltage limits or (optionally) inductor current limit is violated.
+      - Truncate when time >= max_episode_time.
+
+    Reward (mirrors np_bbc_env.calculate_reward):
+      r = exp(-5 * e_norm^2) + 0.5 * progress + band_bonus
+          - lam_duty * dduty^2 - lam_i * (|iL|/I_L_MAX)^2  (iL term only if available)
+
+    Notes:
+      * This env assumes your Simulink model exposes signals:
+          out.voltage  -> vC (scalar timeseries)
+          out.tout     -> time vector
+        Optionally (if available):
+          out.iL       -> inductor current (A)
+        If out.iL is not available, the iL regularizer and current-based safety are skipped.
+
+      * The model must have two tunable blocks/params:
+          <model>/DutyCycleInput  (scalar value block for duty fraction 0..1)
+          <model>/Goal            (scalar value block for target voltage)
+
+      * Ensure the PWM subsystem uses the DutyCycleInput value over the full
+        interval [t, t + frame_skip*dt) so the action maps to one PWM period exactly.
     """
-    def __init__(self, model_name="bbcSim", dt=5e-6, max_episode_time=0.03,
-                 grace_period_steps=50,
-                 frame_skip=10,
-                 enable_plotting=False):
-        """
-        Args:
-            model_name (str): The name of the Simulink model file.
-            dt (float): The base simulation time step.
-            max_episode_time (float): The maximum simulation time for one episode.
-            grace_period_steps (int): A SHORT number of initial steps to ignore penalties.
-            frame_skip (int): The number of simulation steps to run for each single agent action.
-            enable_plotting (bool): If True, renders the live plot. Should be False for training.
-        """
-        # --- Initialization ---
-        print("Starting MATLAB engine...")
-        self.eng = matlab.engine.start_matlab()
-        print(f"Loading {model_name}...")
-        self.eng.load_system(model_name, nargout=0)
-        self.eng.set_param(model_name, 'FastRestart', 'on', nargout=0)
 
+    metadata = {"render_modes": []}
+
+    def __init__(
+        self,
+        model_name: str = "bbcSim",
+        *,
+        dt: float = 5e-6,
+        frame_skip: int = 26,            
+        max_episode_time: float = 0.52,   # for 4000 steps at 5us*26 = 0.00013s
+        grace_period_steps: int = 100,
+        target_voltage: float = -80.0,
+        random_target: bool = False,
+        target_min: float = -49.0,
+        target_max: float = -28.0,
+        enable_plotting: bool = False,
+        use_fast_restart: bool = True,
+        quantize_pwm: bool = False,
+        quantize_mode: str = 'round',
+        voltage_noise_std: float = 0.0,
+    ) -> None:
+        super().__init__()
+
+        # --- MATLAB engine / model ---
         self.model_name = model_name
-        self.dt = dt
-        self.max_episode_time = max_episode_time
-        self.frame_skip = frame_skip
-        self.enable_plotting = enable_plotting
-        self.grace_period_steps = grace_period_steps
-        self.steps_taken = 0
-        self.current_time = 0.0
+        self.dt = float(dt)
+        self.frame_skip = int(frame_skip)
+        self.T_sw = self.dt * self.frame_skip
+        self.quantize_pwm = bool(quantize_pwm)
+        self.quantize_mode = str(quantize_mode)
+        self.voltage_noise_std = float(voltage_noise_std)
+        self.prev_cmd_duty = None
+        self.prev_applied_duty = None
+        self.max_episode_time = float(max_episode_time)
+        self.grace_period_steps = int(grace_period_steps)
+        self.random_target = bool(random_target)
+        self.target_min = float(target_min)
+        self.target_max = float(target_max)
+        self.enable_plotting = bool(enable_plotting)
+        self.use_fast_restart = bool(use_fast_restart)
 
-        # Define Gym action and observation spaces
-        self.action_space = spaces.Box(low=0.1, high=0.9, shape=(1,), dtype=np.float32)
-        high = np.finfo(np.float32).max
-        self.observation_space = spaces.Box(low=-high, high=high, shape=(4,), dtype=np.float32)
+        # Safety/scaling (aligned with np env)
+        self.I_L_MAX = 20.0  # A
+        self._band_e = 0.02  # ±2% band around |target|
 
-        self.prev_error = 0
-        self._np_random = None
+        # Reward weights (aligned with np env)
+        self._lam_duty = 0.5
+        self._lam_i = 0.05
+        self._clip_low = -3.0
+        self._clip_high = 2.0
 
-        # --- Conditional Plot Setup ---
-        if self.enable_plotting:
-            print("Setting up the live plot...")
-            plt.ion()
-            self.fig, (self.ax_voltage, self.ax_duty) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-            self.fig.suptitle('BBC Simulink Control')
-            self.line_voltage, = self.ax_voltage.plot([], [], 'b-', label="Actual Voltage")
-            self.line_goal,    = self.ax_voltage.plot([], [], 'r--', label="Target Voltage")
-            self.ax_voltage.set_ylabel("Voltage (V)"); self.ax_voltage.legend(loc='best'); self.ax_voltage.grid(True)
-            self.line_duty,    = self.ax_duty.plot([], [], 'g-', label="Duty Cycle (Action)")
-            self.ax_duty.set_xlabel("Time (s)"); self.ax_duty.set_ylabel("Duty Cycle"); self.ax_duty.set_ylim(0, 1); self.ax_duty.legend(loc='best'); self.ax_duty.grid(True)
+        # Target voltage for this episode (set in reset)
+        self.target_voltage = float(target_voltage)
 
-        self._times, self._voltages, self._goals, self._duties = [], [], [], []
+        # Action/Observation spaces
+        self.action_space = spaces.Box(
+            low=np.array([0.1], dtype=np.float32),
+            high=np.array([0.9], dtype=np.float32),
+            dtype=np.float32,
+        )
+        high = np.array([np.finfo(np.float32).max] * 4, dtype=np.float32)
+        self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
-    def get_data(self):
-        voltage_out = self.eng.eval("out.voltage", nargout=1)
-        time_out = self.eng.eval("out.tout", nargout=1)
-        final_voltage = voltage_out[-1][0] if not isinstance(voltage_out, float) else voltage_out
-        final_time = time_out[-1][0] if not isinstance(time_out, float) else time_out
-        return final_voltage, final_time
+        # Internal state bookkeeping
+        self.time: float = 0.0
+        self.current_step: int = 0
+        self.prev_error: float = 0.0
+        self.prev_duty: float = 0.5
+        self.prev_vC: float = 0.0
+        self.last_iL: Optional[float] = None
 
-    def reset(self, seed=None, options=None):
+       # --- Start MATLAB + unique model copy (instance-isolated) ---
+        self.eng = matlab.engine.start_matlab()
+
+        # Keep the base name, then create a unique one
+        self.base_model_name = self.model_name          # e.g., "bbcSim"
+        unique_id = uuid.uuid4().hex[:8]
+        self.model_name = f"{self.base_model_name}_{unique_id}"
+
+        # Copy base .slx to a temp path with the unique name
+        self.model_path = os.path.join(tempfile.gettempdir(), f"{self.model_name}.slx")
+        shutil.copy(f"{self.base_model_name}.slx", self.model_path)
+
+        # Load the unique copy
+        self.eng.load_system(self.model_path, nargout=0)
+        if self.use_fast_restart:
+            self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
+
+
+        # Pre-create storage for simple optional plotting (off by default)
+        self._times = []
+        self._vcs = []
+        self._duties = []
+
+    # ====== MATLAB helpers ======
+    def _sim_to(self, stop_time: float) -> None:
+        """Advance model from current xFinal to the next stop_time."""
+        # Toggle FR off so we can provide/load state, then back on for speed
+        if self.use_fast_restart:
+            self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
+        self.eng.set_param(self.model_name, 'SolverType', 'Fixed-step', nargout=0)
+        self.eng.set_param(self.model_name, 'FixedStep', str(self.dt), nargout=0)
+        self.eng.eval(
+            f"out = sim('{self.model_name}', 'LoadInitialState','on', 'InitialState','xFinal',"
+            f"'StopTime','{stop_time}', 'SaveFinalState','on', 'StateSaveName','xFinal');"
+            "xFinal = out.xFinal;",
+            nargout=0,
+        )
+        if self.use_fast_restart:
+            self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
+
+    def _read_signal(self, name: str) -> Optional[float]:
+        """
+        Safely read a field from Simulink SimulationOutput 'out' without printing
+        MATLAB errors when the field is absent. Returns the last scalar value or None.
+        """
+        try:
+            # does 'out' have this signal?
+            has = bool(self.eng.eval(f"any(strcmp(who(out), '{name}'))"))
+            if not has:
+                return None
+
+            # fetch it now that we know it exists
+            val = self.eng.eval(f"out.{name}")
+        except Exception:
+            return None
+
+        # Accept scalars or numeric arrays/timeseries (take last sample)
+        try:
+            if isinstance(val, float):
+                return float(val)
+            # handle numeric arrays returned via MATLAB engine (cell-like)
+            return float(val[-1][0])
+        except Exception:
+            try:
+                # sometimes engine returns 1-D arrays
+                return float(val[-1])
+            except Exception:
+                return None
+
+
+    def _get_vC_t_iL(self) -> Tuple[float, float, Optional[float]]:
+        vC = self._read_signal("voltage")
+        t = self._read_signal("tout")
+        iL = self._read_signal("iL")  # optional
+        if vC is None or t is None:
+            # Provide clearer failure mode if model outputs are misnamed
+            raise RuntimeError(
+                "Could not read 'out.voltage' or 'out.tout' from Simulink output.\n"
+                "Ensure your model logs these variables as 'voltage' and 'tout'."
+            )
+        return float(vC), float(t), (None if iL is None else float(iL))
+
+    # ====== Gym API ======
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
-        print("\n--- Episode Reset ---")
-        self.current_time = 0.0
-        self.steps_taken = 0  # Reset counter for every new episode
+        self.time = 0.0
+        self.current_step = 0
+        self.prev_cmd_duty = 0
+        self.prev_applied_duty = 0
 
-        self.eng.set_param(self.model_name, 'SimulationCommand', 'stop', nargout=0)
-        self.goal = self.np_random.uniform(low=-49.0, high=-28.0)
-        print(f"New Goal Voltage: {self.goal:.4f}")
-        self.eng.set_param(f'{self.model_name}/Goal', 'Value', str(self.goal), nargout=0)
+        # Choose/Set target voltage
+        if self.random_target:
+            # sample uniformly in [target_min, target_max]
+            self.target_voltage = float(self.np_random.uniform(low=self.target_min, high=self.target_max))
+        # Push target into model
+        self.eng.set_param(f"{self.model_name}/Goal", "Value", str(self.target_voltage), nargout=0)
+        self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", '0.0', nargout=0)
 
-        self.eng.set_param(self.model_name, 'FastRestart', 'off', 'LoadInitialState', 'off', nargout=0)
-        self.eng.eval(f"out = sim('{self.model_name}', 'StopTime','1e-6', 'SaveFinalState','on', 'StateSaveName','xFinal');" "xFinal = out.xFinal;", nargout=0)
-        self.eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
+        # (Re)initialize state by running a tiny sim to produce xFinal
+        if self.use_fast_restart:
+            self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
+        self.eng.set_param(self.model_name, 'SolverType', 'Fixed-step', nargout=0)
+        self.eng.set_param(self.model_name, 'FixedStep', str(self.dt), nargout=0)
+        self.eng.eval(
+            f"out = sim('{self.model_name}', 'StopTime','0', 'SaveFinalState','on', 'StateSaveName','xFinal');"
+            "xFinal = out.xFinal;",
+            nargout=0,
+        )
+        if self.use_fast_restart:
+            self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
-        initial_voltage, _ = self.get_data()
-        self.prev_error = initial_voltage - self.goal
+        # Read initial measurement
+        vC, t, iL = self._get_vC_t_iL()
+        self.time = t
+        noisy_vC = vC + self.np_random.normal(0.0, self.voltage_noise_std)
+        error = noisy_vC - self.target_voltage
+        self.prev_error = error
+        self.prev_vC = vC
+        self.last_iL = iL
 
+        # Clear debug traces
         if self.enable_plotting:
-            for data_list in [self._times, self._voltages, self._goals, self._duties]: data_list.clear()
-            for line in (self.line_voltage, self.line_goal, self.line_duty): line.set_data([], [])
-            for ax in (self.ax_voltage, self.ax_duty): ax.relim(); ax.autoscale_view()
-            self.fig.canvas.draw(); self.fig.canvas.flush_events()
+            self._times.clear(); self._vcs.clear(); self._duties.clear()
 
-        observation = np.array([initial_voltage, self.prev_error, 0.0, self.goal], dtype=np.float32)
-        return observation, {}
+        obs = np.array([vC, error, 0.0, self.target_voltage], dtype=np.float32)
+        info = {
+            "iL": (None if iL is None else float(iL)),
+            "vC": float(vC),
+            "mag_vC": float(abs(vC)),
+            "err": float(error),
+            "e_norm": float(abs(abs(vC) - abs(self.target_voltage)) / max(abs(self.target_voltage), 1e-3)),
+            "dduty": 0.0,
+            "in_band": bool(abs(abs(vC) - abs(self.target_voltage)) <= self._band_e * abs(self.target_voltage)),
+            "duty_cmd": 0.0,
+            "eff_duty": 0.0,
+            "measured_duty": 0.0,
+            "frame_skip": int(self.frame_skip),
+            "dt": float(self.dt),
+            "T_sw": float(self.T_sw),
+        }
+        print("Sim reset -> t=%.9f, vC=%.3f V" % (self.time, self.prev_vC))
+        return obs, info
 
     def step(self, action):
-        self.steps_taken += 1
-        duty_cycle = float(np.clip(action[0], 0.1, 0.9))
+        duty_cmd = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
 
-        stop_time = self.current_time + (self.dt * self.frame_skip)
-        self.eng.set_param(f"{self.model_name}/DutyCycleInput", 'Value', str(duty_cycle), nargout=0)
-        self.eng.set_param(self.model_name, 'FastRestart', 'off', nargout=0)
-        self.eng.eval(f"out = sim('{self.model_name}', 'LoadInitialState','on', 'InitialState','xFinal'," f"'StopTime','{stop_time}', 'SaveFinalState','on', 'StateSaveName','xFinal');" "xFinal = out.xFinal;", nargout=0)
-        self.eng.set_param(self.model_name, 'FastRestart', 'on', nargout=0)
+        # Quantize to PWM resolution like NumPy env
+        if self.quantize_pwm:
+            N = int(self.frame_skip)
+            if self.quantize_mode.lower().startswith('f'):
+                on_steps = int(np.floor(duty_cmd * N))
+            else:
+                on_steps = int(np.round(duty_cmd * N))
+            on_steps = int(np.clip(on_steps, 0, N))
+            eff_duty = on_steps / float(N)
+        else:
+            eff_duty = duty_cmd
+            N = int(self.frame_skip)
+            on_steps = int(np.round(eff_duty * N))
+        # Apply 'eff_duty' for exactly one PWM period
+        self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", str(eff_duty), nargout=0)
+        stop_time = self.time + self.T_sw
+        self._sim_to(stop_time)
 
-        voltage, t = self.get_data()
-        self.current_time = t
+        # Read outputs
+        vC, t, iL = self._get_vC_t_iL()
+        self.time = t
 
-        error = voltage - self.goal
-        derivative_error = error - self.prev_error
+        #observations
+        noisy_vC = vC + self.np_random.normal(0.0, self.voltage_noise_std)
+        error = noisy_vC - self.target_voltage
+        d_error = (error - self.prev_error) / self.T_sw
+        obs = np.array([vC, error, d_error, self.target_voltage], dtype=np.float32)
 
-        # --- CRITICAL FIX: Scaled reward to prevent exploding losses ---
-        reward_accuracy = -0.01 * (error**2)
-        
-        progress = abs(self.prev_error) - abs(error)
-        reward_progress = 10 * progress
-        # Increase the penalty for high duty cycles to encourage moderation
-        reward_efficiency = -2.0 * (duty_cycle**2)
-        reward = reward_accuracy + reward_progress + reward_efficiency
+        # Reward (mirrors np env)
+        reward = self._calculate_reward(duty=eff_duty, vC=vC, iL=iL)
 
-        self.prev_error = error
-
-        terminated = bool(t >= self.max_episode_time)
+        # Termination / truncation
+        terminated = False
         truncated = False
+        self.current_step += 1
+        if self.current_step > self.grace_period_steps:
+            v_abs = abs(vC)
+            vref = abs(self.target_voltage)
+            v_out_min = 0.1 * vref
+            v_out_max = 1.5 * vref
+            over_il = (iL is not None) and (abs(iL) > self.I_L_MAX)
+            under_v = v_abs < v_out_min
+            over_v = v_abs > v_out_max
+            if over_il or under_v or over_v:
+                reward -= 1000.0
+                terminated = True
+        if not terminated and self.time >= self.max_episode_time:
+            truncated = True
 
-        # Grace period check for safety limits
-        if self.steps_taken > self.grace_period_steps: # Goal Voltage is between -49 and -28
-            HARD_LOWER_LIMIT = -90.0 # 41 below the goal voltage range
-            HARD_UPPER_LIMIT = -15.0 # 13 above the goal voltage range
-            SOFT_LOWER_LIMIT = -52.0 # 3 below the goal voltage range
-            SOFT_UPPER_LIMIT = -25.0 # 3 above the goal voltage range
+        # Telemetry
+        info = {
+            "iL": (None if iL is None else float(iL)),
+            "vC": float(vC),
+            "mag_vC": float(abs(vC)),
+            "err": float(error),
+            "e_norm": float(abs(abs(vC) - abs(self.target_voltage)) / max(abs(self.target_voltage), 1e-3)),
+            "dduty": float(0.0 if self.prev_applied_duty is None else (eff_duty - self.prev_applied_duty)),
+            "in_band": bool(abs(abs(vC) - abs(self.target_voltage)) <= self._band_e * abs(self.target_voltage)),
+            "duty_cmd": float(duty_cmd),
+            "eff_duty": float(eff_duty),
+            "measured_duty": float(eff_duty),
+            "on_steps": int(on_steps),
+            "on_frac": float(eff_duty * self.frame_skip - on_steps),
+            "frame_skip": int(self.frame_skip),
+            "dt": float(self.dt),
+            "T_sw": float(self.T_sw),
+        }
 
-            if (voltage < HARD_LOWER_LIMIT) or (voltage > HARD_UPPER_LIMIT):
-                reward -= 100
-                truncated = True
-                print(f"Terminated due to hard limit violation, voltage: {voltage:.3f} exceeded limits [-90V, -15V]")
-            elif (voltage < SOFT_LOWER_LIMIT) or (voltage > SOFT_UPPER_LIMIT):
-                reward -= 10
-
-        # Reduce print frequency to speed up training
-        #if self.steps_taken % 100 == 0:
-            #print(f"Step {self.steps_taken:<4} | Duty: {duty_cycle:.3f} | Volt: {voltage:.3f} | Goal: {self.goal:.2f} | Reward: {reward:.3f}")
-
-        observation = np.array([voltage, error, derivative_error, self.goal], dtype=np.float32)
+        # Bookkeeping + optional plotting
+        self.prev_error = error
+        self.prev_vC = vC
+        self.last_iL = iL
+        self.prev_cmd_duty = duty_cmd
+        self.prev_applied_duty = eff_duty
 
         if self.enable_plotting:
-            self._times.append(t); self._voltages.append(voltage); self._goals.append(self.goal); self._duties.append(duty_cycle)
-            self.line_voltage.set_data(self._times, self._voltages); self.line_goal.set_data(self._times, self._goals); self.line_duty.set_data(self._times, self._duties)
-            for ax in (self.ax_voltage, self.ax_duty): ax.relim(); ax.autoscale_view()
-            self.fig.canvas.draw(); self.fig.canvas.flush_events()
+            self._times.append(self.time)
+            self._vcs.append(vC)
+            self._duties.append(eff_duty)
 
-        return observation, reward, terminated, truncated, {}
+        return obs, float(reward), terminated, truncated, info
 
+    def _calculate_reward(self, duty: float, vC: float, iL: Optional[float]) -> float:
+        # --- sign-aware, NumPy-parity reward ---
+        vref = float(self.target_voltage)
+        e_norm = abs(vC - vref) / max(abs(vref), 1e-9)
+
+        exparg = -5.0 * (e_norm ** 2)
+        r_track = 0.0 if exparg < -50.0 else float(np.exp(exparg))
+
+        prev_e_norm = abs(self.prev_vC - vref) / max(abs(vref), 1e-9)
+        progress = float(np.clip(prev_e_norm - e_norm, -1.0, 1.0))
+
+        band_bonus = 0.1 if e_norm <= 0.02 else 0.0
+
+        dduty = 0.0 if self.prev_applied_duty is None else (duty - self.prev_applied_duty)
+        dduty_scale = float(np.exp(-6.0 * e_norm))
+
+        r = r_track + 0.1 * progress + band_bonus - 0.5 * dduty_scale * (dduty ** 2)
+
+        return float(np.clip(r, -5.0, 2.0))
+
+
+    # ====== Close ======
     def close(self):
-        if self.enable_plotting:
-            plt.close(self.fig)
-        print("\nMATLAB engine shut down.")
-        self.eng.quit()
+        # Try to close the model cleanly
+        try:
+            if self.use_fast_restart:
+                self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
+            self.eng.close_system(self.model_name, 0, nargout=0)
+        except Exception:
+            pass
+        try:
+            self.eng.quit()
+        except Exception:
+            pass
+
+        # --- Cleanup unique copy & caches ---
+        try:
+            if hasattr(self, "model_path") and os.path.exists(self.model_path):
+                os.remove(self.model_path)
+        except Exception:
+            pass
+
+        try:
+            slprj_model_dir = os.path.join(os.getcwd(), "slprj", self.model_name)
+            if os.path.exists(slprj_model_dir):
+                shutil.rmtree(slprj_model_dir)
+        except Exception:
+            pass
+
+        try:
+            base = os.path.splitext(self.model_name)[0]
+            for fname in (f"{base}.slx.autosave", f"{base}.slxc"):
+                fpath = os.path.join(os.getcwd(), fname)
+                if os.path.exists(fpath):
+                    os.remove(fpath)
+        except Exception:
+            pass

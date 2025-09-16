@@ -132,8 +132,21 @@ def main(algo_name="ppo",
     torch.manual_seed(SEED)
     set_random_seed(SEED)
 
-    # Determine prefix
-    prefix = f"noise_{noise_level:.3f}_" if noise else ""
+    # Create and seed the environment
+    env = CartPoleGymWrapper(
+        seed=SEED,
+        noise=noise,
+        noise_std=noise_level
+    )
+
+    # # If using DQN (or similar), wrap with DiscretizedActionWrapper
+    # if algo_name == "dqn":
+    #     force_values = np.linspace(-10.0, 10.0, 5)
+    #     env = DiscretizedActionWrapper(env, force_values=force_values)
+
+       # Determine a canonical tag (always include a noise string)
+    noise_str = f"{noise_level:.3f}" if noise else "0.000"
+    run_tag = f"{algo_name}_noise_{noise_str}"
 
     # Create and seed the environment
     env = CartPoleGymWrapper(
@@ -144,18 +157,27 @@ def main(algo_name="ppo",
 
     # If using DQN (or similar), wrap with DiscretizedActionWrapper
     if algo_name == "dqn":
-        force_values = np.linspace(-10.0, 10.0, 5)
+        force_values = np.linspace(-10.0, 10.0, 41)
         env = DiscretizedActionWrapper(env, force_values=force_values)
 
-    # Directories and file names
-    model_base_dir     = os.path.join("jax", prefix + algo_name)
-    os.makedirs(model_base_dir, exist_ok=True)
-    model_path         = os.path.join(model_base_dir, prefix + "best_model")
-    replay_buffer_path = os.path.join(model_base_dir, prefix + "best_model_replay_buffer")
-    tensorboard_log_dir = os.path.join("jax_logs", prefix + algo_name)
+    # === Canonical directory layout ===
+    model_base_dir = os.path.join("jax-41", run_tag)                 # e.g., jax/ppo_noise_0.010
+    ckpt_dir       = os.path.join(model_base_dir, "jax_models")   # all checkpoints here
+    os.makedirs(ckpt_dir, exist_ok=True)
+
+    # Final artifacts at root of the run folder
+    model_path = os.path.join(model_base_dir, "best_model")       # -> best_model.zip
+
+    # Checkpoint prefix inside jax_models/
+    ckpt_prefix = os.path.join(ckpt_dir, "best_model")
+
+    # TensorBoard logs grouped by the same tag
+    tensorboard_log_dir = os.path.join("jax_logs-41", run_tag)
 
     print(f"📁 Saving models to: {model_base_dir}")
-    print(f"📊 TensorBoard logs to: {tensorboard_log_dir}")
+    print(f"📦 Checkpoints to:   {ckpt_dir}")
+    print(f"📊 TensorBoard logs: {tensorboard_log_dir}")
+
 
     params = load_hyperparameters(algo_name)
     policy_kwargs = create_policy_kwargs(params)
@@ -168,17 +190,20 @@ def main(algo_name="ppo",
             sigma=params["action_noise_sigma"] * np.ones(1)
         )
 
-    if os.path.exists(model_path + ".zip"):
-        print(f"Loading model from {model_path}.zip...")
-        model = Algo.load(
-            model_path,
-            env=env,
-            action_noise=action_noise if algo_name in ["td3", "ddpg"] else None,
-            tensorboard_log=tensorboard_log_dir
-        )
-        if algo_name in OFF_POLICY_ALGOS and os.path.exists(replay_buffer_path + ".pkl"):
-            print("Loading replay buffer...")
-            model.load_replay_buffer(replay_buffer_path)
+        if os.path.exists(model_path + ".zip"):
+            print(f"Loading model from {model_path}.zip...")
+            model = Algo.load(
+                model_path,
+                env=env,
+                action_noise=action_noise if algo_name in ["td3", "ddpg"] else None,
+                tensorboard_log=tensorboard_log_dir
+            )
+            # optional: load a final replay buffer if it exists in jax_models/
+            if algo_name in OFF_POLICY_ALGOS:
+                final_buf = os.path.join(ckpt_dir, "best_model_replay_buffer.pkl")
+                if os.path.exists(final_buf):
+                    print("Loading replay buffer...")
+                    model.load_replay_buffer(final_buf)
     else:
         print(f"Creating new model for {algo_name.upper()}...")
         common_kwargs = dict(
@@ -244,12 +269,13 @@ def main(algo_name="ppo",
                          exploration_final_eps=params["exploration_final_eps"],
                          learning_starts=5000)
 
-    checkpoint_steps = {10_000, 25_000, 50_000, 75_000, timesteps}
+    checkpoint_steps = {10_000, 25_000, 50_000, 75_000, 125_000,150_000, timesteps}
     callback = FancyTensorboardCallback(
-        save_steps=checkpoint_steps,
-        save_path_prefix=model_path,
-        log_dir=tensorboard_log_dir
+    save_steps=checkpoint_steps,
+    save_path_prefix=ckpt_prefix,   # <-- write checkpoints under jax_models/
+    log_dir=tensorboard_log_dir
     )
+
 
     print(f"🚀 Training {algo_name.upper()} for {timesteps} timesteps...")
     model.learn(total_timesteps=timesteps, reset_num_timesteps=False,
@@ -259,8 +285,9 @@ def main(algo_name="ppo",
     print(f"✅ Final model saved to {model_path}.zip")
 
     if algo_name in OFF_POLICY_ALGOS:
-        model.save_replay_buffer(replay_buffer_path)
-        print(f"✅ Final replay buffer saved to {replay_buffer_path}.pkl")
+        final_buf = os.path.join(ckpt_dir, "best_model_replay_buffer.pkl")
+        model.save_replay_buffer(final_buf)
+        print(f"✅ Final replay buffer saved to {final_buf}")
 
     env.close()
     print("🏁 Training complete. Environment closed.")
@@ -275,7 +302,7 @@ if __name__ == "__main__":
         default=["ppo"],
         help="Which algorithm(s) to train; use 'all' to run every algo in sequence.",
     )
-    parser.add_argument("--timesteps",    type=int,   default=100_000)
+    parser.add_argument("--timesteps",    type=int,   default=200_000)
     parser.add_argument("--noise",        action="store_true", help="…")
     parser.add_argument("--noise-level",  type=float, default=0.01,    help="…")
     args = parser.parse_args()

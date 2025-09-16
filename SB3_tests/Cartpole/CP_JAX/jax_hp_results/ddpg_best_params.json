@@ -1,15 +1,15 @@
 {
     "best_params": {
-        "learning_rate": 4.114596238053155e-05,
-        "buffer_size": 92220,
-        "batch_size": 402,
-        "tau": 0.012968080514941579,
-        "gamma": 0.9008466102421177,
-        "action_noise_sigma": 0.21066706002078808,
-        "layer_size": 425,
+        "learning_rate": 6.498044702976076e-05,
+        "buffer_size": 89421,
+        "batch_size": 395,
+        "tau": 0.0044143405380458215,
+        "gamma": 0.9277077733435835,
+        "action_noise_sigma": 0.24587961696913452,
+        "layer_size": 492,
         "n_layers": 4,
         "activation_fn": "elu"
     },
-    "best_value": 499.66339111328125,
+    "best_value": 499.9581298828125,
     "n_trials": 50
 }

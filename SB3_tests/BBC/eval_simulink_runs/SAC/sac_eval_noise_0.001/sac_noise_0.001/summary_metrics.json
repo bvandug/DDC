@@ -1,0 +1,13 @@
+{
+  "algo": "sac",
+  "episodes": 1,
+  "training_voltage_noise_std": 0.001,
+  "evaluation_voltage_noise_std": 0.001,
+  "mean_reward": 4395.493532454595,
+  "std_reward": 0.0,
+  "mean_length": 4000.0,
+  "mean_stabilisation_time_s": 0.00117,
+  "mean_steady_state_error_v": 0.13146643717158285,
+  "mean_overshoot_v": 28.238792361563203,
+  "mean_undershoot_v": 3.0711639797083237
+}

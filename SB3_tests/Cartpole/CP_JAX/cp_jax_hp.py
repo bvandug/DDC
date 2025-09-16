@@ -139,8 +139,8 @@ def objective(trial, algo_name):
                 ep_rew += reward[0] if isinstance(reward, (list, np.ndarray)) else reward
             rewards.append(ep_rew)
 
-        top_k_avg = float(np.mean(sorted(rewards, reverse=True)[:8]))
-        model.logger.record("eval/top8_avg", top_k_avg)
+        top_k_avg = float(np.mean(sorted(rewards, reverse=True)[:9]))
+        model.logger.record("eval/top9_avg", top_k_avg)
         model.logger.record("eval/mean_all10", float(np.mean(rewards)))
         model.logger.dump(timesteps)
 
@@ -189,5 +189,5 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
     return study.best_params
 
 if __name__ == "__main__":
-    for algo in [ "td3", "ddpg", "sac", "dqn"]:
+    for algo in [ "a2c","ppo","td3", "ddpg", "sac", "dqn"]:
         tune_hyperparameters(algo)

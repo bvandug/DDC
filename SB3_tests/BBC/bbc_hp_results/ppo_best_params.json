@@ -1,0 +1,26 @@
+{
+  "best_params": {
+    "n_layers": 2,
+    "layer_size": 192,
+    "activation_fn": "tanh",
+    "separate_pi_vf": false,
+    "log_std_init": -1.8326094397523627,
+    "ortho_init": false,
+    "n_steps": 2048,
+    "batch_size": 256,
+    "learning_rate": 7.574119227601003e-05,
+    "n_epochs": 15,
+    "gamma": 0.9662973891767963,
+    "gae_lambda": 0.9487662121253232,
+    "clip_range": 0.25174227156287415,
+    "ent_coef": 4.180312814244766e-05,
+    "vf_coef": 0.7528156208675411,
+    "max_grad_norm": 0.5084694786698162,
+    "use_sde": false,
+    "sde_sample_freq": 32,
+    "clip_range_vf": 0.3,
+    "target_kl": 0.03
+  },
+  "best_value": 4396.428391,
+  "n_trials": 50
+}

@@ -1,0 +1,13 @@
+{
+  "run_name": "td3_noise_0.001",
+  "algo": "td3",
+  "episodes": 5,
+  "training_voltage_noise_std": 0.001,
+  "evaluation_voltage_noise_std": 0.001,
+  "mean_reward": 4393.859494,
+  "std_reward": 0.002114876166770192,
+  "mean_stabilisation_time_s": 0.0015600000000000002,
+  "mean_steady_state_error_v": -0.20904397889433507,
+  "mean_overshoot_v": 28.211534189898384,
+  "mean_undershoot_v": 4.450632356278737
+}

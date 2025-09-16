@@ -1,17 +1,17 @@
 {
     "best_params": {
-        "learning_rate": 0.000724537138227862,
-        "gamma": 0.9603634041820946,
-        "n_steps": 13,
-        "ent_coef": 1.2342431552736383e-05,
-        "vf_coef": 0.946354375476943,
-        "max_grad_norm": 1.1766607760173047,
-        "rms_prop_eps": 2.2664156518477322e-05,
+        "learning_rate": 0.00041623460115139887,
+        "gamma": 0.9108440562121008,
+        "n_steps": 11,
+        "ent_coef": 0.001512285155968322,
+        "vf_coef": 0.7804687155452305,
+        "max_grad_norm": 1.0621916456590823,
+        "rms_prop_eps": 0.0006224377722747459,
         "use_rms_prop": false,
-        "layer_size": 315,
-        "n_layers": 2,
-        "activation_fn": "tanh"
+        "layer_size": 235,
+        "n_layers": 3,
+        "activation_fn": "leaky_relu"
     },
-    "best_value": 498.7799987792969,
+    "best_value": 499.9371337890625,
     "n_trials": 50
 }
