@@ -106,7 +106,7 @@ class PIDController:
         
         return saturated_output
 
-# Instantiate PIDController object.
+# Instantiate PIDController object with gain coefficients.
 pid_controller = PIDController(Kp=0.45, Ki=43.5, Kd=0)
 
 def controller_call(voltage, time):

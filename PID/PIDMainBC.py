@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv # <<< 1. IMPORT THE CSV MODULE
 
-# <<< 2. ADD A HELPER FUNCTION TO SAVE THE PLOTTING DATA
 def save_plot_data(filename, time_data, voltage_data):
     """Saves the time and voltage data from a simulation run to a CSV file."""
     with open(filename, 'w', newline='') as csvfile:
