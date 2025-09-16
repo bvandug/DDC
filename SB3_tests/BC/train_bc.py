@@ -1,185 +1,259 @@
 import os
-import torch
-import numpy as np
+import json
 from datetime import datetime
-from stable_baselines3 import SAC, A2C, TD3, PPO, DDPG
+import numpy as np
+from stable_baselines3 import SAC, A2C, TD3, PPO, DDPG, DQN
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from stable_baselines3.common.buffers import ReplayBuffer
+from torch import nn
 
-# Import your updated custom environment class with the boolean flag
-from BCSimulinkEnv import BCSimulinkEnv
+from BCSimulinkEnv import BCSimulinkEnv, DiscretizeActionWrapper
 
 class EpisodeStatsLogger(BaseCallback):
+    """A custom callback to log episode statistics during training.
+
+    This callback records the reward, length, and goal voltage for each
+    episode, printing them to the console and saving them to a log file.
+    It also integrates with the Stable Baselines3 logger to record metrics
+    for TensorBoard.
+
+    Attributes:
+        log_path (str): Path to the output text log file.
     """
-    A custom callback that logs episode statistics to the console, a text file,
-    and to TensorBoard.
-    """
+
     def __init__(self, log_path: str, verbose: int = 0):
-        super(EpisodeStatsLogger, self).__init__(verbose)
+        """Initializes the EpisodeStatsLogger callback.
+
+        Args:
+            log_path (str): The file path where the training log will be saved.
+            verbose (int): The verbosity level (0 or 1).
+        """
+        super().__init__(verbose)
         self.log_path = log_path
         self.log_file = None
         self.episode_rewards = []
         self.episode_lengths = []
-        self.current_episode_reward = 0.0
-        self.current_episode_length = 0
+        self.current_episode_rewards = None
+        self.current_episode_lengths = None
 
     def _on_training_start(self) -> None:
+        """Called once at the beginning of training."""
         self.log_file = open(self.log_path, "w")
-        header = f"Training started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        header += "-"*70 + "\n"
-        header += f"{'Episode':<10}{'Total Reward':<20}{'Episode Length':<20}{'Goal Voltage':<20}\n"
-        header += "-"*70 + "\n"
-        self.log_file.write(header); self.log_file.flush()
+        header = f"Training started at: " \
+                 f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        header += "-" * 80 + "\n"
+        header += (f"{'Episode':<10}{'Total Reward':<20}"
+                   f"{'Episode Length':<20}{'Goal Voltage':<20}\n")
+        header += "-" * 80 + "\n"
+        self.log_file.write(header)
+        self.log_file.flush()
         print(header, end='')
+        self.current_episode_rewards = np.zeros(self.training_env.num_envs)
+        self.current_episode_lengths = np.zeros(self.training_env.num_envs)
 
     def _on_step(self) -> bool:
-        reward = self.locals['rewards'][0]
-        self.current_episode_reward += reward
-        self.current_episode_length += 1
+        """Called after each step in the environment.
 
-        if self.locals['dones'][0]:
-            self.episode_rewards.append(self.current_episode_reward)
-            self.episode_lengths.append(self.current_episode_length)
-            
-            self.logger.record("rollout/ep_reward", self.current_episode_reward)
-            
-            episode_num = len(self.episode_rewards)
-            goal_voltage = self.training_env.get_attr('goal')[0]
-            log_line = (f"{episode_num:<10}"
-                        f"{self.current_episode_reward:<20.4f}"
-                        f"{self.current_episode_length:<20}"
-                        f"{goal_voltage:<20.4f}\n")
-            print(log_line, end='')
-            self.log_file.write(log_line); self.log_file.flush()
+        Checks for completed episodes and logs their stats.
 
-            self.current_episode_reward = 0.0
-            self.current_episode_length = 0
+        Returns:
+            bool: True to continue training, False to stop.
+        """
+        self.current_episode_rewards += self.locals['rewards']
+        self.current_episode_lengths += 1
+
+        for i, done in enumerate(self.locals['dones']):
+            if done:
+                reward = self.current_episode_rewards[i]
+                length = self.current_episode_lengths[i]
+                self.episode_rewards.append(reward)
+                self.episode_lengths.append(length)
+
+                # Log to TensorBoard
+                self.logger.record("rollout/ep_reward", reward)
+                self.logger.record("rollout/ep_length", length)
+
+                episode_num = len(self.episode_rewards)
+                goal_voltage = self.training_env.get_attr('goal',
+                                                          indices=[i])[0]
+
+                # Log to console and file
+                log_line = (f"{episode_num:<10}"
+                            f"{reward:<20.4f}"
+                            f"{int(length):<20}"
+                            f"{goal_voltage:<20.4f}\n")
+                print(log_line, end='')
+                self.log_file.write(log_line)
+                self.log_file.flush()
+
+                # Reset counters for the next episode
+                self.current_episode_rewards[i] = 0
+                self.current_episode_lengths[i] = 0
         return True
 
     def _on_training_end(self) -> None:
-        footer = "-"*70 + "\n"
-        footer += f"Training finished at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        """Called once at the end of training."""
+        footer = "-" * 80 + "\n"
+        footer += f"Training finished at: " \
+                  f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         print(footer, end='')
         self.log_file.write(footer)
         self.log_file.close()
 
-if __name__ == "__main__":
-    # --- CHOOSE THE MODEL TO TRAIN ---
-    MODEL_TO_TRAIN = 'TD3' # Options: 'A2C', 'PPO', 'SAC', 'TD3', 'DDPG'
-    
-    # --- CHOOSE YOUR TRAINING MODE ---
-    USE_RANDOMIZED_VOLTAGE = False # Set to True for a generalized policy, False for a fixed goal
-    FIXED_VOLTAGE = 30.0 # Used only if USE_RANDOMIZED_VOLTAGE is False
 
-    # --- Training Parameters ---
-    total_timesteps = 100000 
+if __name__ == "__main__":
+    MODELS_TO_TRAIN = ['A2C', 'PPO', 'DQN', 'SAC', 'TD3', 'DDPG']
+    NOISE_LEVELS = [0, 0.001, 0.01, 0.1]
+    TOTAL_TIMESTEPS = 200000
     EPISODE_TIME = 0.1
     GRACE_PERIOD = 50
+    SEED = 42
 
-    # --- Define Base Save Path ---
-    training_mode = "Randomized" if USE_RANDOMIZED_VOLTAGE else "Fixed"
-    base_drive_path = f"/content/drive/MyDrive/DDC/{MODEL_TO_TRAIN}_{training_mode}_Update_1/"
-    os.makedirs(base_drive_path, exist_ok=True)
+    # Path Configuration for Local Execution
+    BASE_MODEL_PATH = "models"
+    RESULTS_LOG_DIR = "BC_Simulink_Results"
 
-    log_file_path = os.path.join(base_drive_path, f"{MODEL_TO_TRAIN.lower()}_bc_training_log.txt")
-    tensorboard_log_path = os.path.join(base_drive_path, f"{MODEL_TO_TRAIN.lower()}_bc_tensorboard_log/")
+    os.makedirs(BASE_MODEL_PATH, exist_ok=True)
+    os.makedirs(RESULTS_LOG_DIR, exist_ok=True)
 
-    # --- CONFIGURE THE ENVIRONMENT BASED ON TRAINING MODE ---
-    print("Starting the environment...")
-    if USE_RANDOMIZED_VOLTAGE:
-        print("--- Mode: Randomized Voltage (25V-35V) ---")
-        env_fn = lambda: BCSimulinkEnv(
-            model_name="bcSim", frame_skip=10, enable_plotting=False,
-            grace_period_steps=GRACE_PERIOD, max_episode_time=EPISODE_TIME,
-            use_randomized_goal=True,
-            target_voltage_min=27.5,
-            target_voltage_max=32.5
-        )
-    else:
-        print(f"--- Mode: Fixed Voltage ({FIXED_VOLTAGE}V) ---")
-        env_fn = lambda: BCSimulinkEnv(
-            model_name="bcSim", frame_skip=10, enable_plotting=False,
-            grace_period_steps=GRACE_PERIOD, max_episode_time=EPISODE_TIME,
-            use_randomized_goal=False,
-            fixed_goal_voltage=FIXED_VOLTAGE
-        )
+    # Main Training Loop
+    for model_type in MODELS_TO_TRAIN:
+        for noise in NOISE_LEVELS:
+            print("\n" + "=" * 80)
+            print(f"--- CONFIGURING: {model_type} | Noise: {noise} ---")
+            print("=" * 80 + "\n")
 
-    env = DummyVecEnv([env_fn])
-    env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.0)
+            # Define paths for this specific training run
+            save_folder_name = f"{model_type}_Seed_{SEED}_Noise_{noise}"
+            model_save_path = os.path.join(BASE_MODEL_PATH, model_type,
+                                           save_folder_name)
+            log_save_path = os.path.join(RESULTS_LOG_DIR, model_type)
+            os.makedirs(model_save_path, exist_ok=True)
+            os.makedirs(log_save_path, exist_ok=True)
 
-    # --- MODEL CONFIGURATION ---
-    model = None
-    if MODEL_TO_TRAIN == 'SAC':
-        print("--- Configuring SAC Model ---")
-        model = SAC(
-            "MlpPolicy", env, learning_rate=3e-4, buffer_size=1_000_000, batch_size=256,
-            learning_starts=10000, gamma=0.99, tau=0.005, ent_coef='auto',
-            policy_kwargs=dict(net_arch=dict(pi=[256, 256], qf=[256, 256])),
-            verbose=1, tensorboard_log=tensorboard_log_path
-        )
-    elif MODEL_TO_TRAIN == 'A2C':
-        print("--- Configuring A2C Model ---")
-        model = A2C(
-            "MlpPolicy", env, learning_rate=7e-4, n_steps=20, gamma=0.99, gae_lambda=0.95,
-            ent_coef=0.01, vf_coef=0.5, max_grad_norm=0.5,
-            policy_kwargs=dict(net_arch=[dict(pi=[64, 64], vf=[64, 64])]),
-            verbose=1, tensorboard_log=tensorboard_log_path
-        )
-    elif MODEL_TO_TRAIN == 'PPO':
-        print("--- Configuring PPO Model ---")
-        model = PPO(
-            "MlpPolicy", env, learning_rate=3e-4, n_steps=2048, batch_size=64, n_epochs=10,
-            gamma=0.99, gae_lambda=0.95, clip_range=0.2, ent_coef=0.0,
-            verbose=1, tensorboard_log=tensorboard_log_path,
-            policy_kwargs=dict(net_arch=[dict(pi=[64, 64], vf=[64, 64])])
-        )
-    elif MODEL_TO_TRAIN == 'TD3':
-        print("--- Configuring Updated TD3 Model (Tuned for Stability) ---")
-        n_actions = env.action_space.shape[-1]
-        action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
-        model = TD3(
-            "MlpPolicy", env, learning_rate=1e-3, buffer_size=1_000_000,
-            learning_starts=20000, batch_size=256, tau=0.005, gamma=0.99,
-            action_noise=action_noise, policy_delay=2, 
-            policy_kwargs=dict(net_arch=[400, 300]), verbose=1, 
-            tensorboard_log=tensorboard_log_path
-        )
-    elif MODEL_TO_TRAIN == 'DDPG':
-        print("--- Configuring DDPG Model ---")
-        n_actions = env.action_space.shape[-1]
-        action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
-        model = DDPG(
-            "MlpPolicy", env, action_noise=action_noise, learning_rate=1e-3, buffer_size=1_000_000,
-            learning_starts=10000, batch_size=256, tau=0.005, gamma=0.99,
-            verbose=1, tensorboard_log=tensorboard_log_path,
-            policy_kwargs=dict(net_arch=[400, 300])
-        )
-    else:
-        raise ValueError(f"Model type '{MODEL_TO_TRAIN}' not recognized. Choose from 'A2C', 'PPO', 'SAC', 'TD3', 'DDPG'.")
+            # Load Hyperparameters from JSON
+            hyperparams_path = os.path.join(model_save_path,
+                                            "hyperparameters.json")
+            if not os.path.exists(hyperparams_path):
+                print(f"[SKIP] Hyperparameter file not found for "
+                      f"{model_type} with noise {noise}.")
+                print(f"Searched at: {hyperparams_path}")
+                continue
 
-    # --- Setup Callbacks ---
-    custom_callback = EpisodeStatsLogger(log_path=log_file_path)
-    checkpoint_callback = CheckpointCallback(
-      save_freq=20000,
-      save_path=base_drive_path,
-      name_prefix=f"{MODEL_TO_TRAIN.lower()}_bc_model_checkpoint",
-      save_replay_buffer=True,
-      save_vecnormalize=True,
-    )
+            with open(hyperparams_path, 'r') as f:
+                hyperparams = json.load(f)
+            print(f"Loaded hyperparameters from {hyperparams_path}")
 
-    # --- Training ---
-    print(f"--- Starting Training for {MODEL_TO_TRAIN} ({total_timesteps} Timesteps) ---")
-    model.learn(
-        total_timesteps=total_timesteps,
-        progress_bar=True,
-        callback=[custom_callback, checkpoint_callback]
-    )
+            log_file_path = os.path.join(
+                log_save_path, f"train_log_{model_type}_noise_{noise}.txt"
+            )
+            tensorboard_log_path = os.path.join(log_save_path, "tensorboard/")
 
-    # --- Final Saving ---
-    model.save(os.path.join(base_drive_path, f"{MODEL_TO_TRAIN.lower()}_bc_model_final"))
-    env.save(os.path.join(base_drive_path, f"{MODEL_TO_TRAIN.lower()}_vec_normalize_final.pkl"))
-    print(f"\n--- Final {MODEL_TO_TRAIN} Model and Stats Saved to Google Drive ---")
+            env = None
+            try:
+                # Environment Setup
+                def create_env_fn(current_noise):
+                    def _init():
+                        return BCSimulinkEnv(
+                            model_name="bcSim",
+                            frame_skip=10,
+                            enable_plotting=False,
+                            grace_period_steps=GRACE_PERIOD,
+                            max_episode_time=EPISODE_TIME,
+                            use_randomized_goal=True,
+                            target_voltage_min=27.5,
+                            target_voltage_max=32.5,
+                            voltage_noise_std=current_noise
+                        )
+                    return _init
 
-    env.close()
+                base_env_fn = create_env_fn(noise)
+
+                if model_type == 'DQN':
+                    env_fn = lambda: DiscretizeActionWrapper(base_env_fn(),
+                                                             n_bins=17)
+                else:
+                    env_fn = base_env_fn
+
+                env = DummyVecEnv([env_fn])
+                env = VecNormalize(env, norm_obs=True, norm_reward=False,
+                                   clip_obs=10.0)
+
+                # Model Setup
+                model_class_map = {
+                    'SAC': SAC, 'TD3': TD3, 'A2C': A2C,
+                    'DDPG': DDPG, 'PPO': PPO, 'DQN': DQN
+                }
+                model_class = model_class_map.get(model_type)
+                if model_class is None:
+                    raise ValueError(f"Model type '{model_type}' "
+                                     "not recognized.")
+                
+                # Prepare policy_kwargs from loaded hyperparameters
+                policy_kwargs = {}
+                if 'n_layers' in hyperparams and 'layer_size' in hyperparams:
+                    net_arch = [hyperparams.pop("layer_size")] * \
+                               hyperparams.pop("n_layers")
+                    if model_type in ['A2C', 'PPO']:
+                        policy_kwargs['net_arch'] = dict(pi=net_arch,
+                                                         vf=net_arch)
+                    else:
+                        policy_kwargs['net_arch'] = net_arch
+                if 'activation_fn' in hyperparams:
+                    act_fn_name = hyperparams.pop("activation_fn")
+                    policy_kwargs['activation_fn'] = {
+                        "tanh": nn.Tanh, "relu": nn.ReLU
+                    }.get(act_fn_name.lower(), nn.ReLU)
+                
+                # Clean up and type cast params
+                if 'action_noise_sigma' in hyperparams:
+                    noise_sigma = hyperparams.pop('action_noise_sigma')
+                    hyperparams['action_noise'] = NormalActionNoise(
+                        mean=np.zeros(env.action_space.shape[-1]),
+                        sigma=noise_sigma * np.ones(env.action_space.shape[-1])
+                    )
+                hyperparams.pop("rank", None)
+
+                model = model_class("MlpPolicy",
+                                    env,
+                                    policy_kwargs=policy_kwargs,
+                                    verbose=0,
+                                    seed=SEED,
+                                    tensorboard_log=tensorboard_log_path,
+                                    **hyperparams)
+
+                # Custom Callbacks
+                custom_callback = EpisodeStatsLogger(log_path=log_file_path)
+                checkpoint_callback = CheckpointCallback(
+                    save_freq=20000,
+                    save_path=model_save_path,
+                    name_prefix="checkpoint",
+                    save_replay_buffer=True,
+                    save_vecnormalize=True,
+                )
+
+                # Start Training
+                print(f"TensorBoard log path: {tensorboard_log_path}")
+                print(f"Model save path:      {model_save_path}")
+                model.learn(
+                    total_timesteps=TOTAL_TIMESTEPS,
+                    progress_bar=True,
+                    callback=[custom_callback, checkpoint_callback]
+                )
+
+                # Save Final Model and Normalization Stats
+                final_model_path = os.path.join(model_save_path, "final_model")
+                final_env_stats_path = os.path.join(model_save_path,
+                                                    "vec_normalize.pkl")
+                model.save(final_model_path)
+                env.save(final_env_stats_path)
+                print(f"\n--- Final model and stats saved to "
+                      f"'{model_save_path}' ---")
+
+            except Exception as e:
+                print(f"\n[ERROR] An unexpected error occurred during "
+                      f"training for {model_type} with noise {noise}: {e}")
+            finally:
+                if env:
+                    env.close()
