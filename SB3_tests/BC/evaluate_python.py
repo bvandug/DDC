@@ -24,7 +24,7 @@ def plot_and_save_summary(all_episode_data, target_voltage, tolerance,
         model_type (str): A string identifying the model (e.g., 'SAC').
         plot_save_base (str): The base path and filename for saved plots.
     """
-    # --- Plot 1: Full View ---
+    # Generate Full View Plot
     full_view_path = f"{plot_save_base}_full_view.png"
     print(f"\n--- Saving full view plot to {full_view_path} ---")
 
@@ -62,7 +62,7 @@ def plot_and_save_summary(all_episode_data, target_voltage, tolerance,
     plt.close(fig1)
     print("--- Full view plot saved successfully! ---")
 
-    # --- Plot 2: Zoomed-in View ---
+    # Generate Zoomed-in Plot
     zoomed_view_path = f"{plot_save_base}_zoomed_view.png"
     print(f"\n--- Saving zoomed view plot to {zoomed_view_path} ---")
 
@@ -199,7 +199,7 @@ def run_evaluation(model, env, n_episodes=5, target_voltage=30.0,
         print(f"  Overshoot              : {overshoot:.4f} V")
         print(f"  Undershoot             : {undershoot:.4f} V")
 
-    # --- Print Overall Summary ---
+    # Print Overall Summary Metrics
     print("\n--- Evaluation Summary ---")
     print("-" * 40)
     print(f"Mean Reward              : {np.mean(all_rewards):.2f} "
@@ -220,9 +220,6 @@ def run_evaluation(model, env, n_episodes=5, target_voltage=30.0,
 
 
 if __name__ == '__main__':
-    # =========================================================================
-    # --- MAIN EVALUATION SETTINGS ---
-    # =========================================================================
     MODELS_TO_EVALUATE = ['A2C', 'PPO', 'SAC', 'TD3', 'DDPG', 'DQN']
     NOISE_LEVELS = [0, 0.001, 0.01, 0.1]
     EVALUATION_VOLTAGES = [30.0]
@@ -232,11 +229,10 @@ if __name__ == '__main__':
     # Define local paths for loading models and saving results
     BASE_MODEL_PATH = "models"
     RESULTS_SAVE_DIR = "PY_BC_Results"
-    # =========================================================================
 
     os.makedirs(RESULTS_SAVE_DIR, exist_ok=True)
 
-    # --- Main Evaluation Loop ---
+    # Main Evaluation Loop
     for model_type in MODELS_TO_EVALUATE:
         for noise in NOISE_LEVELS:
             model_folder = os.path.join(
