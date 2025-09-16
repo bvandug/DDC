@@ -169,4 +169,6 @@ Adjust these parameters according to your needs to fine-tune the performance of 
 
 We would like to express our gratitude to our supervisor, K. Prag, for her invaluable guidance and feedback throughout this research project.
 
+[text](https://www.ijert.org/research/design-and-analysis-of-buck-converter-IJERTV3IS031844.pdf)
+
   
