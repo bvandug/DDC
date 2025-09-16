@@ -3,9 +3,9 @@ import time
 import warnings
 import matplotlib.pyplot as plt
 import numpy as np
-from stable_baselines3 import SAC, A2C, TD3, PPO, DDPG
+from stable_baselines3 import SAC, A2C, TD3, PPO, DDPG, DQN
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from PYBCEnv import BuckConverterEnv
+from PYBCEnv import BuckConverterEnv, DiscretizeActionWrapper
 
 
 def plot_and_save_summary(all_episode_data, target_voltage, tolerance,
@@ -123,7 +123,6 @@ def run_evaluation(model, env, n_episodes=5, target_voltage=30.0,
 
             # Capture the state *before* taking the step for accurate logging.
             unnormalized_obs = env.get_original_obs()
-            current_voltage = unnormalized_obs[0][0]
             current_time = env.get_attr('total_sim_time')[0]
 
             obs, reward, dones, infos = env.step(action)
@@ -224,7 +223,7 @@ if __name__ == '__main__':
     # =========================================================================
     # --- MAIN EVALUATION SETTINGS ---
     # =========================================================================
-    MODELS_TO_EVALUATE = ['A2C', 'PPO', 'SAC', 'TD3', 'DDPG']
+    MODELS_TO_EVALUATE = ['A2C', 'PPO', 'SAC', 'TD3', 'DDPG', 'DQN']
     NOISE_LEVELS = [0, 0.001, 0.01, 0.1]
     EVALUATION_VOLTAGES = [30.0]
     N_EVAL_EPISODES = 3
@@ -240,8 +239,6 @@ if __name__ == '__main__':
     # --- Main Evaluation Loop ---
     for model_type in MODELS_TO_EVALUATE:
         for noise in NOISE_LEVELS:
-            # Assumes models are saved in a structure like:
-            # models/SAC/SAC_Seed_42_Noise_0.1/
             model_folder = os.path.join(
                 BASE_MODEL_PATH,
                 model_type,
@@ -275,7 +272,6 @@ if __name__ == '__main__':
 
                 env = None
                 try:
-                    # Create an env function that includes the current noise level
                     def create_env_fn(current_noise):
                         def _init():
                             return BuckConverterEnv(
@@ -287,15 +283,32 @@ if __name__ == '__main__':
                             )
                         return _init
 
-                    env_fn_eval = create_env_fn(noise)
+                    base_env_fn = create_env_fn(noise)
 
-                    env = DummyVecEnv([env_fn_eval])
+                    # Wrap the environment for DQN's discrete action space.
+                    if model_type == 'DQN':
+                        env_fn = lambda: DiscretizeActionWrapper(
+                            base_env_fn(), n_bins=17
+                        )
+                    else:
+                        env_fn = base_env_fn
+
+                    env = DummyVecEnv([env_fn])
                     env = VecNormalize.load(STATS_LOAD_PATH, env)
                     env.training = False
                     env.norm_reward = False
 
-                    # Dynamically get the model class from globals
-                    model_class = globals()[model_type]
+                    # Dynamically load the correct model class.
+                    model_class_map = {
+                        'SAC': SAC, 'TD3': TD3, 'A2C': A2C,
+                        'DDPG': DDPG, 'PPO': PPO, 'DQN': DQN
+                    }
+                    model_class = model_class_map.get(model_type)
+
+                    if model_class is None:
+                        raise ValueError(f"Model type '{model_type}' "
+                                         "not recognized.")
+
                     model = model_class.load(MODEL_LOAD_PATH, env=env)
 
                     start_time = time.perf_counter()
