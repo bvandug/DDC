@@ -19,7 +19,7 @@ The project focuses on evaluating:
 ___
 
 # Project Allocation:
-- Although there was one person responsible for setting up the system due to the plug-and-play nature of SB3, all team members worked collaboratively across all systems. This ensured algorithm compatibility, particularly during hyperparameter tuning and agent training.
+- Although one person was responsible for setting up each system, the plug-and-play nature of SB3 required all team members to collaborate across all systems. This collective approach ensured algorithm compatibility, particularly during hyperparameter tuning and agent training.
 - **Nathan Wells**: Cartpole
 - **Ben Ruijsch Van Dugteren**: Buck-Boost Converter, Inverted Pendulum
 - **Nicholas Cristaudo**: Buck-Converter
