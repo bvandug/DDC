@@ -1,23 +1,3 @@
-#!/usr/bin/env python3
-"""
-smoke_test_bbc.py — Minimal end-to-end smoke test for BBCSimulinkEnv.
-
-Feeds a deterministic duty-cycle pattern (sine/step/const/ramp) to the Simulink
-buck-boost model and logs vC, duty, and (optionally) iL. Saves plots and data.
-
-Usage examples:
-  # 1) Sine duty: 0.5 ± 0.4 @ 5 Hz  (clamped to [0.1, 0.9])
-  python smoke_test_bbc.py --pattern sine --freq 5 --amp 0.4 --offset 0.5
-
-  # 2) Step duty: 0.9 for 50 ms, then 0.1
-  python smoke_test_bbc.py --pattern step --step-high 0.9 --step-low 0.1 --t-switch 0.05
-
-  # 3) Constant duty: 0.6
-  python smoke_test_bbc.py --pattern const --const 0.6
-
-  # 4) Ramp duty: linear 0.1→0.9 over 100 ms, then repeat
-  python smoke_test_bbc.py --pattern ramp --ramp-start 0.1 --ramp-end 0.9 --ramp-period 0.1
-"""
 import os
 import argparse
 import numpy as np
@@ -26,26 +6,53 @@ import matplotlib.pyplot as plt
 from BBCSimulink_env import BBCSimulinkEnv
 
 
-# ----------------------------- Patterns ---------------------------------
 def duty_from_pattern(pattern: str, t: float, clamp=(0.1, 0.9), **kw) -> float:
+    """Generate a duty command at time `t` from a named pattern.
+
+        Supported patterns and kwargs:
+        - "sine":     freq (Hz), amp (0..1), offset (0..1)
+        - "step":     step_high (0..1), step_low (0..1), t_switch (s)
+        - "const":    const_val (0..1)
+        - "ramp":     ramp_start (0..1), ramp_end (0..1), ramp_period (s)
+
+        The resulting value is clipped to `clamp=(lo, hi)`.
+
+        Parameters
+        ----------
+        pattern : str
+            One of {"sine", "step", "const", "ramp"}.
+        t : float
+            Current time (seconds).
+        clamp : tuple[float, float], optional
+            Lower/upper bounds for the returned duty (default (0.1, 0.9)).
+        **kw :
+            Pattern-specific keyword arguments (see above).
+
+        Returns
+        -------
+        float
+            Duty cycle in [clamp[0], clamp[1]].
+
+        Raises
+        ------
+        ValueError
+            If an unknown pattern is provided.
+    """
+
     lo, hi = clamp
     if pattern == "sine":
-        # duty(t) = offset + amp * sin(2π f t)
         f = float(kw.get("freq", 5.0))
         amp = float(kw.get("amp", 0.4))
         offset = float(kw.get("offset", 0.5))
         val = offset + amp * np.sin(2.0 * np.pi * f * t)
     elif pattern == "step":
-        # duty = high if t < t_switch else low
         high = float(kw.get("step_high", 0.9))
         low = float(kw.get("step_low", 0.1))
         t_switch = float(kw.get("t_switch", 0.05))
         val = high if t < t_switch else low
     elif pattern == "const":
-        # duty = const
         val = float(kw.get("const_val", 0.5))
     elif pattern == "ramp":
-        # sawtooth ramp from start→end over ramp_period, then repeat
         start = float(kw.get("ramp_start", 0.1))
         end = float(kw.get("ramp_end", 0.9))
         period = float(kw.get("ramp_period", 0.1))
@@ -59,9 +66,36 @@ def duty_from_pattern(pattern: str, t: float, clamp=(0.1, 0.9), **kw) -> float:
     return float(np.clip(val, lo, hi))
 
 
-# -------------------------- Run one episode ------------------------------
 def run_smoke_episode(env: BBCSimulinkEnv, episode_idx: int, outdir: str,
                       pattern: str, live_plot: bool, **pattern_kw):
+    """ Run one smoke-test episode using a synthetic duty pattern.
+
+        Rolls the environment forward by one switching period per step using the
+        selected pattern, logs time, capacitor voltage, duty, and (if available)
+        inductor current, optionally updates live Matplotlib plots, then calls
+        `finalize` to save plots and data.
+
+        Parameters
+        ----------
+        env : BBCSimulinkEnv
+            The instantiated Simulink-backed buck–boost environment.
+        episode_idx : int
+            1-based episode index used in filenames.
+        outdir : str
+            Output directory for plots and saved data (created if missing).
+        pattern : str
+            Duty pattern name passed to `duty_from_pattern`.
+        live_plot : bool
+            If True, update live plots during the episode.
+        **pattern_kw :
+            Keyword args forwarded to `duty_from_pattern` (e.g., freq, amp, etc.).
+
+        Returns
+        -------
+        dict
+            The result dict returned by `finalize`, including file paths, reward,
+            and step count.
+    """
     os.makedirs(outdir, exist_ok=True)
 
     obs, info = env.reset()
@@ -115,6 +149,46 @@ def run_smoke_episode(env: BBCSimulinkEnv, episode_idx: int, outdir: str,
 
 
 def finalize(outdir, episode_idx, t_arr, vC_arr, duty_arr, iL_arr, target, total_reward):
+    """ Save plots and data for an episode, and return file paths/metrics.
+
+        Creates and saves:
+        - Voltage vs. time plot (with target overlay)
+        - Duty vs. time plot
+        - Optional inductor current vs. time plot (if any non-NaN values)
+        - Compressed `.npz` with arrays (t, vC, duty, iL, target, total_reward)
+        - CSV with columns: t, vC, duty, iL
+
+        Parameters
+        ----------
+        outdir : str
+            Destination folder for all artifacts.
+        episode_idx : int
+            1-based episode index used in filenames.
+        t_arr : np.ndarray
+            Time vector (seconds).
+        vC_arr : np.ndarray
+            Capacitor voltage trace (volts).
+        duty_arr : np.ndarray
+            Duty command trace (0..1).
+        iL_arr : np.ndarray
+            Inductor current trace (amps); may contain NaNs.
+        target : float
+            Target voltage (volts).
+        total_reward : float
+            Accumulated reward over the episode.
+
+        Returns
+        -------
+        dict
+            {
+            "plots": {"voltage": str, "duty": str, "iL": str | None},
+            "npz": str,
+            "csv": str,
+            "reward": float,
+            "steps": int,
+            }
+    """
+
     # Voltage plot
     fig_v = plt.figure(figsize=(10, 4)); axv = fig_v.add_subplot(111)
     axv.plot(t_arr, vC_arr, label="vC (V)")
@@ -131,7 +205,6 @@ def finalize(outdir, episode_idx, t_arr, vC_arr, duty_arr, iL_arr, target, total
     fig_d.tight_layout()
     d_path = os.path.join(outdir, f"ep{episode_idx:02d}_duty.png"); fig_d.savefig(d_path, dpi=160)
 
-    # iL (optional)
     i_path = None
     if not np.all(np.isnan(iL_arr)):
         fig_i = plt.figure(figsize=(10, 3.2)); axi = fig_i.add_subplot(111)
@@ -140,13 +213,11 @@ def finalize(outdir, episode_idx, t_arr, vC_arr, duty_arr, iL_arr, target, total
         fig_i.tight_layout()
         i_path = os.path.join(outdir, f"ep{episode_idx:02d}_iL.png"); fig_i.savefig(i_path, dpi=160)
 
-    # Save data
     npz_path = os.path.join(outdir, f"ep{episode_idx:02d}.npz")
     np.savez_compressed(npz_path, t=t_arr, vC=vC_arr, duty=duty_arr, iL=iL_arr,
                         target=np.array([target], dtype=float),
                         total_reward=np.array([total_reward], dtype=float))
-
-    # Optional CSV (handy for Excel)
+    
     csv_path = os.path.join(outdir, f"ep{episode_idx:02d}.csv")
     with open(csv_path, "w", encoding="utf-8") as f:
         f.write("t,vC,duty,iL\n")
@@ -163,14 +234,25 @@ def finalize(outdir, episode_idx, t_arr, vC_arr, duty_arr, iL_arr, target, total
     }
 
 
-# ------------------------------- Main -----------------------------------
 def main():
+    """ CLI entry point: run smoke tests on BBCSimulinkEnv with duty patterns.
+
+        Parses command-line options, constructs `BBCSimulinkEnv`, runs the
+        requested number of episodes with the specified pattern (sine/step/const/
+        ramp), saves per-episode artifacts via `run_smoke_episode`, generates an
+        overlay plot of vC across episodes, prints a short summary, and closes
+        the environment.
+
+        Returns
+        -------
+        None
+    """
+
     p = argparse.ArgumentParser(description="Smoke test for BBCSimulinkEnv with synthetic duty patterns")
     p.add_argument("--outdir", type=str, default="plots_bbc_smoke")
     p.add_argument("--episodes", type=int, default=1)
     p.add_argument("--live-plot", action="store_true")
 
-    # Env args (mirror your eval defaults)
     p.add_argument("--model-name", type=str, default="bbcSim")
     p.add_argument("--dt", type=float, default=5e-6)
     p.add_argument("--frame-skip", type=int, default=10)
@@ -179,31 +261,25 @@ def main():
     p.add_argument("--target", type=float, default=-30.0)
     p.add_argument("--random-target", action="store_true")
 
-    # Pattern selection + params
     p.add_argument("--pattern", type=str, default="sine",
                    choices=["sine", "step", "const", "ramp"])
 
-    # sine params
     p.add_argument("--freq", type=float, default=5.0, help="sine frequency (Hz)")
     p.add_argument("--amp", type=float, default=0.4, help="sine amplitude around offset")
     p.add_argument("--offset", type=float, default=0.5, help="sine center (duty)")
 
-    # step params
     p.add_argument("--step-high", type=float, default=0.9)
     p.add_argument("--step-low", type=float, default=0.1)
     p.add_argument("--t-switch", type=float, default=0.05, help="seconds until switch low")
 
-    # const param
     p.add_argument("--const", dest="const_val", type=float, default=0.5)
 
-    # ramp params
     p.add_argument("--ramp-start", type=float, default=0.1)
     p.add_argument("--ramp-end", type=float, default=0.9)
     p.add_argument("--ramp-period", type=float, default=0.1)
 
     args = p.parse_args()
 
-    # Build env
     env = BBCSimulinkEnv(
         model_name=args.model_name,
         dt=args.dt,
@@ -216,7 +292,6 @@ def main():
         use_fast_restart=True,
     )
 
-    # Run episodes
     print(f"Running smoke test: pattern={args.pattern}")
     summary = []
     for ep in range(1, args.episodes + 1):
@@ -226,7 +301,6 @@ def main():
             outdir=args.outdir,
             pattern=args.pattern,
             live_plot=args.live_plot,
-            # pass all pattern args so duty_from_pattern can pick what it needs
             freq=args.freq, amp=args.amp, offset=args.offset,
             step_high=args.step_high, step_low=args.step_low, t_switch=args.t_switch,
             const_val=args.const_val,
@@ -235,7 +309,6 @@ def main():
         summary.append((ep, res["reward"], res["steps"]))
         print(f"Episode {ep}: reward={res['reward']:.2f}, steps={res['steps']}")
 
-    # Overlay plot of vC across episodes (quick sanity visual)
     fig_sum = plt.figure(figsize=(11, 5)); ax_sum = fig_sum.add_subplot(111)
     last_t = None; target = args.target
     for ep in range(1, args.episodes + 1):

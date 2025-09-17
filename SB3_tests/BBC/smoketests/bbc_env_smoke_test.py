@@ -1,25 +1,3 @@
-#!/usr/bin/env python3
-"""
-Buck-Boost Env Smoke Test (+ CCM Coverage Report)
--------------------------------------------------
-Quick physics sanity checks for a Gymnasium buck-boost env.
-
-Usage:
-  python bbc_env_smoke_test.py --env-file np_bbc_env.py --class JAXBuckBoostConverterEnv
-
-Checks:
-  1) One RL step advances exactly one PWM period (Δt == dt*frame_skip)
-  2) OFF-phase sign sanity (di<0, dv<0) via _integrate_substep if available
-  3) DCM non-negativity: iL should not go negative across an OFF substep (if implemented)
-  4) Constant-duty steady-state mapping vs ideal |Vo| = D/(1-D)*Vin  (losses allowed)
-  5) Safety termination after grace when |vC| exceeds V_OUT_MAX
-  6) Observation derivative d_error matches finite difference
-  7) Reward monotonicity near target (optional; if calculate_reward exists)
-
-New:
-  • CCM coverage report: prints Lcrit(D) = R*(1-D)^2 / (2*fsw) and whether your L ≥ Lcrit(D)
-"""
-
 import argparse
 import importlib.util
 import math
@@ -30,9 +8,52 @@ import csv
 import numpy as np
 
 def approx_equal(a, b, tol):
+    """ Return True if two scalars are within an absolute tolerance.
+
+        Parameters
+        ----------
+        a : float
+            First value.
+        b : float
+            Second value.
+        tol : float
+            Absolute tolerance on |a - b|.
+
+        Returns
+        -------
+        bool
+            True iff |a - b| ≤ tol.
+    """
+
     return abs(a - b) <= tol
 
 def load_env_class(path, class_name=None):
+    """ Dynamically load a Gymnasium-like env class from a Python file.
+
+        If `class_name` is provided, returns that attribute from the loaded
+        module and raises if not found. Otherwise, auto-detects the first class
+        object that has `step`, `reset`, and `observation_space` attributes.
+
+        Parameters
+        ----------
+        path : str | os.PathLike
+            Filesystem path to the `.py` module containing the env class.
+        class_name : str | None, optional
+            Explicit class name to load. If None, attempt auto-detection.
+
+        Returns
+        -------
+        type
+            The environment class object.
+
+        Raises
+        ------
+        AttributeError
+            If `class_name` is given but not found in the module.
+        RuntimeError
+            If no suitable env class can be auto-detected.
+    """
+
     spec = importlib.util.spec_from_file_location("user_env_mod", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -41,7 +62,6 @@ def load_env_class(path, class_name=None):
         if cls is None:
             raise AttributeError(f"Class '{class_name}' not found in {path}")
         return cls
-    # auto-detect
     for name in dir(mod):
         obj = getattr(mod, name)
         if isinstance(obj, type) and hasattr(obj, "step") and hasattr(obj, "reset") and hasattr(obj, "observation_space"):
@@ -49,6 +69,34 @@ def load_env_class(path, class_name=None):
     raise RuntimeError("Could not find an env class (with step/reset/observation_space) in the module.")
 
 def simulate_constant_duty(env, duty, n_steps=2500, warmup=1500):
+    """ Run the env at a fixed duty cycle and estimate steady-state outputs.
+
+        Performs an initial rollout (collecting termination stats), then a
+        warmup + windowed averaging phase to estimate steady-state capacitor
+        voltage and inductor current.
+
+        Parameters
+        ----------
+        env :
+            An instantiated env supporting `reset()` and `step(a)` with duty `a`.
+        duty : float
+            Constant duty cycle command in [0, 1].
+        n_steps : int, optional
+            Steps to run for the initial pass (termination detection).
+        warmup : int, optional
+            Steps to discard before averaging in the second pass.
+
+        Returns
+        -------
+        dict
+            Keys:
+            - `"vC_mean"` : float — mean capacitor voltage over the window.
+            - `"iL_mean"` : float — mean inductor current over the window (NaN
+            if not available).
+            - `"terminations"` : int — count of terminations in the first pass.
+            - `"truncations"` : int — count of truncations in the first pass.
+    """
+
     obs, info = env.reset()
     if hasattr(env, "state"):
         env.state = np.array([0.0, 0.0], dtype=float)
@@ -62,7 +110,7 @@ def simulate_constant_duty(env, duty, n_steps=2500, warmup=1500):
             truncations += int(trunc)
             if term:
                 break
-    # collect window for averages
+            
     window_vC, window_iL = [], []
     obs, info = env.reset()
     if hasattr(env, "state"):
@@ -84,10 +132,47 @@ def simulate_constant_duty(env, duty, n_steps=2500, warmup=1500):
     return {"vC_mean": vC_mean, "iL_mean": iL_mean, "terminations": terminations, "truncations": truncations}
 
 def Lcrit(R, D, fsw):
-    """Boundary inductance for CCM in inverting buck-boost: Lcrit = R*(1-D)^2/(2*fsw)."""
+    """Compute the CCM boundary inductance for an inverting buck–boost.
+
+        Defined as:
+            L_crit = R * (1 - D)^2 / (2 * f_sw)
+
+        Parameters
+        ----------
+        R : float
+            Load resistance (ohms).
+        D : float
+            Duty cycle in [0, 1].
+        fsw : float
+            Switching frequency (Hz).
+
+        Returns
+        -------
+        float
+            Critical inductance (henries) at which operation is at the CCM/DCM boundary.
+    """
+
     return R * (1.0 - D)**2 / (2.0 * fsw)
 
 def main():
+    """ CLI entry point: run smoke tests and CCM coverage on a buck–boost env.
+
+        Parses command-line arguments, dynamically loads the env class, executes
+        a suite of sanity checks (step-period, OFF-phase signs, DCM clamp,
+        steady-state ratio vs. ideal, safety termination, derivative check, and
+        optional reward monotonicity), prints a CCM coverage table, and reports
+        PASS/FAIL counts.
+
+        Side Effects
+        -----------
+        - Prints test results and summaries to stdout.
+        - Optionally writes a CSV of duty sweep results if `--csv-out` is used.
+
+        Returns
+        -------
+        None
+    """
+
     p = argparse.ArgumentParser()
     p.add_argument("--env-file", required=True, help="Path to env .py file (e.g., np_bbc_env.py)")
     p.add_argument("--class", dest="class_name", default=None, help="Env class name (auto-detect if omitted)")
@@ -108,7 +193,6 @@ def main():
         if passed: passes += 1
         else: fails += 1
 
-    # 1) Δt equals one period
     try:
         obs, info = env.reset()
         t0 = getattr(env, "time", None)
@@ -126,7 +210,6 @@ def main():
     except Exception as e:
         report("Step advances one PWM period", False, str(e))
 
-    # 2) OFF-phase sign sanity
     if hasattr(env, "_integrate_substep"):
         try:
             iL0, vC0 = 2.0, -20.0
@@ -138,7 +221,6 @@ def main():
     else:
         report("OFF-phase signs (di<0, dv<0)", False, "_integrate_substep not available")
 
-    # 3) DCM non-negativity (if modeled)
     if hasattr(env, "_integrate_substep"):
         try:
             iL0, vC0 = 0.01, -10.0
@@ -163,9 +245,7 @@ def main():
         all_ok = True
         messages = []
         for D in duty_list:
-            # CCM boundary
             Lc = Lcrit(R, D, fsw)
-            # simulation
             sim = simulate_constant_duty(env, D, n_steps=2200, warmup=1500)
             vC_mean = sim["vC_mean"]
             ideal = (D / (1.0 - D)) * Vin
@@ -205,7 +285,6 @@ def main():
     except Exception as e:
         report("Const-duty steady-state close to ideal", False, str(e))
 
-    # 5) Safety termination (over-voltage magnitude)
     try:
         obs, info = env.reset()
         if hasattr(env, "grace_period_steps"):
@@ -218,7 +297,6 @@ def main():
     except Exception as e:
         report("Safety termination (over-voltage magnitude)", False, str(e))
 
-    # 6) Observation derivative matches finite difference
     try:
         obs, info = env.reset()
         prev_error = float(obs[1])
@@ -232,7 +310,6 @@ def main():
     except Exception as e:
         report("Obs derivative matches finite difference", False, str(e))
 
-    # 7) Reward monotonicity near target (optional)
     if hasattr(env, "calculate_reward"):
         try:
             vref = abs(getattr(env, "target_voltage", -30.0))

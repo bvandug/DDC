@@ -7,11 +7,28 @@ import os, shutil, tempfile, uuid
 
 
 class DiscretizeDutyWrapper(gym.ActionWrapper):
-    """
-    Map Discrete(n_bins) -> duty in [low, high] (default [0, 1]).
-    Keeps the underlying env continuous and untouched.
-    """
     def __init__(self, env, n_bins: int = 51, low: float = 0.0, high: float = 1.0, avoid_edges: bool = False):
+        """ Create a discrete-to-continuous duty mapping wrapper.
+
+            Maps `Discrete(n_bins)` actions to a scalar duty in `[low, high]`,
+            optionally nudging away from exact edges to avoid plant issues. The
+            underlying environment must expose a Box action space (shape (1,)).
+
+            Parameters
+            ----------
+            env :
+                Base environment with a continuous action space.
+            n_bins : int, optional
+                Number of discrete duty bins. Default 51.
+            low : float, optional
+                Minimum duty value. Default 0.0.
+            high : float, optional
+                Maximum duty value. Default 1.0.
+            avoid_edges : bool, optional
+                If True, shrink the effective range slightly so the first/last bins
+                are inside (low, high). Default False.
+        """
+
         super().__init__(env)
         assert hasattr(env.action_space, "low") and hasattr(env.action_space, "high"), \
             "Underlying env must have a Box action space."
@@ -21,7 +38,6 @@ class DiscretizeDutyWrapper(gym.ActionWrapper):
         self.avoid_edges = bool(avoid_edges)
 
         if self.avoid_edges and self.n_bins > 1:
-            # Nudge in from exact 0.0/1.0 if your plant is touchy at the edges
             eps = 0.5 / (self.n_bins - 1)
             lo = self.low + eps * (self.high - self.low)
             hi = self.high - eps * (self.high - self.low)
@@ -32,46 +48,23 @@ class DiscretizeDutyWrapper(gym.ActionWrapper):
         self.action_space = spaces.Discrete(self.n_bins)
 
     def action(self, act_idx: int):
+        """ Convert a discrete index to a (1,) float32 duty command.
+
+            Parameters
+            ----------
+            act_idx : int
+                Discrete action index in `[0, n_bins-1]` (clipped if out of range).
+
+            Returns
+            -------
+            np.ndarray
+                Array of shape (1,) containing the mapped duty value.
+        """
+
         idx = int(np.clip(act_idx, 0, self.n_bins - 1))
         return np.array([self._bins[idx]], dtype=np.float32)
 
 class BBCSimulinkEnv(gym.Env):
-    """
-    Simulink-backed Buck-Boost converter env that mirrors the NumPy env's API.
-
-    Observation (float32 [4]): [vC, error, d_error, target]
-      vC      : output capacitor voltage (V) (can be negative for inverting)
-      error   : vC - target_voltage
-      d_error : derivative of error over the last RL step (V/s)
-      target  : target_voltage (constant feature per episode unless random_target=True)
-
-    Action (float32 [1]): duty cycle in [0.1, 0.9]
-
-    One RL step = exactly one full PWM period: frame_skip * dt == T_sw.
-
-    Termination/Truncation:
-      - After grace_period_steps, terminate early if soft/hard voltage limits or (optionally) inductor current limit is violated.
-      - Truncate when time >= max_episode_time.
-
-    Reward (mirrors np_bbc_env.calculate_reward):
-      r = exp(-5 * e_norm^2) + 0.5 * progress + band_bonus
-          - lam_duty * dduty^2 - lam_i * (|iL|/I_L_MAX)^2  (iL term only if available)
-
-    Notes:
-      * This env assumes your Simulink model exposes signals:
-          out.voltage  -> vC (scalar timeseries)
-          out.tout     -> time vector
-        Optionally (if available):
-          out.iL       -> inductor current (A)
-        If out.iL is not available, the iL regularizer and current-based safety are skipped.
-
-      * The model must have two tunable blocks/params:
-          <model>/DutyCycleInput  (scalar value block for duty fraction 0..1)
-          <model>/Goal            (scalar value block for target voltage)
-
-      * Ensure the PWM subsystem uses the DutyCycleInput value over the full
-        interval [t, t + frame_skip*dt) so the action maps to one PWM period exactly.
-    """
 
     metadata = {"render_modes": []}
 
@@ -81,7 +74,7 @@ class BBCSimulinkEnv(gym.Env):
         *,
         dt: float = 5e-6,
         frame_skip: int = 26,            
-        max_episode_time: float = 0.52,   # for 4000 steps at 5us*26 = 0.00013s
+        max_episode_time: float = 0.52,
         grace_period_steps: int = 100,
         target_voltage: float = -80.0,
         random_target: bool = False,
@@ -93,9 +86,47 @@ class BBCSimulinkEnv(gym.Env):
         quantize_mode: str = 'round',
         voltage_noise_std: float = 0.0,
     ) -> None:
+        """Initialize a Simulink-backed buck–boost Gym environment.
+
+            Starts a MATLAB engine, creates a **unique** copy of the `.slx` model in
+            a temp directory (to isolate instances), configures timing (dt, frame
+            skip → `T_sw`), reward/scaling, safety thresholds, observation/action
+            spaces, and optional PWM quantization and plotting buffers.
+
+            Parameters
+            ----------
+            model_name : str, optional
+                Base Simulink model name (without the unique suffix). Default "bbcSim".
+            dt : float, optional
+                Fixed-step solver timestep (seconds). Default 5e-6.
+            frame_skip : int, optional
+                Number of base-steps per RL step (PWM period). Default 26.
+            max_episode_time : float, optional
+                Time limit (seconds) for truncation. Default 0.52.
+            grace_period_steps : int, optional
+                Steps before safety terminations are enforced. Default 100.
+            target_voltage : float, optional
+                Initial target voltage (volts, negative for inverting). Default -80.0.
+            random_target : bool, optional
+                If True, sample target uniformly in [target_min, target_max] at reset.
+            target_min : float, optional
+                Minimum random target (V). Default -49.0.
+            target_max : float, optional
+                Maximum random target (V). Default -28.0.
+            enable_plotting : bool, optional
+                If True, accumulate simple time/voltage/duty traces. Default False.
+            use_fast_restart : bool, optional
+                Enable Simulink Fast Restart. Default True.
+            quantize_pwm : bool, optional
+                Quantize duty to `on_steps / frame_skip`. Default False.
+            quantize_mode : {'round','floor'}, optional
+                Rounding mode for PWM quantization. Default 'round'.
+            voltage_noise_std : float, optional
+                Std-dev of zero-mean Gaussian noise added to **observed** vC. Default 0.0.
+        """
+
         super().__init__()
 
-        # --- MATLAB engine / model ---
         self.model_name = model_name
         self.dt = float(dt)
         self.frame_skip = int(frame_skip)
@@ -113,17 +144,16 @@ class BBCSimulinkEnv(gym.Env):
         self.enable_plotting = bool(enable_plotting)
         self.use_fast_restart = bool(use_fast_restart)
 
-        # Safety/scaling (aligned with np env)
-        self.I_L_MAX = 20.0  # A
+        self.I_L_MAX = 20.0 
         self._band_e = 0.02  # ±2% band around |target|
 
-        # Reward weights (aligned with np env)
+        # Reward weights
         self._lam_duty = 0.5
         self._lam_i = 0.05
         self._clip_low = -3.0
         self._clip_high = 2.0
 
-        # Target voltage for this episode (set in reset)
+        # Target voltage for this episode
         self.target_voltage = float(target_voltage)
 
         # Action/Observation spaces
@@ -143,33 +173,36 @@ class BBCSimulinkEnv(gym.Env):
         self.prev_vC: float = 0.0
         self.last_iL: Optional[float] = None
 
-       # --- Start MATLAB + unique model copy (instance-isolated) ---
         self.eng = matlab.engine.start_matlab()
 
-        # Keep the base name, then create a unique one
-        self.base_model_name = self.model_name          # e.g., "bbcSim"
+        self.base_model_name = self.model_name          
         unique_id = uuid.uuid4().hex[:8]
         self.model_name = f"{self.base_model_name}_{unique_id}"
 
-        # Copy base .slx to a temp path with the unique name
         self.model_path = os.path.join(tempfile.gettempdir(), f"{self.model_name}.slx")
         shutil.copy(f"{self.base_model_name}.slx", self.model_path)
 
-        # Load the unique copy
         self.eng.load_system(self.model_path, nargout=0)
         if self.use_fast_restart:
             self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
 
-        # Pre-create storage for simple optional plotting (off by default)
         self._times = []
         self._vcs = []
         self._duties = []
 
-    # ====== MATLAB helpers ======
     def _sim_to(self, stop_time: float) -> None:
-        """Advance model from current xFinal to the next stop_time."""
-        # Toggle FR off so we can provide/load state, then back on for speed
+        """ Advance the Simulink model from current `xFinal` to `stop_time`.
+
+            Temporarily disables Fast Restart to load/provide state, runs the model
+            with fixed-step solver and `FixedStep=dt`, saves the final state back to
+            `xFinal`, and re-enables Fast Restart if configured.
+
+            Parameters
+            ----------
+            stop_time : float
+                Absolute simulation time (seconds) to stop at.
+        """
         if self.use_fast_restart:
             self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
         self.eng.set_param(self.model_name, 'SolverType', 'Fixed-step', nargout=0)
@@ -184,64 +217,102 @@ class BBCSimulinkEnv(gym.Env):
             self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
     def _read_signal(self, name: str) -> Optional[float]:
+        """ Safely fetch a scalar signal from Simulink `out` without noisy errors.
+
+            Checks whether `out` contains the requested field before reading it.
+            Accepts scalars or arrays/timeseries-like outputs and returns the last
+            sample when applicable.
+
+            Parameters
+            ----------
+            name : str
+                Field name inside the Simulink `out` object (e.g., "voltage", "tout").
+
+            Returns
+            -------
+            float | None
+                The last scalar value if present and readable; otherwise None.
         """
-        Safely read a field from Simulink SimulationOutput 'out' without printing
-        MATLAB errors when the field is absent. Returns the last scalar value or None.
-        """
+
         try:
-            # does 'out' have this signal?
             has = bool(self.eng.eval(f"any(strcmp(who(out), '{name}'))"))
             if not has:
                 return None
 
-            # fetch it now that we know it exists
             val = self.eng.eval(f"out.{name}")
         except Exception:
             return None
 
-        # Accept scalars or numeric arrays/timeseries (take last sample)
         try:
             if isinstance(val, float):
                 return float(val)
-            # handle numeric arrays returned via MATLAB engine (cell-like)
             return float(val[-1][0])
         except Exception:
             try:
-                # sometimes engine returns 1-D arrays
                 return float(val[-1])
             except Exception:
                 return None
 
 
     def _get_vC_t_iL(self) -> Tuple[float, float, Optional[float]]:
+        """Read output voltage, time, and optional inductor current from `out`.
+
+            Returns
+            -------
+            tuple[float, float, float | None]
+                `(vC, t, iL)` where `iL` may be None if not logged.
+
+            Raises
+            ------
+            RuntimeError
+                If either `out.voltage` or `out.tout` is missing/unreadable.
+        """
+
         vC = self._read_signal("voltage")
         t = self._read_signal("tout")
-        iL = self._read_signal("iL")  # optional
+        iL = self._read_signal("iL")
         if vC is None or t is None:
-            # Provide clearer failure mode if model outputs are misnamed
             raise RuntimeError(
                 "Could not read 'out.voltage' or 'out.tout' from Simulink output.\n"
                 "Ensure your model logs these variables as 'voltage' and 'tout'."
             )
         return float(vC), float(t), (None if iL is None else float(iL))
 
-    # ====== Gym API ======
+    # Gym API
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
+        """ Reset the environment and return the initial observation/info.
+
+            Sets time and counters to zero, optionally samples a random target,
+            pushes target and duty=0 into the model, runs a tiny sim to seed
+            `xFinal`, reads initial outputs, computes initial error, clears optional
+            plot buffers, and returns the observation and telemetry info.
+
+            Parameters
+            ----------
+            seed : int | None, optional
+                Per-episode RNG seed forwarded to Gym's seeding utilities.
+            options : dict | None, optional
+                Unused placeholder for Gymnasium compatibility.
+
+            Returns
+            -------
+            tuple[np.ndarray, dict]
+                `obs` = `[vC, error, d_error=0, target]` (float32),
+                `info` includes keys like `iL`, `vC`, `mag_vC`, `e_norm`, `dduty`,
+                `in_band`, `duty_cmd`, `eff_duty`, and timing fields.
+        """
+
         super().reset(seed=seed)
         self.time = 0.0
         self.current_step = 0
         self.prev_cmd_duty = 0
         self.prev_applied_duty = 0
 
-        # Choose/Set target voltage
         if self.random_target:
-            # sample uniformly in [target_min, target_max]
             self.target_voltage = float(self.np_random.uniform(low=self.target_min, high=self.target_max))
-        # Push target into model
         self.eng.set_param(f"{self.model_name}/Goal", "Value", str(self.target_voltage), nargout=0)
         self.eng.set_param(f"{self.model_name}/DutyCycleInput", "Value", '0.0', nargout=0)
 
-        # (Re)initialize state by running a tiny sim to produce xFinal
         if self.use_fast_restart:
             self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
         self.eng.set_param(self.model_name, 'SolverType', 'Fixed-step', nargout=0)
@@ -254,7 +325,6 @@ class BBCSimulinkEnv(gym.Env):
         if self.use_fast_restart:
             self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
-        # Read initial measurement
         vC, t, iL = self._get_vC_t_iL()
         self.time = t
         noisy_vC = vC + self.np_random.normal(0.0, self.voltage_noise_std)
@@ -263,7 +333,6 @@ class BBCSimulinkEnv(gym.Env):
         self.prev_vC = vC
         self.last_iL = iL
 
-        # Clear debug traces
         if self.enable_plotting:
             self._times.clear(); self._vcs.clear(); self._duties.clear()
 
@@ -287,9 +356,31 @@ class BBCSimulinkEnv(gym.Env):
         return obs, info
 
     def step(self, action):
+        """Advance exactly one PWM period using the provided duty command.
+
+            Applies the (optionally quantized) duty for one period (`T_sw`), runs
+            the Simulink model, reads outputs, forms the observation, computes the
+            reward, evaluates safety terminations after a grace period, handles
+            time-limit truncation, and returns the standard Gym 5-tuple.
+
+            Parameters
+            ----------
+            action : array_like
+                Duty command in `[0.1, 0.9]` (scalar or (1,) array).
+
+            Returns
+            -------
+            tuple
+                `(obs, reward, terminated, truncated, info)` where:
+                - `obs` is `[vC, error, d_error, target]` (float32),
+                - `reward` is a clipped scalar,
+                - `terminated` reflects safety violations after grace,
+                - `truncated` is True when `time >= max_episode_time`,
+                - `info` contains telemetry (iL, duties, timing, etc.).
+        """
+
         duty_cmd = float(np.clip(action[0], self.action_space.low[0], self.action_space.high[0]))
 
-        # Quantize to PWM resolution like NumPy env
         if self.quantize_pwm:
             N = int(self.frame_skip)
             if self.quantize_mode.lower().startswith('f'):
@@ -307,20 +398,18 @@ class BBCSimulinkEnv(gym.Env):
         stop_time = self.time + self.T_sw
         self._sim_to(stop_time)
 
-        # Read outputs
         vC, t, iL = self._get_vC_t_iL()
         self.time = t
 
-        #observations
+        # Observations
         noisy_vC = vC + self.np_random.normal(0.0, self.voltage_noise_std)
         error = noisy_vC - self.target_voltage
         d_error = (error - self.prev_error) / self.T_sw
         obs = np.array([vC, error, d_error, self.target_voltage], dtype=np.float32)
 
-        # Reward (mirrors np env)
         reward = self._calculate_reward(duty=eff_duty, vC=vC, iL=iL)
 
-        # Termination / truncation
+        # Termination
         terminated = False
         truncated = False
         self.current_step += 1
@@ -338,7 +427,6 @@ class BBCSimulinkEnv(gym.Env):
         if not terminated and self.time >= self.max_episode_time:
             truncated = True
 
-        # Telemetry
         info = {
             "iL": (None if iL is None else float(iL)),
             "vC": float(vC),
@@ -357,7 +445,6 @@ class BBCSimulinkEnv(gym.Env):
             "T_sw": float(self.T_sw),
         }
 
-        # Bookkeeping + optional plotting
         self.prev_error = error
         self.prev_vC = vC
         self.last_iL = iL
@@ -372,7 +459,30 @@ class BBCSimulinkEnv(gym.Env):
         return obs, float(reward), terminated, truncated, info
 
     def _calculate_reward(self, duty: float, vC: float, iL: Optional[float]) -> float:
-        # --- sign-aware, NumPy-parity reward ---
+        """ Compute the scalar reward (NumPy-parity, sign-aware formulation).
+
+            Reward components:
+            - Tracking: `exp(-5 * e_norm^2)` with `e_norm = |vC - vref| / |vref|`
+            - Progress: `+ 0.1 * clip(prev_e_norm - e_norm, -1, 1)`
+            - Band bonus: `+0.1` if `e_norm <= 0.02`
+            - Smoothness penalty: `-0.5 * exp(-6 * e_norm) * (Δduty)^2`
+            The result is clipped to [-5.0, 2.0].
+
+            Parameters
+            ----------
+            duty : float
+                Effective duty applied this step (after quantization).
+            vC : float
+                Measured output capacitor voltage (V).
+            iL : float | None
+                Inductor current (unused here but kept for parity/extensibility).
+
+            Returns
+            -------
+            float
+                Reward value after clipping.
+        """
+
         vref = float(self.target_voltage)
         e_norm = abs(vC - vref) / max(abs(vref), 1e-9)
 
@@ -392,9 +502,15 @@ class BBCSimulinkEnv(gym.Env):
         return float(np.clip(r, -5.0, 2.0))
 
 
-    # ====== Close ======
     def close(self):
-        # Try to close the model cleanly
+        """ Shut down MATLAB and clean up the unique model copy and caches.
+
+            Attempts to disable Fast Restart, close the loaded system, quit the
+            MATLAB engine, delete the temporary `.slx` copy, remove `slprj/<model>`
+            artifacts, and clean associated autosave/`.slxc` files. Errors are
+            suppressed to make teardown robust.
+        """
+
         try:
             if self.use_fast_restart:
                 self.eng.set_param(self.model_name, "FastRestart", "off", nargout=0)
@@ -406,7 +522,6 @@ class BBCSimulinkEnv(gym.Env):
         except Exception:
             pass
 
-        # --- Cleanup unique copy & caches ---
         try:
             if hasattr(self, "model_path") and os.path.exists(self.model_path):
                 os.remove(self.model_path)
