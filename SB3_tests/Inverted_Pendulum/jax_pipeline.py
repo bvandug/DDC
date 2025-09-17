@@ -18,11 +18,11 @@ def run(cmd, cwd=None):
     subprocess.run(cmd, cwd=cwd, check=True)
 
 if __name__ == "__main__":
-    # # 2) Run trainings inside ip_jax/
-    # for algo in ALGOS:
-    #     run([sys.executable, TRAIN_SCRIPT,
-    #          "--algo", algo, "--timesteps", str(TIMESTEPS)],
-    #         cwd=TRAIN_DIR)
+    # 2) Run trainings inside ip_jax/
+    for algo in ALGOS:
+        run([sys.executable, TRAIN_SCRIPT,
+             "--algo", algo, "--timesteps", str(TIMESTEPS)],
+            cwd=TRAIN_DIR)
 
     for nl in NOISE_LEVELS:
         for algo in ALGOS:

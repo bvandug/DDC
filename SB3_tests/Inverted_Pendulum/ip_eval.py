@@ -1,3 +1,11 @@
+"""Evaluation script for trained RL controllers on Simulink pendulum.
+
+Loads saved models, runs evaluation episodes in the Simulink
+environment, computes detailed performance metrics (stabilisation
+time, steady-state error, overshoot, IAE, control energy), and
+saves per-episode plots and summary statistics.
+"""
+
 import os
 import argparse
 import numpy as np
@@ -6,25 +14,26 @@ from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO, DQN
 import matplotlib.pyplot as plt
 import control as ctrl
 
-def signed_over_from_stepinfo(theta_deg: np.ndarray,
-                              t: np.ndarray,
-                              setpoint_deg: float,
-                              debug: bool = False,
-                              exclude_initial_s: float = 0.10) -> tuple[dict, dict]:
-    """
-    Return:
-      (step_info_dict,
-       {
-         'pos_over_setpoint': float,   # max e(t) above 0
-         'neg_under_setpoint': float,  # min e(t) below 0
-         'signed_over_setpoint': float,# Magnitude of the initial swing, where
-                                      # + indicates an overshoot (crossing) and
-                                      # - indicates an undershoot (no crossing)
-         'pos_over_final': float,      # overshoot above final value (>=0)
-         'neg_under_final': float,     # undershoot below final value (<=0)
-         'signed_over_final': float,   # larger-magnitude wrt final (with sign)
-         'y_ss': float                 # estimated final value (deg)
-       })
+def signed_over_from_stepinfo(theta_deg: np.ndarray, t: np.ndarray, setpoint_deg: float, debug: bool = False, exclude_initial_s: float = 0.10) -> tuple[dict, dict]:
+    """Compute signed overshoot/undershoot and related step metrics.
+
+        Determines whether the trajectory crosses the setpoint (overshoot)
+        or fails to reach it (undershoot), extracts the first peak or dip,
+        and computes additional metrics relative to setpoint and steady-state.
+
+        Args:
+            theta_deg (np.ndarray): Angle trajectory in degrees.
+            t (np.ndarray): Time vector.
+            setpoint_deg (float): Desired setpoint in degrees.
+            debug (bool): If True, prints intermediate calculations.
+            exclude_initial_s (float): Reserved; time to ignore at start.
+
+        Returns:
+            tuple:
+                - step_info (dict): Step-response info from control.step_info().
+                - metrics (dict): Dictionary with keys:
+                    pos_over_setpoint, neg_under_setpoint, signed_over_setpoint,
+                    pos_over_final, neg_under_final, signed_over_final, y_ss.
     """
     t = np.asarray(t, dtype=float)
     y = np.asarray(theta_deg, dtype=float)
@@ -140,24 +149,29 @@ def evaluate_full_metrics(
     output_dir="plots",
     base_seed = 42,
 ):
-    """
-    Evaluate a control model over multiple episodes and generate metrics, plots, and logs.
+    """Evaluate a trained model over multiple episodes and log metrics.
+
+    Runs `n_episodes` episodes, collects time-series data, computes
+    stabilisation time (with dwell requirement), steady-state metrics,
+    overshoot, IAE, control energy, and produces optional plots.
 
     Args:
-        model: Trained control policy.
-        env: Simulation environment.
-        n_episodes: Number of episodes to run.
-        target_value: Desired upright angle (radians).
-        tolerance: Threshold for stability (radians).
-        stable_duration: Not used but reserved for future.
-        sim_timestep: Simulation time step (s).
-        live_plot: If True, shows real-time plots.
-        save_plots: If True, saves episode and summary plots and logs.
-        output_dir: Directory to save outputs.
+        model: Trained Stable-Baselines3 model.
+        env: Simulation environment instance.
+        n_episodes (int): Number of episodes to evaluate.
+        target_value (float): Target state (rad) for stabilisation.
+        tolerance (float): Angular tolerance (rad) for stability.
+        stable_duration (float): Dwell time to confirm stability.
+        sim_timestep (float): Time step used by simulator.
+        live_plot (bool): If True, update plots during episodes.
+        save_plots (bool): If True, save per-episode and summary plots.
+        output_dir (str): Directory to store plots and logs.
+        base_seed (int): Starting seed for reproducibility.
 
     Returns:
-        Metrics dict: rewards, stabilisation_times, steady_state_errors,
-        overshoots, total_stable_times, percent_of_max.
+        dict: Aggregated metrics including rewards, stabilisation_times,
+        steady_state_errors (MAE), overshoots, total_stable_times,
+        percent_of_max, steady_rmse, steady_max, osc_std, iae, u_energy.
     """
     if save_plots:
         os.makedirs(output_dir, exist_ok=True)
@@ -181,7 +195,7 @@ def evaluate_full_metrics(
 
     for ep in range(n_episodes):
 
-        # >>> CHANGED: seed via reset(seed=...) and handle Gym/Gymnasium return
+        # seed via reset(seed=...) and handle Gym/Gymnasium return
         seed_val = int(base_seed + ep) if base_seed is not None else None
         if seed_val is not None:
             try:
@@ -260,7 +274,7 @@ def evaluate_full_metrics(
                 axs_live[3].set_title(f"Angle: {theta_deg:.1f}°")
                 plt.pause(0.001)
 
-            # CHANGED: New stabilization logic with dwell requirement
+            # New stabilization logic with dwell requirement
             err = abs(theta - target_value)
             if err < tolerance:
                 total_stable += sim_timestep
@@ -277,17 +291,17 @@ def evaluate_full_metrics(
             plt.ioff()
             plt.close(fig_live)
 
-        # CHANGED: Stabilization time based on dwell requirement
+        # Stabilization time based on dwell requirement
         stab_time = t_vals[stabilised_idx] if stabilised_idx is not None else t
 
-        # CHANGED: Adaptive steady-state window selection
+        # Adaptive steady-state window selection
         tail_len = max(20, int(0.15 * len(episode_thetas)))  # At least 20 samples or 15% of run
         if stabilised_idx is not None:
             ss_start_idx = stabilised_idx  # From stabilization point
         else:
             ss_start_idx = max(0, len(episode_thetas) - tail_len)  # Fallback to tail
         
-        # CHANGED: Compute new steady-state metrics
+        # Compute new steady-state metrics
         ss_thetas = np.array(episode_thetas[ss_start_idx:])
         ss_err_deg = ss_thetas - np.degrees(target_value)
         steady_offset = np.mean(ss_err_deg)
@@ -296,7 +310,7 @@ def evaluate_full_metrics(
         steady_max = float(np.max(np.abs(ss_err_deg)))
         osc_std = float(np.std(ss_thetas))
 
-        # CHANGED: Overall performance metrics
+        # Overall performance metrics
         all_e_deg = np.array(episode_thetas) - np.degrees(target_value)
         iae = float(np.trapz(np.abs(all_e_deg), t_vals))
         u_energy = float(np.sum(np.square(episode_us)) * sim_timestep)
@@ -308,7 +322,7 @@ def evaluate_full_metrics(
         S, over_dict = signed_over_from_stepinfo(theta_arr, t_arr, setpoint_deg)
         over = over_dict['signed_over_setpoint']
 
-        # CHANGED: Append all metrics (including new ones)
+        # Append all metrics (including new ones)
         all_rewards.append(ep_reward)
         stabilisation_times.append(stab_time)
         steady_offset_list.append(steady_offset)
@@ -325,7 +339,7 @@ def evaluate_full_metrics(
         iae_list.append(iae)
         u_energy_list.append(u_energy)
 
-        # CHANGED: Updated logging with new metrics
+        # Updated logging with new metrics
         lines = [
             f"Episode {ep+1}:",
             f"  Total reward                : {ep_reward:.2f}",
@@ -465,6 +479,17 @@ def evaluate_full_metrics(
 ALGOS = {"DQN": DQN, "DDPG": DDPG, "PPO": PPO, "A2C": A2C, "SAC": SAC, "TD3": TD3}
 
 def infer_algo_from_name(folder_name: str) -> str | None:
+    """Infer algorithm key from a folder name.
+
+    Checks whether one of the known algorithm identifiers (DQN, TD3, etc.)
+    appears in the folder name and returns the match.
+
+    Args:
+        folder_name (str): Name of the folder to inspect.
+
+    Returns:
+        str | None: Matching algorithm key or None if not found.
+    """
     u = folder_name.upper()
     for k in ALGOS.keys():
         if k in u:
@@ -472,6 +497,12 @@ def infer_algo_from_name(folder_name: str) -> str | None:
     return None
 
 if __name__ == "__main__":
+    """CLI entry point.
+
+    Parses command-line arguments, discovers available trained models
+    under the root folder, filters by algorithm and name substring,
+    evaluates each model, and saves results to `plots/` directory.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo", required=True,  # e.g., dqn, ddpg, ppo, a2c, sac, td3, or all
                         help="Algorithm to eval (dqn, ddpg, ppo, a2c, sac, td3, or all)")

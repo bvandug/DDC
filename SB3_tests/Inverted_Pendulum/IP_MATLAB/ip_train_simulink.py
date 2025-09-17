@@ -1,3 +1,10 @@
+"""Training script for Simulink-based inverted pendulum environment.
+
+Uses Stable-Baselines3 algorithms (TD3, SAC, DDPG, PPO, A2C, DQN)
+to train directly against the Simulink model via MATLAB engine.
+Includes TensorBoard logging, checkpointing, and replay buffer saving.
+"""
+
 import os
 import json
 import argparse
@@ -27,6 +34,25 @@ OFF_POLICY_ALGOS = ["td3", "sac", "ddpg"]
 
 # === Custom Callback ===
 class FancyTensorboardCallback(BaseCallback):
+    """
+    Custom callback for logging and checkpointing during training.
+
+    At specified timesteps, saves model weights and replay buffer (if
+    available), logs reward/episode length to TensorBoard, and tracks
+    elapsed time between checkpoints.
+
+    Args:
+        save_steps (Iterable[int]): Timesteps at which to checkpoint.
+        save_path_prefix (str): Path prefix for saved models.
+        log_dir (str): TensorBoard logging directory.
+        verbose (int): Verbosity level for BaseCallback.
+
+    Attributes:
+        saved_steps (set): Timesteps already checkpointed.
+        timings (dict): Maps checkpoints to duration (seconds).
+        writer (SummaryWriter): TensorBoard summary writer.
+    """
+
     def __init__(self, save_steps, save_path_prefix, log_dir, verbose=0):
         super().__init__(verbose)
         self.save_steps = sorted(save_steps)
@@ -38,6 +64,7 @@ class FancyTensorboardCallback(BaseCallback):
         self.pbar = None
 
     def _on_training_start(self) -> None:
+        """Initialize progress bar, timers, and bookkeeping at training start."""
         self.start_time = time.time()
         self.last_check_time = self.start_time
         self.total_timesteps = self.model._total_timesteps
@@ -46,6 +73,16 @@ class FancyTensorboardCallback(BaseCallback):
         )
 
     def _on_step(self) -> bool:
+        """
+        Handle logic at each training step.
+
+        Performs checkpoint saving when a save step is reached,
+        logs episode rewards/lengths, and updates timing metrics.
+
+        Returns:
+            bool: True to continue training.
+        """
+
         current_time = time.time()
         self.pbar.update(1)
 
@@ -70,7 +107,7 @@ class FancyTensorboardCallback(BaseCallback):
             self.timings[self.num_timesteps] = duration
             self.last_check_time = current_time
 
-            print(f"\n📌 Checkpoint at {self.num_timesteps} steps:")
+            print(f"\n Checkpoint at {self.num_timesteps} steps:")
             print(f"    - Model: {model_file}")
             print(f"    - Replay buffer: {buffer_file}")
             print(f"    - Elapsed: {duration:.2f} sec")
@@ -90,9 +127,10 @@ class FancyTensorboardCallback(BaseCallback):
         return True
 
     def _on_training_end(self):
+        """Close progress bar, summarize training times, and flush logs."""
         total_time = time.time() - self.start_time
         self.pbar.close()
-        print("\n🕒 Training Time Summary:")
+        print("\n Training Time Summary:")
         for step in self.save_steps:
             if step in self.timings:
                 print(f"    {step} steps: {self.timings[step]:.2f} sec")
@@ -103,6 +141,18 @@ class FancyTensorboardCallback(BaseCallback):
 
 # === Load Parameters ===
 def load_hyperparameters(algo_name):
+    """
+    Load tuned hyperparameters for given algorithm from JSON.
+
+    Handles PPO special case where batch size may be stored as an index.
+
+    Args:
+        algo_name (str): Algorithm key ("ppo", "td3", etc.).
+
+    Returns:
+        dict: Dictionary of hyperparameters for SB3 model.
+    """
+
     path = f"ip_jax/jax_hp_results/{algo_name}_best_params.json"
     with open(path, "r") as f:
         params = json.load(f)["best_params"]
@@ -118,6 +168,16 @@ def load_hyperparameters(algo_name):
 
 
 def create_policy_kwargs(params):
+    """
+    Build SB3 policy_kwargs dictionary from hyperparameters.
+
+    Args:
+        params (dict): Hyperparameter dictionary (layer_size, n_layers, etc.).
+
+    Returns:
+        dict: policy_kwargs for SB3 algorithms.
+    """
+
     return dict(
         net_arch=[params["layer_size"]] * params["n_layers"],
         activation_fn=activation_fn_map[params["activation_fn"].lower()],
@@ -126,6 +186,18 @@ def create_policy_kwargs(params):
 
 # === Main ===
 def main(algo_name="td3", timesteps=100000):
+    """
+    Train a selected algorithm on the Simulink pendulum environment.
+
+    Creates a fresh Simulink model instance, optionally wraps it for
+    discrete actions (DQN), loads hyperparameters, builds model (or
+    loads from checkpoint), trains for timesteps, and saves model and
+    replay buffer if applicable.
+
+    Args:
+        algo_name (str): Algorithm name ("td3", "ppo", "dqn", etc.).
+        timesteps (int): Total training timesteps to run.
+    """
 
     # create the raw Simulink env
     base_env = SimulinkEnv(model_name="pendulum", dt=0.01, seed=42)
@@ -147,8 +219,8 @@ def main(algo_name="td3", timesteps=100000):
     replay_buffer_path = os.path.join(model_base_dir, "best_model_replay_buffer")
     tensorboard_log_dir = os.path.join("logs", algo_name)
 
-    print(f"📁 Saving models to: {model_base_dir}")
-    print(f"📊 TensorBoard logs to: {tensorboard_log_dir}")
+    print(f"Saving models to: {model_base_dir}")
+    print(f"TensorBoard logs to: {tensorboard_log_dir}")
 
     # env = SimulinkEnv(model_name="PendCart", agent_block="PendCart/RL Agent", dt=0.01)
     params = load_hyperparameters(algo_name)
@@ -263,7 +335,7 @@ def main(algo_name="td3", timesteps=100000):
         log_dir=tensorboard_log_dir,
     )
 
-    print(f"🚀 Training {algo_name.upper()} for {timesteps} timesteps...")
+    print(f"Training {algo_name.upper()} for {timesteps} timesteps...")
     model.learn(
         total_timesteps=timesteps,
         reset_num_timesteps=False,
@@ -272,18 +344,25 @@ def main(algo_name="td3", timesteps=100000):
     )
 
     model.save(model_path)
-    print(f"✅ Final model saved to {model_path}.zip")
+    print(f"Final model saved to {model_path}.zip")
 
     if algo_name in OFF_POLICY_ALGOS:
         model.save_replay_buffer(replay_buffer_path)
-        print(f"✅ Final replay buffer saved to {replay_buffer_path}.pkl")
+        print(f"Final replay buffer saved to {replay_buffer_path}.pkl")
 
     env.close()
-    print("🏁 Training complete. Environment closed.")
+    print("Training complete. Environment closed.")
 
 
 # === CLI Entry ===
 if __name__ == "__main__":
+    """
+    CLI entry point.
+
+    Parses command-line arguments for algorithm and timesteps, then
+    launches training using `main()`.
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--algo", choices=["td3", "a2c", "sac", "ddpg", "ppo", "dqn"], default="ppo"

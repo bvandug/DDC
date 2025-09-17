@@ -1,3 +1,11 @@
+"""Hyperparameter tuning for JAX-based inverted pendulum using Optuna.
+
+Supports multiple RL algorithms (PPO, A2C, TD3, DDPG, SAC, DQN).
+Performs parallel hyperparameter search with early stopping,
+checkpoint logging, and evaluation-based pruning.
+"""
+
+
 import optuna
 import sys
 import numpy as np
@@ -21,17 +29,50 @@ MIN_EARLY_STOPPING_RATE = 0
 os.makedirs(TB_ROOT, exist_ok=True)
 
 def set_global_seeds(seed: int = 42):
+    """Set random seeds for NumPy, Python, and Torch.
+
+    Args:
+        seed (int): Random seed for reproducibility (default=42).
+    """
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
 
 def make_env(algo_name):
+    """Create and return a monitored DummyVecEnv for the chosen algorithm.
+
+    Wraps `InvertedPendulumGymWrapper` in a Monitor and DummyVecEnv,
+    and uses DiscretizedActionWrapper for DQN to make actions discrete.
+
+    Args:
+        algo_name (str): Algorithm name (e.g., "ppo", "dqn").
+
+    Returns:
+        DummyVecEnv: Vectorized environment ready for SB3.
+    """
     base = InvertedPendulumGymWrapper(seed=42)
     if algo_name == "dqn":
         return DummyVecEnv([lambda: Monitor(DiscretizedActionWrapper(base, [-2.0, 0.0, 2.0]))])
     return DummyVecEnv([lambda: Monitor(base)])
 
 def objective(trial, algo_name):
+    """Optuna objective function for hyperparameter tuning.
+
+    Samples hyperparameters from the trial, constructs the model,
+    trains for fixed intervals, evaluates performance, and prunes
+    underperforming trials.
+
+    Args:
+        trial (optuna.Trial): Optuna trial object to suggest parameters.
+        algo_name (str): Algorithm name ("ppo", "td3", etc.).
+
+    Returns:
+        float: Mean reward of top-performing episodes (objective value).
+
+    Raises:
+        optuna.TrialPruned: If performance is below hard threshold
+            or Optuna decides to prune the trial.
+    """
     set_global_seeds(42)
     
     env = make_env(algo_name)
@@ -157,6 +198,21 @@ def objective(trial, algo_name):
     return top_k_avg
 
 def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
+    """Run Optuna hyperparameter search for a single algorithm.
+
+    Creates or loads a persistent SQLite-backed Optuna study,
+    runs `n_trials` in parallel, logs progress to the terminal,
+    and saves the best hyperparameters to JSON.
+
+    Args:
+        algo_name (str): Algorithm to tune.
+        n_trials (int): Number of trials to run (default=50).
+        n_parallel (int): Number of parallel jobs (default=4).
+
+    Returns:
+        dict: Best hyperparameters found by Optuna.
+    """
+
     print(f"Tuning {algo_name.upper()} on JAX env with SB3...")
     storage_path = f"sqlite:///ip_jax_optuna_{algo_name}.db"
     study = optuna.create_study(direction="maximize",
@@ -190,5 +246,11 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
     return study.best_params
 
 if __name__ == "__main__":
-    for algo in [  "sac", "dqn", "a2c"]:
+    """CLI entry point.
+
+    Tunes a fixed list of algorithms (SAC, DQN, A2C) sequentially
+    and writes their best hyperparameters to disk.
+    """
+
+    for algo in [  "sac", "dqn", "a2c"]: #enter the algo names you want to tune here #["ppo", "td3", "ddpg", "sac", "dqn", "a2c"]
         tune_hyperparameters(algo)

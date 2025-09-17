@@ -1,3 +1,10 @@
+"""Gymnasium environment for running a Simulink-based pendulum model.
+
+Spawns a dedicated MATLAB engine, creates a unique model copy for
+isolation, steps the simulation in sync with Gymnasium, and supports
+seeded reproducibility and optional observation noise.
+"""
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -8,12 +15,21 @@ import shutil
 import tempfile
 import uuid
 import os
-
+import shutil
 # >>> ADDED FOR DQN --------------------------------------------------------------
 class DiscretizedActionWrapper(gym.ActionWrapper):
-    """
-    Wraps a continuous-action env so a discrete index is mapped to a pre-defined
-    force value.  Suitable for running SB3-DQN on SimulinkEnv.
+    """Map discrete action indices to predefined continuous force values.
+
+    Intended for training DQN on a continuous-force Simulink model
+    by converting discrete indices to a small set of torque/force levels.
+
+    Args:
+        env (gym.Env): Environment to wrap.
+        force_values (array-like): Discrete force values to allow.
+
+    Attributes:
+        force_values (np.ndarray): Allowed force levels.
+        action_space (spaces.Discrete): Discrete action space [0..n-1].
     """
 
     def __init__(self, env, force_values):
@@ -22,12 +38,32 @@ class DiscretizedActionWrapper(gym.ActionWrapper):
         self.action_space = spaces.Discrete(len(self.force_values))
 
     def action(self, act_idx):
-        """Convert the integer chosen by DQN into the continuous force."""
+        """Convert a discrete index into a 1D array containing the force value.
+
+        Args:
+            act_idx (int): Index of the chosen discrete action.
+
+        Returns:
+            np.ndarray: Continuous force array with shape (1,).
+        """
         return np.array([self.force_values[int(act_idx)]], dtype=np.float32)
 # ------------------------------------------------------------------------------
 
 
 class SimulinkEnv(gym.Env):
+    """Custom Gymnasium environment backed by a Simulink model.
+
+    Creates a unique copy of the Simulink `.slx` file, runs in FastRestart
+    mode for speed, and interacts with MATLAB engine calls for state I/O.
+
+    Args:
+        model_name (str): Base name of Simulink model (without extension).
+        dt (float): Simulation time step in seconds.
+        max_episode_time (float): Episode time limit (s).
+        angle_threshold (float): Termination angle threshold (rad).
+        seed (int, optional): Seed for RNG initialization.
+        eval_obs_noise_std (float): Std. dev. of Gaussian observation noise.
+    """
     metadata = {"render_modes": []}
 
     def __init__(
@@ -46,11 +82,11 @@ class SimulinkEnv(gym.Env):
         self.obs_noise_std = float(eval_obs_noise_std)        # NEW
         self.np_rng = np.random.RandomState(int(seed or 0))   # NEW: RNG for noise
 
-        # 🔄 Instance-specific MATLAB engine
+        # Instance-specific MATLAB engine
         print("Starting MATLAB engine...")
         self.eng = matlab.engine.start_matlab("-nodesktop -licmode onlinelicensing")
 
-        # 🆕 Create a unique copy of the model file
+        # Create a unique copy of the model file
         unique_id = uuid.uuid4().hex[:8]
         self.model_name = f"{model_name}_{unique_id}"
         self.model_path = os.path.join(tempfile.gettempdir(), f"{self.model_name}.slx")
@@ -92,7 +128,11 @@ class SimulinkEnv(gym.Env):
         )
 
     def get_data(self):
-        # pull _both_ angle and true angular velocity out of Simulink
+        """Retrieve latest angle, angular velocity, and time from Simulink.
+
+        Returns:
+            tuple[list, list, list]: (angles, velocities, times) as Python lists.
+        """
         raw_ang = self.eng.eval("out.angle", nargout=1)
         raw_vel = self.eng.eval("out.angle_v", nargout=1)
         raw_time = self.eng.eval("out.tout", nargout=1)
@@ -108,6 +148,19 @@ class SimulinkEnv(gym.Env):
         return angle_lst, vel_lst, time_lst
 
     def reset(self, *, seed=None, options=None):
+        """Reset the Simulink model to a fresh initial state.
+
+        Stops the simulation, clears saved states, samples a new random
+        initial angle (with small-offset logic), performs a short simulation
+        to warm up, and re-enables FastRestart.
+
+        Args:
+            seed (int, optional): Seed for reproducibility.
+            options (dict, optional): Reserved for API compliance.
+
+        Returns:
+            tuple[np.ndarray, dict]: Observation array and info dict with time.
+        """
         self.current_time = 0.0
         # Gymnasium: reseed RNGs if a seed is provided
         if seed is not None:
@@ -172,6 +225,22 @@ class SimulinkEnv(gym.Env):
 
 
     def step(self, action):
+        """Advance the Simulink model by one time step.
+
+        Applies the given torque/force to the model, steps the simulation,
+        reads out new state values, and returns observation, reward, and
+        termination information.
+
+        Args:
+            action (array-like): Torque or force to apply.
+
+        Returns:
+            tuple:
+                - obs (np.ndarray): [theta, theta_dot] state vector.
+                - reward (float): Cosine-based reward encouraging upright pose.
+                - done (bool): True if episode ended (angle/time exceeded).
+                - info (dict): Contains current simulation time.
+        """
         torque = float(np.clip(action, self.action_space.low, self.action_space.high))
         # and then send `torque` to the Constant block:
         self.eng.set_param(
@@ -210,13 +279,15 @@ class SimulinkEnv(gym.Env):
 
 
     def render(self, mode="human"):
+        """Render the environment (currently not implemented)."""
         pass
 
     def close(self):
-        import os
-        import shutil
-        import glob
+        """Shut down MATLAB engine and clean up temporary files.
 
+        Stops the Simulink engine session, deletes the temporary model copy,
+        and removes cached build folders and autosave files.
+        """
         self.eng.quit()
 
         # Clean up temporary model file
