@@ -1,10 +1,7 @@
 # Evaluating DRL for control systems
-
-This project builds on another comparing the performance of data-driven control methods, Q-Learning and NEAT, with one another, as well as traditional PID control.
-
 The project focuses on evaluating:
--The Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on control systems.
--Creating simulation environments that will train SB3 models faster but with similar fidelity
+- The Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on control systems.
+- Creating simulation environments that will train SB3 models faster but with similar fidelity
 
 ## Authors
 **Benjamin Ruijsch van Dugteren**<br>
@@ -21,9 +18,14 @@ The project focuses on evaluating:
 *WLLNAT033@myuct.ac.za*
 ___
 
+# Full code base:
+- The full code base is available at: https://github.com/bvandug/DDC
+- This includes tuned models, evals, databases and tuning and hyperparameter logs.
+
 # Structure for DRL Methods Explained
 
-To explore the current DRL work, browse the `SB3_tests` folder in this repository. The PID benchmark work is done in PID.
+To explore the current DRL work, browse the `SB3_tests` folder in this repository. 
+The PID benchmark work is done in `SB3_tests`.
 
 ## Systems Included
 
