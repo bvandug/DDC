@@ -1,7 +1,7 @@
 # Evaluating DRL for control systems
 The project focuses on evaluating:
-- The Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on various control systems.
-- Creating simulation environments that will train SB3 models faster but with similar fidelity
+- The Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on various control systems against a PID baseline.
+- Creating simulation environments that will train SB3 models faster but with similar fidelity.
 
 ## Authors
 **Benjamin Ruijsch van Dugteren**<br>
@@ -18,22 +18,20 @@ The project focuses on evaluating:
 *WLLNAT033@myuct.ac.za*
 ___
 
+# Project Allocation:
+- **Nathan Wells**:
+- **Ben Ruijsch Van Dugteren**:
+- **Nicholas Cristaudo**:
+
+
 # Full code base:
 - The full code base is available at: https://github.com/bvandug/DDC
-- This includes tuned models, evals, databases and tuning and hyperparameter logs.
+- This includes tuned models, evaluations, databases and tuning and hyperparameter logs.
 
 # Structure for DRL Methods Explained
 
 To explore the current DRL work, browse the `SB3_tests` folder in this repository. 
 The PID benchmark work is done in `PID`.
-
-## Systems Included
-
-- **BC**: Buck Converter  
-- **BBC**: Buck-Boost Converter  
-- **Inverted Pendulum**
-- **Cartpole**
-
 
 ## Table of Contents
 - [Systems Included](#systems-included)
@@ -44,8 +42,14 @@ The PID benchmark work is done in `PID`.
 - [Running Cart-Pole](#running-cart-pole)
 - [Running the Buck Converter](#running-the-buck-converter)
 - [Running the Buck-boost Converter](#running-the-buck-boost-converter)
-- [Running the Simulation](#running-the-simulation)
 - [Acknowledgements](#acknowledgements)
+
+## Systems Included
+
+- **BC**: Buck Converter  
+- **BBC**: Buck-Boost Converter  
+- **Inverted Pendulum**
+- **Cartpole**
 
 ## Repository Layout
 - `README.md`: Project overview, usage instructions, and workflow summaries.
@@ -103,12 +107,12 @@ PID controllers are optional; you can skip the `PID/` workflows when you only ne
 ### Running the Inverted Pendulum
 
 **Available Environments**
-- `ip_jax/`: JAX environment used for the Optuna sweeps and the experimental results reported in the project.
+- `ip_jax/`: JAX environment used for the Optuna sweeps and the training of the models used in the project.
 - `IP_NUMPY/`: Lightweight NumPy/Gym wrapper mirroring the JAX dynamics for quick local validation.
 - `IP_MATLAB/` + `pendulum.slx`: MATLAB/Simulink plant for high-fidelity tests and PID benchmarking.
 - `PID/`: Classical controller baselines that can be compared against the DRL agents.
 
-You can train and evaluate agents in any of these environments; the published benchmarks rely on the JAX runs while the MATLAB and NumPy variants are available for replication and cross-checks.
+You can train and evaluate agents in any of these environments; the results of the DRL models were trained in JAX/NumPy and evaluated in MATLAB.
 
 **Workflow: JAX (reported results)**
 1. (Optional) `python ip_jax_hp.py` reruns the Optuna sweeps and refreshes `ip_jax/jax_hp_results/`.
@@ -154,31 +158,27 @@ Each stack can be executed independently; the documented results use the JAX wor
 
 ### Running the Buck Converter
 
-#### Running PID
-- The PID baselines in `PID/` are optional and only needed when you want classical control comparisons.
-
-#### Running DRL
 **Available Environments**
-- `SB3_tests/BC/BCPythonEnv.py`: NumPy-based Gym wrapper used by the Python training scripts for quick experimentation.
-- `SB3_tests/BC/BCSimulinkEnv.py` + `bcSim.slx`: MATLAB/Simulink environment that underpins the results reported in the dissertation.
+- `SB3_tests/BC/BCPythonEnv.py`: NumPy-based Gym wrapper used by the Python training scripts to train the models because of the MATLAB overhead.
+- `SB3_tests/BC/BCSimulinkEnv.py` + `bcSim.slx`: MATLAB/Simulink environment used for the results reported in the project.
 - `PID/`: Shared PID baselines for side-by-side comparisons with the DRL controllers.
 
-The published buck-converter performance metrics were generated with the Simulink pipeline; the NumPy scripts are provided for rapid iteration and ablation studies.
+The published buck-converter performance metrics were generated with the Simulink evaluation; the NumPy scripts were used to train the models.
 
 **Workflow: Python (NumPy)**
 1. (Optional) `python hyperparameter_tuning.py` reruns the Optuna study and refreshes the JSON files stored next to each model folder.
-2. `python BCPythonTrain.py` traverses the `MODELS_TO_TRAIN` and `NOISE_LEVELS` lists in its `__main__` block, writing checkpoints to `models/<algo>/Seed_<seed>_Noise_<noise>/` and logging to `PY_BC_Results/<algo>/`.
-3. Evaluate the NumPy-trained agents with `python BCPythonEval.py`, which recreates the plots and metrics for every noise setting.
+2. `python BCPythonTrain.py` traverses the `MODELS_TO_TRAIN` and `NOISE_LEVELS` lists in its `__main__` block, writing the model zips to `models/<algo>/Seed_<seed>_Noise_<noise>/` and logging to `PY_BC_Results/<algo>/` when evaluated.
+3. Evaluate the NumPy-trained agents with `python BCPythonEval.py`, which creates the plots and metrics for every noise setting.
 
 **Workflow: MATLAB/Simulink (reported results)**
 1. `python BCSimulinkTrain.py` loads the same hyperparameter files and trains each algorithm against `bcSim.slx`, saving outputs to `SIM_BC_Results/<algo>/` along with replay buffers.
-2. Assess those controllers using `python BCSimulinkEval.py`, which replays the Simulink plant and exports comparison plots.
+2. Assess those controllers using `python BCSimulinkEval.py`, which replays the Simulink plant and exports comparison plots, saving the outputs to `SIM_BC_Results/<algo>/`.
 
 **Workflow: PID benchmark**
-- Run `python PID/PIDMainBC.py` or open `PID/bcSimPID.slx` in MATLAB to recover the classical buck baseline.
+- Run `python PID/PIDMainBC.py` to retrieve the results of PID for the buck converter.
 
 **Logs and Artifacts**
-- `SB3_tests/BC/models/<algo>/Seed_<seed>_Noise_<noise>/` contains intermediate checkpoints, `final_model.zip`, and the `hyperparameters.json` used for each run.
+- `SB3_tests/BC/models/<algo>/Seed_<seed>_Noise_<noise>/` contains `final_model.zip`, and the `hyperparameters.json` used for each run on different noise levels.
 - `SB3_tests/BC/PY_BC_Results/<algo>/` stores training logs, evaluation plots, and TensorBoard traces emitted by `BCPythonTrain.py` and `BCPythonEval.py`.
 - `SB3_tests/BC/buck_converter_tuning_logs/<algo>/` captures Optuna TensorBoard output from `hyperparameter_tuning.py`.
 - SQLite studies named `<algo>-bc-tuning-seed42.db` are written beside the tuning script to support resuming Optuna sweeps.
