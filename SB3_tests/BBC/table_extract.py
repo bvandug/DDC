@@ -1,7 +1,11 @@
 
-# Scans the 'eval_simulink_runs' directory for all 'summary_metrics.json' files,
-# consolidates the data, and outputs a summary table and an Excel report.
-# Additionally computes a "Real Overshoot (V)" column from the per-episode CSVs.
+"""Aggregate evaluation metrics from multiple Simulink runs.
+
+Scans the `eval_simulink_runs` directory for `summary_metrics.json`
+files, extracts and infers algorithm/run metadata, computes a
+"Real Overshoot (V)" column from trajectory CSVs, prints a summary
+table, and writes a multi-sheet Excel report.
+"""
 
 import os
 import json
@@ -15,24 +19,19 @@ ROOT_DIR = Path("eval_simulink_runs")            # The root folder to scan for e
 OUTPUT_EXCEL_FILE = Path("bbc_summary_metrics.xlsx")
 CSV_NAME = "all_episodes_trajectory.csv"         # Must match evaluator output
 
-def _safe_float(x) -> float:
-    try:
-        return float(x)
-    except Exception:
-        return float("nan")
 
 def collect_data_rows() -> list[dict]:
-    """
-    Recursively finds all 'summary_metrics.json' files and parses them.
-    Crucially, it infers the algorithm, training noise, and evaluation noise
-    from the file path for accuracy. Also attempts to compute a "real_overshoot_v"
-    from the sibling CSV if present.
-    
+    """Recursively find and parse all `summary_metrics.json` files.
+
+    Infers algorithm name, training noise, and evaluation noise
+    from directory structure, loads metrics from JSON, and attempts
+    to compute a sign-aware real overshoot from a sibling CSV.
+
     Returns:
-        list: A list of dictionaries, where each dictionary represents a row of data.
+        list[dict]: One dictionary per run with consolidated metrics.
     """
     data_rows = []
-    print(f"🔍 Scanning for summary files in '{ROOT_DIR}'...")
+    print(f" Scanning for summary files in '{ROOT_DIR}'...")
 
     for json_path in ROOT_DIR.rglob("summary_metrics.json"):
         try:
@@ -79,23 +78,28 @@ def collect_data_rows() -> list[dict]:
             data_rows.append(data)
 
         except json.JSONDecodeError:
-            print(f"⚠️ Warning: Could not parse JSON file: {json_path}")
+            print(f" Warning: Could not parse JSON file: {json_path}")
         except Exception as e:
             print(f"An unexpected error occurred with file {json_path}: {e}")
             
     return data_rows
 
 def compute_real_overshoot_from_csv(csv_path: Path) -> float:
-    """
-    Compute a sign-aware overshoot using the evaluator's raw trajectory CSV.
-    Logic:
-      - Estimate target voltage robustly:
-          For each episode, take the last 10% of samples; compute the median.
-          The global target estimate is the median across episodes.
-      - If target_est < 0: overshoot = max(0, target_est - min(voltage))   (largest negative dip beyond target)
-        Else:               overshoot = max(0, max(voltage) - target_est)  (largest positive peak beyond target)
-      - Average overshoot across episodes.
-    Returns NaN if CSV is missing or malformed.
+    """Compute sign-aware overshoot from per-episode CSV data.
+
+    For each episode:
+        - Take the last 10% of samples, compute the median voltage.
+        - Estimate a global target as the median across episodes.
+        - Compute overshoot relative to target:
+            * If target < 0: use most negative dip beyond target.
+            * If target > 0: use peak above target.
+        - Average overshoot across all episodes.
+
+    Args:
+        csv_path (Path): Path to `all_episodes_trajectory.csv`.
+
+    Returns:
+        float: Mean overshoot (V) across episodes, or NaN if missing.
     """
     try:
         if not csv_path.exists():
@@ -146,13 +150,19 @@ def compute_real_overshoot_from_csv(csv_path: Path) -> float:
         return float(np.mean(overshoots))
 
     except Exception as e:
-        print(f"⚠️ compute_real_overshoot_from_csv error for {csv_path}: {e}")
+        print(f" compute_real_overshoot_from_csv error for {csv_path}: {e}")
         return float("nan")
 
 
 def write_excel_report(df: pd.DataFrame, output_path: Path) -> None:
-    """
-    Writes the DataFrame to a multi-sheet Excel file with auto-sized columns.
+    """Write results DataFrame to a multi-sheet Excel file.
+
+    Creates an "All Results" sheet and one sheet per algorithm.
+    Auto-sizes columns for better readability.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing summary metrics.
+        output_path (Path): Path to save the Excel file.
     """
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         df.to_excel(writer, sheet_name="All Results", index=False)
@@ -169,16 +179,20 @@ def write_excel_report(df: pd.DataFrame, output_path: Path) -> None:
                 max_len = max(len(str(col)), df[col].astype(str).map(len).max())
                 worksheet.column_dimensions[worksheet.cell(row=1, column=i).column_letter].width = min(max_len + 2, 60)
 
-    print(f"\n✅ Successfully wrote {len(df)} rows to '{output_path}'")
+    print(f"\n Successfully wrote {len(df)} rows to '{output_path}'")
     print("   - Includes an 'All Results' sheet and a separate sheet for each algorithm.")
 
 def main():
-    """
-    Main function to orchestrate the data collection and report generation.
-    Adds a new 'Real Overshoot (V)' column computed from the CSVs.
+    """Main orchestration function.
+
+    Collects data, constructs a cleaned and sorted DataFrame,
+    prints a summary table to stdout, and writes the Excel report.
+
+    Raises:
+        FileNotFoundError: If ROOT_DIR does not exist.
     """
     if not ROOT_DIR.exists():
-        print(f"❌ Error: Root directory '{ROOT_DIR}' not found. Please run the evaluation script first.")
+        print(f"Error: Root directory '{ROOT_DIR}' not found. Please run the evaluation script first.")
         return
 
     rows = collect_data_rows()

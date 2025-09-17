@@ -1,29 +1,40 @@
+"""Switch-level inverting buck–boost RL environment (JAX-friendly).
+
+Implements a discrete-time, switch-accurate model with ESR, diode
+forward drop, optional reverse-recovery, and enforced DCM. One RL
+step equals one PWM period (frame_skip × dt). Observations are
+[vC, error, d_error, target]; action is a duty ratio in [dmin, dmax].
+"""
+
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
 class JAXBuckBoostConverterEnv(gym.Env):
+    """Inverting buck–boost with MOSFET + diode, DCM enforced.
+
+    State:
+        iL (A): Inductor current.
+        uC (V): Ideal capacitor voltage (across C).
+        vC (V): Output/node voltage (includes ESR drop).
+
+    Capacitor ESR model: vC = uC + R_C · iC, with load R in parallel.
+
+    Observation:
+        [vC, error (= vC − target), d_error/dt, target]
+
+    Action:
+        duty in [duty_min, duty_max] applied within the PWM period
+        using an ON-fraction followed by OFF, without tick quantization.
+
+    Notes:
+        - One `step()` integrates exactly one PWM period.
+        - Gaussian measurement noise can be added to vC (observation only).
     """
-    Inverting buck-boost, switch-level (MOSFET + external diode) with DCM naturally enforced.
-    One RL step = one full PWM period (frame_skip * dt). Output is NEGATIVE (inverting).
-
-    Internal states:
-      iL : inductor current (A)
-      uC : ideal capacitor voltage (V)  [across the capacitor element]
-      vC : node/output voltage (V)      [what you measure; includes ESR drop]
-
-    Series capacitor model: ESR (R_C) in series with ideal C to ground.
-      vC = uC + R_C * iC
-      ON  : iC = - vC / R
-      OFF : iC = -(iL + irr) - vC / R    (currents to ground counted positive)
-
-    Observation: [vC, error, d_error, target]
-    Action: duty in [duty_min, duty_max], quantized to N=frame_skip "on" ticks (PWM-like).
-    """
-
     metadata = {}
-
     def __init__(
+        
         self,
         dt: float = 5e-6,                 # Discrete 5e-06 s
         frame_skip: int = 26,             # 26 -> 7.692 kHz @ 5e-6
@@ -60,6 +71,32 @@ class JAXBuckBoostConverterEnv(gym.Env):
         pwm_rounding: str = "round",
         voltage_noise_std: float = 0.0, 
     ):
+        """Initialize converter parameters, limits, and Gym spaces.
+
+        Args:
+            dt (float): Integrator time step (s).
+            frame_skip (int): Substeps per PWM period (N).
+            max_episode_steps (int): Hard episode length cap (steps).
+            grace_period_steps (int): Steps before safety termination applies.
+            target_voltage (float): Negative output target (V).
+            Vin (float): Input voltage (V).
+            L (float): Inductance (H).
+            C (float): Capacitance (F).
+            R_load (float): Load resistance (Ω).
+            Ron_sw (float): MOSFET on-resistance (Ω).
+            R_L (float): Inductor DCR (Ω).
+            Vf (float): Diode forward drop (V).
+            Ron_d (float): Diode on-resistance (Ω).
+            R_C (float): Capacitor ESR (Ω).
+            G_off (float): Leakage conductance to ground (A/V).
+            enable_rr (bool): Enable reverse-recovery pulse model.
+            Qrr (float): Diode reverse-recovery charge (C).
+            trr (float): Reverse-recovery time constant (s).
+            duty_min (float): Minimum duty command.
+            duty_max (float): Maximum duty command.
+            pwm_rounding (str): Reserved; rounding mode for PWM ticks.
+            voltage_noise_std (float): Std. dev. of Gaussian voltage noise.
+        """
         super().__init__()
 
         # --- circuit ---
@@ -110,17 +147,28 @@ class JAXBuckBoostConverterEnv(gym.Env):
     # ---------- helpers ----------
 
     def _alpha(self):
-        # vC * (1 + R_C/R) = uC          (ON)
-        # vC * (1 + R_C/R) = uC - R_C*(iL+irr)  (OFF; see KCL below)
+        """Return ESR/load scaling factor α = 1 + R_C/R.
+
+        Used to convert between uC (ideal cap voltage) and vC (node voltage)
+        under the series ESR model with load resistance R.
+        """
         return 1.0 + (self.R_C / max(self.R, 1e-12))
 
     # ---------- core switch-level integrator (with ESR) ----------
 
     def _on_step(self, iL, uC, dt):
-        """
-        Switch ON: diode reverse-biased; inductor isolated from the output node.
-        ON KCL: iC = - vC / R
-        Algebra: vC = uC + R_C*iC  =>  vC = uC / alpha
+        """Integrate one ON-substep (diode reverse-biased).
+
+        Assumes switch ON: inductor charges from Vin through Ron and DCR.
+        Capacitor discharges through the load and leakage.
+
+        Args:
+            iL (float): Inductor current at substep start (A).
+            uC (float): Ideal capacitor voltage at substep start (V).
+            dt (float): Substep duration (s).
+
+        Returns:
+            tuple[float, float, float]: (iL_new, uC_new, vC_new).
         """
         alpha = self._alpha()
         v = uC / alpha
@@ -143,14 +191,20 @@ class JAXBuckBoostConverterEnv(gym.Env):
         return iL_new, uC_new, v_new
 
     def _off_step(self, iL, uC, dt):
-        """
-        OFF: inductor discharges through the diode into the node.
-        Sign convention (currents leaving node positive):
-            iC = -(iL + irr) - v/R - G_off*v
-        ESR algebra:
-            v = uC + R_C*iC  ->  v*(1 + R_C/R) = uC - R_C*(iL + irr)
-            => v = (uC - R_C*(iL + irr)) / alpha,  alpha = 1 + R_C/R
-        Enforce DCM by splitting the substep when iL would cross zero.
+        """Integrate one OFF-substep with DCM handling and optional RR.
+
+        Assumes switch OFF: inductor discharges through diode into node.
+        Splits the substep if inductor current crosses zero (DCM), then
+        continues with iL = 0 for the remainder. Optionally injects a
+        reverse-recovery current pulse when turning off.
+
+        Args:
+            iL (float): Inductor current at substep start (A).
+            uC (float): Ideal capacitor voltage at substep start (V).
+            dt (float): Substep duration (s).
+
+        Returns:
+            tuple[float, float, float]: (iL_new, uC_new, vC_new).
         """
         irr = 0.0
         if self.enable_rr and self._rr_timer > 0.0:
@@ -214,6 +268,18 @@ class JAXBuckBoostConverterEnv(gym.Env):
     # ---------- Gym API ----------
 
     def reset(self, *, seed=None, options=None):
+        """Reset environment to a cold start and return initial observation.
+
+        Zeroes states, clears RR flags and episode stats, and returns the
+        noisy initial observation (noise added to vC only).
+
+        Args:
+            seed (int | None): RNG seed for Gym API.
+            options (dict | None): Reserved for API compliance.
+
+        Returns:
+            tuple[np.ndarray, dict]: (obs, info) where obs = [vC, e, de, target].
+        """
         super().reset(seed=seed)
         self.time = 0.0
         self.step_count = 0
@@ -244,6 +310,23 @@ class JAXBuckBoostConverterEnv(gym.Env):
         return obs, {}
 
     def step(self, action):
+        """Advance exactly one PWM period with ON/OFF composition.
+
+        Within the period, applies an ON fraction (k_on + fractional) then
+        OFF, integrating substeps sequentially. Observation and error terms
+        use the NOISY vC; reward uses true state.
+
+        Args:
+            action (array-like): Duty ratio in [duty_min, duty_max].
+
+        Returns:
+            tuple:
+                - obs (np.ndarray): [vC_noisy, error, d_error, target].
+                - reward (float): Scalar reward for this period.
+                - terminated (bool): True if safety/goal termination triggered.
+                - truncated (bool): True if max_episode_steps reached.
+                - info (dict): Diagnostics (iL, vC, dduty, averages, timing).
+        """
         # 1) Commanded duty, band-limited
         duty_cmd = float(np.clip(action[0], self.duty_min, self.duty_max))
 
@@ -362,7 +445,25 @@ class JAXBuckBoostConverterEnv(gym.Env):
 
     # ---------- reward (linear track, sign-aware, hinge beyond cap) ----------
     def _reward(self, duty):
-        # --- accumulate per-episode stats (ONE step increment) ---
+        """Compute period reward with tracking, progress, and smoothness terms.
+
+        Reward combines:
+            - r_track: radial error term (exp of −5·e_norm²) with clamp.
+            - progress: change in normalized error since last step.
+            - band_bonus: small bonus when e_norm ≤ 0.02.
+            - smoothness: quadratic penalty on duty delta, scaled by e_norm.
+
+        Also updates running per-episode averages used for logging.
+
+        Args:
+            duty (float): Applied duty for this period.
+
+        Returns:
+            float: Clipped reward in [-5.0, 2.0].
+        """
+
+        # accumulate per-episode stats (ONE step increment)
+        #--------------------------------------------------------------------------
         u = float(np.array(duty).reshape(-1)[0])   # scalar duty in [0,1]
         v = float(self.vC)
 
@@ -372,25 +473,29 @@ class JAXBuckBoostConverterEnv(gym.Env):
 
         self._avg_duty    = self._ep_duty_sum / max(self._ep_steps, 1)
         self._avg_voltage = self._ep_v_sum    / max(self._ep_steps, 1)
+        #--------------------------------------------------------------------------
+        
+        vref = float(self.target_voltage)  # target output voltage
+        e_norm = abs(v - vref) / max(abs(vref), 1e-9)  # normalize abs error
 
-        vref = float(self.target_voltage)
-        e_norm = abs(v - vref) / max(abs(vref), 1e-9)
-
-        # E_CAP = 0.60
-        # FAR_SLOPE = 1.0
-        # lin = 1.0 - e_norm / E_CAP
-        # r_track = lin if lin >= 0.0 else -FAR_SLOPE * (e_norm - E_CAP)
+        # Gaussian tracking term (decays with squared error)
         exparg = -5.0 * (e_norm ** 2)
         r_track = 0.0 if exparg < -50.0 else float(np.exp(exparg))
 
+        # Progress term: positive if error decreased since last step
         prev_e_norm = abs(float(self.prev_vC) - vref) / max(abs(vref), 1e-9)
         progress = float(np.clip(prev_e_norm - e_norm, -1.0, 1.0))
 
+        # Bonus when inside tight band (≤ 2% error)
         band_bonus = 0.1 if e_norm <= 0.02 else 0.0
 
+        # Smoothness penalty: penalize duty changes, scaled by error
         dduty = 0.0 if self.prev_applied_duty is None else (duty - self.prev_applied_duty)
-        dduty_scale = float(np.exp(-6.0 * e_norm))
+        dduty_scale = float(np.exp(-6.0 * e_norm))  # more penalty near setpoint
+
+        # Total reward: tracking + progress + bonus − smoothness penalty
         r = r_track + 0.1 * progress + band_bonus - 0.5 * dduty_scale * (dduty ** 2)
 
+        # Clip to avoid extreme values and return
         return float(np.clip(r, -5.0, 2.0))
 

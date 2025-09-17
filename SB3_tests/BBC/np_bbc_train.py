@@ -1,5 +1,9 @@
-# jax_bbc_train.py — Buck-Boost training (A2C, SAC, or TD3) with vectorized envs
+"""Train SB3 agents on a JAX buck–boost converter environment.
 
+Supports A2C, SAC, TD3, PPO, DDPG, and DQN (via duty discretization).
+Uses vectorized environments, optional macro-stepping, TensorBoard
+episode logging, and JSON-loaded hyperparameters for reproducibility.
+"""
 import os
 import argparse
 import numpy as np
@@ -20,15 +24,36 @@ from np_bbc_env import JAXBuckBoostConverterEnv
 import numpy as np
 activation_fn_map = {"relu": nn.ReLU, "tanh": nn.Tanh, "elu": nn.ELU, "leaky_relu": nn.LeakyReLU}
 
-# === IP-style HP loading (simple helpers, JSON is source of truth) ===
 def load_hyperparameters(algo_name: str):
+    """Load best hyperparameters for an algorithm from JSON.
+
+    The JSON file is expected at `bbc_17_hp_results/<algo>_best_params.json`
+    and may contain either a flat dict or {"best_params": {...}}.
+
+    Args:
+        algo_name (str): Algorithm key (e.g., "sac", "td3", "dqn").
+
+    Returns:
+        dict: Hyperparameter dictionary for the selected algorithm.
+    """
+
     path = os.path.join("bbc_17_hp_results", f"{algo_name.lower()}_best_params.json")
     with open(path, "r") as f:
         blob = json.load(f)
-    # tuner saves {"best_params": {...}}; support flat dict too
     return blob.get("best_params", blob)
 
 def create_policy_kwargs(params: dict, algo: str | None = None):
+    """Build SB3 `policy_kwargs` from tuned parameters.
+
+    For A2C, returns separate policy/value nets; for others, a shared net.
+
+    Args:
+        params (dict): Contains "layer_size", "n_layers", "activation_fn".
+        algo (str | None): Algorithm name to select A2C split nets.
+
+    Returns:
+        dict: SB3-compatible `policy_kwargs`.
+    """
     net = [params["layer_size"]] * int(params["n_layers"])
     act = activation_fn_map[params["activation_fn"].lower()]
     if (algo or "").lower() == "a2c":
@@ -38,8 +63,17 @@ def create_policy_kwargs(params: dict, algo: str | None = None):
 
 
 
-# ===== Discretize a 1-D continuous duty command into N fixed levels (for DQN) =====
 class DiscretizedDutyWrapper(gym.ActionWrapper):
+    """
+    Action wrapper that discretizes a 1-D duty command for DQN.
+
+    Maps discrete indices to fixed duty levels while exposing a
+    `gym.spaces.Discrete` action space to value-based algorithms.
+
+    Args:
+        env (gym.Env): Environment to wrap.
+        duty_levels (np.ndarray): Allowed duty values in [0, 1].
+    """
     def __init__(self, env: gym.Env, duty_levels: np.ndarray):
         super().__init__(env)
         duty_levels = np.asarray(duty_levels, dtype=np.float32)
@@ -48,18 +82,33 @@ class DiscretizedDutyWrapper(gym.ActionWrapper):
         self.action_space = spaces.Discrete(duty_levels.size)
 
     def action(self, act: int):
+        """Convert a discrete index to a 1-D continuous duty array.
+
+        Args:
+            act (int): Discrete action index.
+
+        Returns:
+            np.ndarray: Duty command with shape (1,), dtype float32.
+        """
         d = float(self.duty_levels[int(act)])
         return np.array([d], dtype=np.float32)
 
 class EpisodeStatsLogger(BaseCallback):
     """
-    Logs raw per-episode stats emitted by Monitor:
-      - TotalReward (unsmoothed)
-      - Length (steps)
+    Callback to log raw per-episode stats to CSV and TensorBoard.
 
-    Also writes the same raw values to TensorBoard under 'custom/*'.
+    Writes a CSV header once, then appends one row per finished episode:
+    TotalReward, Length, AvgDuty, AvgVoltage. Also logs the same fields
+    to TensorBoard under `custom/*`.
     """
     def __init__(self, log_path: str, log_tensorboard: bool = True, **kwargs):
+        """
+        Initialize logger.
+
+        Args:
+            log_path (str): Output CSV path.
+            log_tensorboard (bool): If True, write TB scalars as well.
+        """
         super().__init__(**kwargs)
         self.log_path = log_path
         self.log_tensorboard = log_tensorboard
@@ -67,12 +116,23 @@ class EpisodeStatsLogger(BaseCallback):
         self.ep_idx = 0
 
     def _on_training_start(self) -> None:
+        """Initialize logger.
+
+        Args:
+            log_path (str): Output CSV path.
+            log_tensorboard (bool): If True, write TB scalars as well.
+        """
         # line-buffered so rows appear immediately
         self.log_file = open(self.log_path, "w", buffering=1)
         self.log_file.write("Episode,TotalReward,Length,AvgDuty,AvgVoltage\n")
 
 
     def _on_step(self) -> bool:
+        """Append one CSV row per completed episode and emit TB scalars.
+
+        Returns:
+            bool: True to continue training.
+        """
         for info in self.locals.get("infos", []):
             ep = info.get("episode")
             if ep is None:
@@ -95,6 +155,7 @@ class EpisodeStatsLogger(BaseCallback):
         return True
 
     def _on_training_end(self) -> None:
+        """Write a sentinel line, flush buffers, and close the CSV file."""
         if self.log_file:
             self.log_file.write("Training completed.\n")
             self.log_file.flush()
@@ -103,12 +164,31 @@ class EpisodeStatsLogger(BaseCallback):
 
 # ===== Macro-step wrapper: repeat the same action for k PWM periods =====
 class MultiPeriodStep(gym.Wrapper):
+    """
+    Wrapper that repeats each action for k environment steps.
+
+    Useful to align control updates with PWM periods and to reduce
+    policy updates on fast dynamics.
+
+    Args:
+        env (gym.Env): Environment to wrap.
+        k (int): Number of repeats per action (≥ 1).
+    """
     def __init__(self, env, k: int = 1):
         super().__init__(env)
         assert k >= 1
         self.k = k
 
     def step(self, action):
+        """
+        Repeat the same action for k steps, accumulating reward.
+
+        Args:
+            action: Action passed through to the underlying environment.
+
+        Returns:
+            tuple: (obs, total_reward, terminated, truncated, info).
+        """
         total_r = 0.0
         terminated = False
         truncated = False
@@ -124,15 +204,39 @@ class MultiPeriodStep(gym.Wrapper):
         return obs, total_r, terminated, truncated, info
 
 def duty_bins_uniform(dmin=0.10, dmax=0.90, n=17):
+    """Generate uniformly spaced duty levels in [dmin, dmax].
+
+    Args:
+        dmin (float): Minimum duty value.
+        dmax (float): Maximum duty value.
+        n (int): Number of bins.
+
+    Returns:
+        np.ndarray: 1-D array of duty levels (float32).
+    """
     return np.linspace(dmin, dmax, n, dtype=np.float32)
 
 
-def make_env(seed: int, rank: int = 0, k_macro: int = 1,
-             algo_name: str = "td3",
-             dqn_bins: int = 17,
-             duty_min: float = 0.10,
-             duty_max: float = 0.90,
-             voltage_noise_std: float = 0.0):
+def make_env(seed: int, rank: int = 0, k_macro: int = 1, algo_name: str = "td3", dqn_bins: int = 17, duty_min: float = 0.10, duty_max: float = 0.90, voltage_noise_std: float = 0.0):
+    """Construct a thunk that creates a single training environment.
+
+    Builds `JAXBuckBoostConverterEnv`, applies optional macro-stepping,
+    discretizes duty for DQN, and attaches a Monitor with extra info
+    keys for logging.
+
+    Args:
+        seed (int): Base RNG seed; per-env rank is added.
+        rank (int): Environment index for seeding.
+        k_macro (int): Action repeat factor.
+        algo_name (str): Algorithm key; enables DQN discretization.
+        dqn_bins (int): Number of discrete duty levels for DQN.
+        duty_min (float): Minimum duty value.
+        duty_max (float): Maximum duty value.
+        voltage_noise_std (float): Gaussian noise std for observations.
+
+    Returns:
+        Callable[[], gym.Env]: Zero-arg environment factory.
+    """
     def _thunk():
         e = JAXBuckBoostConverterEnv(
             dt=5e-6,
@@ -154,8 +258,7 @@ def make_env(seed: int, rank: int = 0, k_macro: int = 1,
             levels = duty_bins_uniform(duty_min, duty_max, dqn_bins)
             e = DiscretizedDutyWrapper(e, duty_levels=levels)
 
-        e = Monitor(e, info_keywords=("iL", "vC", "mag_vC", "e_norm", "dduty", "in_band",
-                                      "avg_duty", "avg_voltage"))
+        e = Monitor(e, info_keywords=("iL", "vC", "mag_vC", "e_norm", "dduty", "in_band","avg_duty", "avg_voltage"))
         e.reset(seed=seed + rank)
         return e
     return _thunk
@@ -163,6 +266,18 @@ def make_env(seed: int, rank: int = 0, k_macro: int = 1,
 
 
 def main():
+    """CLI entry point for training on the buck–boost environment.
+
+    Parses arguments, loads tuned hyperparameters, builds vectorized
+    environments with optional noise injection, constructs the SB3
+    model (or resumes from checkpoint), trains for the requested
+    timesteps, and saves the model, replay buffer (if applicable),
+    and VecNormalize statistics.
+
+    Notes:
+        When --noise=all, sequentially trains across a fixed set of
+        noise levels; otherwise uses --voltage-noise-std once.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo", choices=["a2c", "sac", "td3", "dqn", "ppo", "ddpg"], default="a2c")
     parser.add_argument("--timesteps", type=int, default=3_000_000)
@@ -194,6 +309,16 @@ def main():
 
     # === BEGIN minimal addition for sequential `--noise all` ===
     def _train_one_noise(nl: float):
+        """Train one model at a given observation-noise level.
+
+        Creates directories, builds VecEnv + VecNormalize, constructs or
+        resumes the SB3 model with JSON-loaded hyperparameters, trains for
+        `--timesteps`, saves the model (and replay buffer for off-policy
+        algorithms), and persists VecNormalize stats.
+
+        Args:
+            nl (float): Observation noise standard deviation.
+        """
         suffix = f"noise_{nl:.3f}"
         model_base_dir = os.path.join("jax_models_80", f"{args.algo}_{suffix}")
         os.makedirs(model_base_dir, exist_ok=True)
@@ -204,10 +329,10 @@ def main():
         log_file = os.path.join(model_base_dir, f"{args.algo}_training_log.txt")
 
         print(f"\n=== Training for noise std = {nl:.3f} ===")
-        print(f"📁 Model directory: {model_base_dir}")
-        print(f"🧠 Model file:      {model_path}.zip")
-        print(f"📊 TensorBoard dir: {tensorboard_log}")
-        print(f"📝 Episode CSV:     {log_file}")
+        print(f" Model directory: {model_base_dir}")
+        print(f" Model file:      {model_path}.zip")
+        print(f" TensorBoard dir: {tensorboard_log}")
+        print(f" Episode CSV:     {log_file}")
 
         # Single-noise vec env
         n_envs = max(1, args.n_envs)
@@ -227,7 +352,7 @@ def main():
         model = None
 
         if os.path.exists(model_path + ".zip"):
-            print(f"🔁 Loading existing model from {model_path}.zip")
+            print(f"Loading existing model from {model_path}.zip")
             model = AlgoMap[args.algo].load(
                 model_path, env=env, tensorboard_log=tensorboard_log,
                 device=args.device, seed=args.seed
@@ -237,7 +362,7 @@ def main():
                 try:
                     model.load_replay_buffer(replay_buffer_path)
                 except Exception as e:
-                    print(f"⚠️ Could not load replay buffer: {e}")
+                    print(f"Could not load replay buffer: {e}")
         else:
             if args.algo == "a2c":
                 model = A2C(
@@ -368,7 +493,7 @@ def main():
             try:
                 model.save_replay_buffer(replay_buffer_path)
             except Exception as e:
-                print(f"⚠️ Could not save replay buffer: {e}")
+                print(f"Could not save replay buffer: {e}")
         env.save(os.path.join(model_base_dir, f"{args.algo}_vec_normalize_final.pkl"))
         env.close()
 

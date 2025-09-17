@@ -1,4 +1,11 @@
-# eval_simulink_bbc.py - NP-style evaluation and metrics for Simulink env
+"""Evaluate SB3 agents on a Simulink buck–boost converter (BBC).
+
+Loads a trained model and VecNormalize stats, runs multiple
+evaluation episodes against the Simulink-backed environment,
+computes stabilisation/steady-state/overshoot metrics, and
+saves CSV plus full/zoomed plots, mirroring the NumPy evaluator.
+"""
+
 import argparse
 import os
 import json
@@ -16,12 +23,24 @@ ALGO_MAP = {"a2c": A2C, "sac": SAC, "td3": TD3, "dqn": DQN}
 # ------------------------- metrics & plotting -------------------------
 
 def calculate_performance_metrics(voltages_arr, times_arr, target_voltage, tolerance):
-    """
-    Same metrics as NP evaluator:
-      - stabilisation_time (first time it permanently enters ±tolerance)
-      - steady_state_error (mean after stabilisation)
-      - overshoot (max above target)
-      - undershoot (max dip below target after first crossing)
+    """Compute basic step-response metrics from a voltage trajectory.
+
+    Metrics:
+        stabilisation_time: First time the signal enters and stays within
+            ±tolerance of the target.
+        steady_state_error: Mean (voltage - target) after stabilisation.
+        overshoot: Max positive excursion above target (V).
+        undershoot: Max dip below target after the first crossing (V).
+
+    Args:
+        voltages_arr (np.ndarray): Output voltage time series (V).
+        times_arr (np.ndarray): Matching time vector (s).
+        target_voltage (float): Desired steady output (V).
+        tolerance (float): Allowed band around target (V).
+
+    Returns:
+        dict: Dictionary with stabilisation_time, steady_state_error,
+            overshoot, and undershoot (floats).
     """
     if len(times_arr) == 0:
         return {
@@ -69,9 +88,21 @@ def calculate_performance_metrics(voltages_arr, times_arr, target_voltage, toler
 
 
 def plot_and_save_summary(all_episode_data, target_voltage, tolerance, model_type, out_dir):
-    """
-    Save raw CSV for all episodes and two plots (full + zoomed),
-    mirroring the NP evaluator’s outputs.
+    """Save per-episode CSV and two summary plots (full and zoomed).
+
+    Creates:
+        - all_episodes_trajectory.csv with columns:
+        (episode, time_s, voltage_v, duty_cycle)
+        - response_plot_full.png: Entire trajectories with target band.
+        - response_plot_zoomed.png: Zoom around target ±4×tolerance.
+
+    Args:
+        all_episode_data (list[tuple]): For each episode, a tuple of
+            (times, voltages, duties) arrays.
+        target_voltage (float): Target voltage (V).
+        tolerance (float): Band around target for shading (V).
+        model_type (str): Label for titles/legends (e.g., "TD3").
+        out_dir (str): Output directory for CSV and plots.
     """
     os.makedirs(out_dir, exist_ok=True)
 
@@ -122,7 +153,21 @@ def plot_and_save_summary(all_episode_data, target_voltage, tolerance, model_typ
 
 def make_simulink_env(simulink_model: str, algo: str, dqn_bins: int, voltage_noise_std: float):
     """
-    Construct BBCSimulinkEnv with optional DQN discretization and noise parity.
+    Build a VecEnv-compatible Simulink BBC environment factory.
+
+    Wraps the base BBCSimulinkEnv and, for DQN, discretizes the duty
+    cycle into n_bins across the continuous action range. This ensures
+    parity with discrete-control algorithms while keeping others
+    continuous.
+
+    Args:
+        simulink_model (str): Name of the Simulink model to load.
+        algo (str): Algorithm key ("a2c", "sac", "td3", "dqn").
+        dqn_bins (int): Number of discrete duty bins for DQN.
+        voltage_noise_std (float): Gaussian noise std for voltage obs.
+
+    Returns:
+        Callable[[], gym.Env]: Zero-arg function that constructs the env.
     """
     def env_fn():
         env = BBCSimulinkEnv(model_name=simulink_model, voltage_noise_std=voltage_noise_std)
@@ -140,8 +185,27 @@ def make_simulink_env(simulink_model: str, algo: str, dqn_bins: int, voltage_noi
 def evaluate_single_model(model_path: str, stats_path: str, algo: str, simulink_model: str,
                           out_dir: str, num_episodes: int, dqn_bins: int,
                           voltage_noise_std: float, tolerance: float, k_macro: int = 1):
-    """
-    Evaluate one model for N episodes, save metrics/plots/CSV into out_dir.
+    """Evaluate one trained model for N episodes and save artifacts.
+
+    Loads VecNormalize stats and the model, runs evaluation episodes,
+    collects voltage and duty trajectories, computes per-episode
+    metrics, prints a summary, writes summary_metrics.json, and saves
+    CSV and plots.
+
+    Args:
+        model_path (str): Path to SB3 best_model.zip.
+        stats_path (str): Path to VecNormalize pickle file.
+        algo (str): Algorithm name ("a2c", "sac", "td3", "dqn").
+        simulink_model (str): Simulink model name to instantiate.
+        out_dir (str): Directory to write JSON/CSV/plots.
+        num_episodes (int): Number of episodes to evaluate.
+        dqn_bins (int): Discretization bins if algo == "dqn".
+        voltage_noise_std (float): Eval-time noise std for voltage.
+        tolerance (float): Stabilisation band width (V).
+        k_macro (int): Repeat count for macro-stepping per action.
+
+    Returns:
+        None
     """
     if not os.path.exists(model_path):
         print(f"[WARN] Missing model: {model_path}"); return
@@ -242,6 +306,16 @@ def evaluate_single_model(model_path: str, stats_path: str, algo: str, simulink_
 
 
 def _extract_training_noise_from_runname(run_name: str) -> float:
+    """Parse training noise std from a run folder name.
+
+    Expected pattern contains 'noise_<value>' somewhere in the name.
+
+    Args:
+        run_name (str): Run directory name.
+
+    Returns:
+        float: Parsed noise std, or NaN if not found.
+    """
     try:
         return float(run_name.split("noise_")[-1])
     except Exception:
@@ -249,6 +323,16 @@ def _extract_training_noise_from_runname(run_name: str) -> float:
 
 
 def infer_algo_from_name(folder_name: str) -> str | None:
+    """Infer algorithm key from a folder prefix.
+
+    Matches against known keys in ALGO_MAP, case-insensitive.
+
+    Args:
+        folder_name (str): Folder name to inspect.
+
+    Returns:
+        str | None: Algorithm key or None if not matched.
+    """
     for key in ALGO_MAP.keys():
         if folder_name.lower().startswith(key):
             return key
@@ -258,6 +342,16 @@ def infer_algo_from_name(folder_name: str) -> str | None:
 # ------------------------- CLI orchestration -------------------------
 
 def main():
+    """CLI entry point to evaluate single or multiple trained models.
+
+    Supports two modes:
+        1) Single-model: --model-path and --stats-path are provided.
+        2) Discovery:    scan --root for algo-prefixed folders with
+        best_model.zip and matching VecNormalize stats.
+
+    Iterates over requested eval-time noise levels, evaluates each
+    run, and writes outputs under 'eval_simulink_runs_80/'.
+    """
     p = argparse.ArgumentParser(description="NP-style evaluation for Simulink BBC agents.")
     # Single-model mode
     p.add_argument("--model-path", type=str, help="Path to best_model.zip")
@@ -301,7 +395,7 @@ def main():
             "algo": (algo_from_dir or args.algo.lower())
         })
     else:
-        print(f"🔍 Searching for models in '{args.root}'...")
+        print(f" Searching for models in '{args.root}'...")
         for folder_name in sorted(os.listdir(args.root)):
             run_dir = os.path.join(args.root, folder_name)
             if not os.path.isdir(run_dir):
@@ -327,7 +421,7 @@ def main():
         if not runs:
             print("No valid models found matching the criteria.")
             return
-        print(f"✅ Found {len(runs)} models to evaluate.")
+        print(f" Found {len(runs)} models to evaluate.")
 
     # Evaluate
     for eval_nl in args.eval_noise:
