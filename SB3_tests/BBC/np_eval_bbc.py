@@ -1,4 +1,9 @@
-# jax_bbc_eval.py - Discover and evaluate trained buck-boost agents with advanced metrics
+"""Discover and evaluate JAX buck–boost agents with advanced metrics.
+
+Finds trained SB3 models, loads VecNormalize stats, runs multiple
+episodes with optional macro-stepping, computes stabilisation,
+steady-state error, overshoot/undershoot, and saves CSV + plots.
+"""
 
 import argparse
 import os
@@ -17,9 +22,24 @@ from SB3_tests.BBC.np_bbc_train import make_env
 ALGO_MAP = {"a2c": A2C, "sac": SAC, "td3": TD3, "dqn": DQN, "ppo": PPO, "ddpg": DDPG}
 
 def calculate_performance_metrics(voltages_arr, times_arr, target_voltage, tolerance):
-    """
-    Calculates detailed performance metrics from a single episode's voltage trajectory.
-    Logic is adapted from the evaluate_buck.py script.
+    """Compute step-response metrics from one voltage trajectory.
+
+    Metrics:
+        stabilisation_time: First time the signal enters and stays within
+            ±tolerance of the target.
+        steady_state_error: Mean(voltage − target) after stabilisation.
+        overshoot: Max positive excursion above target (V).
+        undershoot: Max dip below target after first crossing (V).
+
+    Args:
+        voltages_arr (np.ndarray): Output voltage time series (V).
+        times_arr (np.ndarray): Matching time vector (s).
+        target_voltage (float): Desired steady output (V).
+        tolerance (float): Allowed band around target (V).
+
+    Returns:
+        dict: Keys = stabilisation_time, steady_state_error,
+            overshoot, undershoot (floats; NaN when undefined).
     """
     if len(times_arr) == 0:
         return {
@@ -72,7 +92,21 @@ def calculate_performance_metrics(voltages_arr, times_arr, target_voltage, toler
 
 def plot_and_save_summary(all_episode_data, target_voltage, tolerance, model_type, out_dir):
     """
-    Plots voltage vs. time for all episodes, saves plots, and saves raw data.
+    Save per-episode CSV and two plots (full and zoomed).
+
+    Creates:
+        - all_episodes_trajectory.csv with columns:
+        (episode, time_s, voltage_v, duty_cycle)
+        - response_plot_full.png: Full trajectories with target band.
+        - response_plot_zoomed.png: Zoom to ±4×tolerance around target.
+
+    Args:
+        all_episode_data (list[tuple]): For each episode, a tuple of
+            (times, voltages, duties) numpy arrays.
+        target_voltage (float): Target voltage (V).
+        tolerance (float): Band width for shaded region (V).
+        model_type (str): Label used in figure titles (e.g., "TD3").
+        out_dir (str): Output directory for CSV and plots.
     """
     # --- 1. Save Raw Data to CSV ---
     csv_path = os.path.join(out_dir, "all_episodes_trajectory.csv")
@@ -121,7 +155,26 @@ def evaluate_agent(
     k_macro: int, dqn_bins: int, voltage_noise_std: float, tolerance: float
 ):
     """
-    Loads and evaluates a single model, calculating and saving detailed metrics.
+    Load one model + stats, run episodes, compute and save metrics.
+
+    Builds the env via `make_env`, restores VecNormalize stats,
+    runs `num_episodes`, records voltage and duty trajectories,
+    computes per-episode metrics, prints a summary, writes a JSON
+    summary, and saves CSV and plots.
+
+    Args:
+        model_path (str): Path to SB3 model zip.
+        stats_path (str): Path to VecNormalize pickle.
+        algo (str): Algorithm key ("a2c","sac","td3","dqn","ppo","ddpg").
+        out_dir (str): Directory to write JSON/CSV/plots.
+        num_episodes (int): Evaluation episodes to run.
+        k_macro (int): Action repeat factor used during training.
+        dqn_bins (int): Discretization bins if using DQN.
+        voltage_noise_std (float): Eval-time noise std passed to env.
+        tolerance (float): Stabilisation band width (V).
+
+    Returns:
+        None
     """
     # Env setup
     env_fn = make_env(
@@ -209,11 +262,26 @@ def evaluate_agent(
     env.close()
 
 def infer_algo_from_name(folder_name: str) -> str | None:
+    """
+    Infer algorithm key from a folder name prefix.
+
+    Args:
+        folder_name (str): Folder name to inspect.
+
+    Returns:
+        str | None: Matching key in ALGO_MAP, else None.
+    """
     for key in ALGO_MAP.keys():
         if folder_name.lower().startswith(key): return key
     return None
 
 if __name__ == "__main__":
+    """CLI entry point.
+
+    Discovers runs under --root (or evaluates a subset via filters),
+    loops over requested eval-time noise levels, and writes outputs
+    under 'eval_runs/<ALGO>/<eval_cond>/<run_name>/'.
+    """
     parser = argparse.ArgumentParser(description="Discover and evaluate trained buck-boost agents with advanced metrics.")
     parser.add_argument("--root", default="jax_models", help="Root directory containing trained model folders.")
     parser.add_argument("--algo", default="all", help=f"Algorithm to evaluate. Choices: {list(ALGO_MAP.keys())} or 'all'.")
@@ -228,7 +296,7 @@ if __name__ == "__main__":
 
     # --- 1. Discover Runs ---
     runs_to_evaluate = []
-    print(f"🔍 Searching for models in '{args.root}'...")
+    print(f" Searching for models in '{args.root}'...")
     for folder_name in sorted(os.listdir(args.root)):
         run_dir = os.path.join(args.root, folder_name)
         if not os.path.isdir(run_dir): continue
@@ -249,7 +317,7 @@ if __name__ == "__main__":
     
     if not runs_to_evaluate:
         print("\nNo valid models found matching the criteria."); exit()
-    print(f"✅ Found {len(runs_to_evaluate)} models to evaluate.")
+    print(f" Found {len(runs_to_evaluate)} models to evaluate.")
 
     # --- 2. Run Evaluation Loop ---
     for eval_nl in args.eval_noise:
@@ -262,7 +330,7 @@ if __name__ == "__main__":
             eval_condition_name = f"{run['algo'].lower()}_eval_noise_{eval_nl:.3f}"
             output_directory = os.path.join("eval_runs", algo_key, eval_condition_name, run_name)
             
-            print(f"\n▶️ Evaluating run: {run_name}")
+            print(f"\n▶ Evaluating run: {run_name}")
             
             evaluate_agent(
                 model_path=run['model_path'], 
@@ -276,4 +344,4 @@ if __name__ == "__main__":
                 tolerance=args.tolerance
             )
 
-    print("\n🎉 All evaluations complete.")
+    print("\n All evaluations complete.")

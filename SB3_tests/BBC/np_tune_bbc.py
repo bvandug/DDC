@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
-# bbc_jax_hp.py — Optuna-based hyperparameter tuning for the JAX Buck‑Boost Converter env
-# Mirrors the style of ip_jax_hp.py, adapted for JAXBuckBoostConverterEnv.
-# - Algorithms supported initially: SAC, A2C, DQN (DQN via duty discretization wrapper)
-# - Ranges are factored in one place per algorithm to make later edits easy.
-# - Includes optional macro-step wrapper (repeat action for k PWM periods) to speed up learning.
-# - Saves best params and Optuna study DB for resuming.
+"""Optuna-based hyperparameter tuning for JAX Buck–Boost Converter.
+
+Tunes SB3 algorithms (SAC, A2C, DQN, PPO, TD3, DDPG) on a JAX-backed
+buck–boost environment. Supports duty discretization for DQN, optional
+macro-stepping (repeat an action for k PWM periods), parallel VecEnvs,
+TensorBoard logging per trial, and JSON/SQLite outputs for resuming.
+"""
 
 import os
 import json
@@ -38,16 +38,21 @@ from np_bbc_env import JAXBuckBoostConverterEnv
 # ---------- Utilities ----------
 
 def set_global_seeds(seed: int = 42):
+    """Set global PRNG seeds for NumPy, Python, and PyTorch.
+
+    Args:
+        seed (int): Seed value for reproducibility (default 42).
+    """
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
 
 class HPTrialTBLogger(BaseCallback):
     """
-    Per-episode TensorBoard logger for a single trial.
-    Records raw training episode totals from Monitor:
-      - custom/ep_reward_raw
-      - custom/ep_len_raw
+    Per-episode TensorBoard logger for a single Optuna trial.
+
+    Logs raw Monitor episode metrics (reward, length) and custom
+    signals (avg_duty, avg_voltage) during training.
     """
     def __init__(self, trial_number: int):
         super().__init__()
@@ -80,6 +85,15 @@ class HPTrialTBLogger(BaseCallback):
 
 # Macro-step wrapper (repeat action for k PWM periods), adapted to gymnasium.
 class MultiPeriodStep(gym.Wrapper):
+    """Wrapper that repeats each action for k environment steps.
+
+    Useful to align control updates with PWM periods and to reduce
+    model updates, which can stabilize learning on fast dynamics.
+
+    Args:
+        env (gym.Env): Environment to wrap.
+        k (int): Number of repeats per action (≥ 1).
+    """
     def __init__(self, env: gym.Env, k: int = 1):
         super().__init__(env)
         assert k >= 1
@@ -103,6 +117,16 @@ class MultiPeriodStep(gym.Wrapper):
 
 # Discretize a 1-D continuous duty command into N fixed levels (for DQN).
 class DiscretizedDutyWrapper(gym.ActionWrapper):
+    """Action wrapper that discretizes a 1-D duty command for DQN.
+
+    Maps discrete indices to fixed duty levels while exposing a
+    Discrete action space to value-based algorithms.
+
+    Args:
+        env (gym.Env): Environment to wrap.
+        duty_levels (Sequence[float]): Allowed duty values in [0, 1].
+    """
+
     def __init__(self, env: gym.Env, duty_levels: Sequence[float]):
         super().__init__(env)
         self.duty_levels = np.asarray(duty_levels, dtype=np.float32)
@@ -110,12 +134,30 @@ class DiscretizedDutyWrapper(gym.ActionWrapper):
         self.action_space = spaces.Discrete(len(self.duty_levels))
 
     def action(self, act: int):
+        """Convert a discrete index to a 1-D continuous duty array.
+
+        Args:
+            act (int): Discrete action index.
+
+        Returns:
+            np.ndarray: Duty command with shape (1,), dtype float32.
+        """
         d = float(self.duty_levels[int(act)])
         return np.array([d], dtype=np.float32)
 
 
 @dataclass
 class TuneConfig:
+    """Tuning configuration parameters and output locations.
+
+    Attributes:
+        total_timesteps (int): Total training steps per trial.
+        eval_interval (int): Steps between evaluations/log dumps.
+        n_eval_episodes (int): Episodes per evaluation pass.
+        tb_root (str): Root directory for TensorBoard logs.
+        results_dir (str): Directory to write best_params JSON.
+        storage_tpl (str): Optuna storage URI template per algo.
+    """
     total_timesteps: int = 150_000          # small by default; change later
     eval_interval: int = 30_000
     n_eval_episodes: int = 5
@@ -124,8 +166,24 @@ class TuneConfig:
     storage_tpl: str = "sqlite:///bbc_jax_optuna_{algo}.db"
 
 
-def make_envs(seed: int, algo_name: str, macro_k: int = 1, dqn_bins: int = 17,
-              n_envs: int = 8, duty_min: float = 0.1, duty_max: float = 0.9):
+def make_envs(seed: int, algo_name: str, macro_k: int = 1, dqn_bins: int = 17, n_envs: int = 8, duty_min: float = 0.1, duty_max: float = 0.9):
+    """Construct vectorized training/eval environments.
+
+    Creates N parallel envs with optional macro-step wrapper and
+    discrete duty wrapper for DQN. Adds Monitor with info keywords.
+
+    Args:
+        seed (int): Base seed; per-env rank is added to this seed.
+        algo_name (str): Algorithm name (used to enable DQN wrapper).
+        macro_k (int): Action repeat factor per step.
+        dqn_bins (int): Number of discrete duty levels for DQN.
+        n_envs (int): Number of parallel environments.
+        duty_min (float): Minimum duty for discretization.
+        duty_max (float): Maximum duty for discretization.
+
+    Returns:
+        VecEnv: DummyVecEnv or SubprocVecEnv depending on n_envs.
+    """
     def _thunk(rank: int):
         def _make():
             e = JAXBuckBoostConverterEnv(
@@ -162,10 +220,27 @@ def make_envs(seed: int, algo_name: str, macro_k: int = 1, dqn_bins: int = 17,
 # ---------- Algorithm-specific hyperparam spaces (edit later) ----------
 
 def activation_from_name(name: str):
+    """
+    Map a string to a PyTorch activation class.
+
+    Args:
+        name (str): One of {"tanh","relu","leaky_relu","elu"}.
+
+    Returns:
+        type[nn.Module]: Activation class (not an instance).
+    """
     return {"tanh": nn.Tanh, "relu": nn.ReLU, "leaky_relu": nn.LeakyReLU, "elu": nn.ELU}[name]
 
 
 def suggest_policy_kwargs(trial: optuna.Trial):
+    """Suggest MLP policy architecture and activation for SB3.
+
+    Args:
+        trial (optuna.Trial): Trial to sample hyperparameters.
+
+    Returns:
+        dict: SB3 policy_kwargs with net_arch and activation_fn.
+    """
     n_layers = trial.suggest_categorical("n_layers", [1, 3])  # shallow wins here
     layer_size = trial.suggest_int("layer_size", 64, 512, log=True)
     act_name = trial.suggest_categorical("activation_fn", ["tanh", "relu", "leaky_relu", "elu"])
@@ -175,7 +250,14 @@ def suggest_policy_kwargs(trial: optuna.Trial):
     }
 
 def suggest_action_noise_sigma(trial: optuna.Trial):
-    # Rollout exploration noise for continuous actions
+    """Suggest σ for continuous-action exploration noise.
+
+    Args:
+        trial (optuna.Trial): Current Optuna trial.
+
+    Returns:
+        float: Standard deviation for NormalActionNoise.
+    """
     return trial.suggest_float("action_noise_sigma", 0.03, 0.30, log=True)
 
 
@@ -292,6 +374,21 @@ def suggest_ddpg(trial: optuna.Trial):
 
 
 def build_model(algo: str, env, trial: optuna.Trial, device: str, cfg):
+    """Instantiate an SB3 model with suggested hyperparameters.
+
+    Selects the correct algorithm, samples params via the trial,
+    builds policy_kwargs, and wires exploration noise where needed.
+
+    Args:
+        algo (str): Algorithm key ("sac","a2c","dqn","ppo","td3","ddpg").
+        env: Vectorized environment (training).
+        trial (optuna.Trial): Trial for parameter suggestions.
+        device (str): "cpu" or "cuda".
+        cfg (TuneConfig): Global tuning configuration.
+
+    Returns:
+        BaseAlgorithm: Initialised SB3 model ready to train.
+    """
     algo = algo.lower()
     pk = suggest_policy_kwargs(trial)
 
@@ -363,6 +460,26 @@ def build_model(algo: str, env, trial: optuna.Trial, device: str, cfg):
 
 
 def objective(trial: optuna.Trial, algo: str, seed: int, macro_k: int, dqn_bins: int, device: str, cfg):
+    """Optuna objective: train, evaluate, and report top-k metric.
+
+    Creates synced VecNormalize train/eval envs, trains in chunks,
+    evaluates on held episodes, logs per-episode and summary stats,
+    reports a stability-aware reward (top 60% mean), and supports
+    pruning.
+
+    Args:
+        trial (optuna.Trial): Current trial.
+        algo (str): Algorithm key.
+        seed (int): Global seed.
+        macro_k (int): Action repeat factor.
+        dqn_bins (int): Discrete duty levels for DQN.
+        device (str): Training device.
+        cfg (TuneConfig): Tuning configuration.
+
+    Returns:
+        float: Best objective value observed across chunks.
+    """
+
     set_global_seeds(seed)
 
     # vectorized envs
@@ -422,6 +539,8 @@ def objective(trial: optuna.Trial, algo: str, seed: int, macro_k: int, dqn_bins:
         model.logger.record("eval/topk_avg_reward", topk_avg)
         model.logger.record("eval/chunk_index", int(eval_idx))
         model.logger.dump(step=int(timesteps))   # flush eval metrics now
+        
+        #Enable these if you want hard pruning based on topk_avg- different for different algos
 
         # # --- HARD PRUNE: at 500k steps if metric not above 200 ---
         # if timesteps >= 500_000 and topk_avg <= 1000.0:
@@ -457,6 +576,25 @@ def objective(trial: optuna.Trial, algo: str, seed: int, macro_k: int, dqn_bins:
 
 
 def optimize(algo: str, n_trials: int, n_jobs: int, seed: int, macro_k: int, dqn_bins: int, device: str, cfg):
+    """Run Optuna study for the selected algorithm.
+
+    Creates/loads a SQLite-backed study with a SH pruner, runs
+    parallel trials, shows a tqdm progress bar, and writes the
+    best parameters and value to JSON.
+
+    Args:
+        algo (str): Algorithm key to tune.
+        n_trials (int): Number of trials to run.
+        n_jobs (int): Parallel jobs (processes) for Optuna.
+        seed (int): Base PRNG seed.
+        macro_k (int): Action repeat factor.
+        dqn_bins (int): Duty discretization bins for DQN.
+        device (str): "cpu" or "cuda".
+        cfg (TuneConfig): Tuning configuration.
+
+    Returns:
+        None
+    """
     os.makedirs(cfg.tb_root, exist_ok=True)
     os.makedirs(cfg.results_dir, exist_ok=True)
 
@@ -506,6 +644,11 @@ def optimize(algo: str, n_trials: int, n_jobs: int, seed: int, macro_k: int, dqn
 
 
 def parse_args():
+    """Parse command-line arguments for the tuner CLI.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--algo", choices=["sac", "a2c", "dqn", "ppo", "td3", "ddpg"], default="sac")
     ap.add_argument("--n-trials", type=int, default=50)
@@ -524,6 +667,11 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    """CLI entry point.
+
+    Parses arguments, builds a TuneConfig from overrides, prints a
+    run header, and launches `optimize()` for the chosen algorithm.
+    """
     args = parse_args()
 
     # Global (editable) config

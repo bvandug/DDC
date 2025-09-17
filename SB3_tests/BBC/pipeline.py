@@ -19,7 +19,7 @@ def run_command(command: list, title: str):
         title (str): A descriptive title for the process being run.
     """
     print("\n" + "="*80)
-    print(f"🚀 STARTING: {title}")
+    print(f" STARTING: {title}")
     print(f"   Executing: {' '.join(command)}")
     print("="*80)
 
@@ -27,17 +27,17 @@ def run_command(command: list, title: str):
         # Execute the command. check=True will raise an exception on a non-zero exit code.
         subprocess.run(command, check=True, text=True)
         print("\n" + "-"*80)
-        print(f"✅ SUCCESS: {title} completed.")
+        print(f" SUCCESS: {title} completed.")
         print("-"*80)
     except FileNotFoundError:
-        print(f"❌ ERROR: The script '{command[1]}' was not found in the current directory.")
+        print(f" ERROR: The script '{command[1]}' was not found in the current directory.")
         sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"❌ ERROR: The process for '{title}' failed with return code {e.returncode}.")
+        print(f" ERROR: The process for '{title}' failed with return code {e.returncode}.")
         print("   Please check the output above for specific error messages from the script.")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ An unexpected error occurred during '{title}': {e}")
+        print(f" An unexpected error occurred during '{title}': {e}")
         sys.exit(1)
 
 
@@ -71,5 +71,5 @@ if __name__ == "__main__":
         run_command(evaluation_command, f"Evaluation for {algo.upper()}")
 
     print("\n" + "*"*80)
-    print("🎉 All training and evaluation experiments have completed successfully! 🎉")
+    print(" All training and evaluation experiments have completed successfully! 🎉")
     print("*"*80)
