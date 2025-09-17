@@ -11,7 +11,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from tqdm import tqdm
 
 # We need the make_env function from the training script
-from jax_bbc_train import make_env
+from SB3_tests.BBC.np_bbc_train import make_env
 
 # A dictionary mapping algorithm names (strings) to their class constructors
 ALGO_MAP = {"a2c": A2C, "sac": SAC, "td3": TD3, "dqn": DQN, "ppo": PPO, "ddpg": DDPG}

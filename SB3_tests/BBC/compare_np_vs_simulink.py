@@ -32,7 +32,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from np_bbc_env_work import JAXBuckBoostConverterEnv   # NumPy env
+from np_bbc_env import JAXBuckBoostConverterEnv   # NumPy env
 from BBCSimulink_env import BBCSimulinkEnv        # Simulink env
 
 def duty_sequence(mode: str, steps: int, dt: float, frame_skip: int,

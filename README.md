@@ -23,7 +23,7 @@ ___
 
 # Structure for DRL Methods Explained
 
-To explore the current DRL work, browse the `SB3_tests` folder in this repository.
+To explore the current DRL work, browse the `SB3_tests` folder in this repository. The PID benchmark work is done in PID.
 
 ## Systems Included
 
