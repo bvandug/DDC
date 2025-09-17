@@ -211,8 +211,6 @@ The reported buck-boost benchmarks were collected from the Simulink runs; the Nu
 - `SB3_tests/BBC/eval_runs/<ALGO>/<condition>/<run>/` is where `np_eval_bbc.py` stores evaluation metrics and plots.
 - `SB3_tests/BBC/eval_simulink_runs_80/` collects the outputs from `simulink_eval_bbc.py` when benchmarking Simulink-trained agents.
 
-## Running the Simulation
-
 ## Acknowledgements
 
 We want to express our gratitude to our supervisor, K. Prag, for her invaluable guidance and feedback throughout this research project.
