@@ -19,9 +19,10 @@ The project focuses on evaluating:
 ___
 
 # Project Allocation:
-- **Nathan Wells**:
-- **Ben Ruijsch Van Dugteren**:
-- **Nicholas Cristaudo**:
+- Although there was one person responsible for setting up the system due to the plug-and-play nature of SB3, all team members worked collaboratively across all systems. This ensured algorithm compatibility, particularly during hyperparameter tuning and agent training.
+- **Nathan Wells**: Cartpole
+- **Ben Ruijsch Van Dugteren**: Buck-Boost Converter, Inverted Pendulum
+- **Nicholas Cristaudo**: Buck-Converter
 
 
 # Full code base:
