@@ -25,7 +25,7 @@ ___
 # Structure for DRL Methods Explained
 
 To explore the current DRL work, browse the `SB3_tests` folder in this repository. 
-The PID benchmark work is done in `SB3_tests`.
+The PID benchmark work is done in `PID`.
 
 ## Systems Included
 
@@ -33,6 +33,7 @@ The PID benchmark work is done in `SB3_tests`.
 - **BBC**: Buck-Boost Converter  
 - **Inverted Pendulum**
 - **Cartpole**
+
 
 ## MATLAB Dependency Setup
 **This project is done with Matlab 2024b** -before setting up make sure you install MATLAB with the following packages:
@@ -71,6 +72,41 @@ To run the Python simulation environments:
    # Windows (PowerShell)
    python -m venv venv
    .\venv\Scripts\Activate
+
+### Running the Inverted Pendulum
+
+### Running Cart-Pole
+
+### Running the Buck Converter
+
+#### Running PID
+
+
+
+#### Running DRL
+
+**Running the Models**
+1. Run hyperparameter tuning for the DRL algorithms (optional) by running ```python hyperparameter_tuning.py``` <br>
+  This will run an Optuna study to find the best hyperparameters for the different DRL algorithms and save the results. <br>
+
+**Training the Models**
+1. To train with the Python environment, run: ```python BCPythonTrain.py``` <br>
+   This script will load in a specific set of hyperparameters. <br>
+2. To train with the Simulink environment, run: ```python BCSimulinkTrain.py```<br>
+   This will train the DRL agent using the Simulink model as the environment. It also loads a specific set of hyperparameters (Note: the simulink training has significant overhead)<br>
+
+**Evaluating the Models**
+After training, you can evaluate the performance of the saved models.<br>
+1. To evaluate the models in a Python environment, run: ```python BCPythonEval.py```<br>
+2. To evaluate the models in the Simulink environment, run: ```python BCSimulinkEval.py```<br>
+These scripts will run the models through a series of evaluation episodes, calculate performance metrics, and save plots of the results.<br>
+   
+
+
+### Running the Buck-boost Converter
+
+
+## Running the Simulation
 
 
 ## Acknowledgements
