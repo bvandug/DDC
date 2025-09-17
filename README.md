@@ -35,6 +35,29 @@ The PID benchmark work is done in `PID`.
 - **Cartpole**
 
 
+## Table of Contents
+- [Systems Included](#systems-included)
+- [Repository Layout](#repository-layout)
+- [MATLAB Dependency Setup](#matlab-dependency-setup)
+- [Python Simulation Environments](#python-simulation-environments)
+- [Running the Inverted Pendulum](#running-the-inverted-pendulum)
+- [Running Cart-Pole](#running-cart-pole)
+- [Running the Buck Converter](#running-the-buck-converter)
+- [Running the Buck-boost Converter](#running-the-buck-boost-converter)
+- [Running the Simulation](#running-the-simulation)
+- [Acknowledgements](#acknowledgements)
+
+## Repository Layout
+- `README.md`: Project overview, usage instructions, and workflow summaries.
+- `requirements.txt`: Python dependencies for the DRL experiments.
+- `SB3_tests/`: Primary codebase for reinforcement-learning experiments.
+  - `Inverted_Pendulum/`: JAX, NumPy, and MATLAB pipelines (`ip_jax/`, `IP_NUMPY/`, `IP_MATLAB/`) plus evaluation scripts.
+  - `Cartpole/`: Matching JAX/NumPy/MATLAB stacks for the cart-pole system (`CP_JAX/`, `CP_NUMPY/`, `CP_MATLAB/`).
+  - `BC/` & `BBC/`: Buck and buck-boost converter experiments, including Python envs, Simulink bridges, tuning utilities, and evaluation scripts.
+  - `cp_verify_envs/`, `ip_verify_envs/`: Sanity-check environments and utilities used during development.
+- `PID/`: Classical controller scripts and Simulink models for each plant.
+- `venv/`: Optional local virtual environment (not required if you manage Python packages externally).
+
 ## MATLAB Dependency Setup
 **This project is done with Matlab 2024b** -before setting up make sure you install MATLAB with the following packages:
 - MATLAB Coder
@@ -79,7 +102,7 @@ PID controllers are optional; you can skip the `PID/` workflows when you only ne
 
 ### Running the Inverted Pendulum
 
-**Available Simulations**
+**Available Environments**
 - `ip_jax/`: JAX environment used for the Optuna sweeps and the experimental results reported in the project.
 - `IP_NUMPY/`: Lightweight NumPy/Gym wrapper mirroring the JAX dynamics for quick local validation.
 - `IP_MATLAB/` + `pendulum.slx`: MATLAB/Simulink plant for high-fidelity tests and PID benchmarking.
@@ -105,7 +128,7 @@ You can train and evaluate agents in any of these environments; the published be
 
 ### Running Cart-Pole
 
-**Available Simulations**
+**Available Environments**
 - `CP_JAX/`: JAX environment used for the final training runs and hyperparameter studies included in the report.
 - `CP_NUMPY/`: NumPy-based Gym wrapper that mirrors the JAX setup for offline experiments.
 - `CP_MATLAB/` + `PendCart.slx`: MATLAB/Simulink model for physics-accurate validation and classic-control comparisons.
@@ -135,7 +158,7 @@ Each stack can be executed independently; the documented results use the JAX wor
 - The PID baselines in `PID/` are optional and only needed when you want classical control comparisons.
 
 #### Running DRL
-**Available Simulations**
+**Available Environments**
 - `SB3_tests/BC/BCPythonEnv.py`: NumPy-based Gym wrapper used by the Python training scripts for quick experimentation.
 - `SB3_tests/BC/BCSimulinkEnv.py` + `bcSim.slx`: MATLAB/Simulink environment that underpins the results reported in the dissertation.
 - `PID/`: Shared PID baselines for side-by-side comparisons with the DRL controllers.
@@ -162,7 +185,7 @@ The published buck-converter performance metrics were generated with the Simulin
 
 ### Running the Buck-boost Converter
 
-**Available Simulations**
+**Available Environments**
 - `SB3_tests/BBC/np_bbc_env.py`: NumPy/JAX hybrid environment used by the Python training workflow.
 - `SB3_tests/BBC/BBCSimulink_env.py` + `bbcSim.slx`: MATLAB/Simulink setup that produced the experimental results in the report.
 - `PID/`: Reusable PID utilities for converter baselines.
@@ -187,6 +210,8 @@ The reported buck-boost benchmarks were collected from the Simulink runs; the Nu
 - Hyperparameter sweeps write TensorBoard data to `SB3_tests/BBC/bbc_hp_logs/<algo>/`, JSON summaries to `bbc_hp_results/<algo>_best_params.json` (copied into `bbc_17_hp_results/` for training), and SQLite studies to `bbc_jax_optuna_<algo>.db`.
 - `SB3_tests/BBC/eval_runs/<ALGO>/<condition>/<run>/` is where `np_eval_bbc.py` stores evaluation metrics and plots.
 - `SB3_tests/BBC/eval_simulink_runs_80/` collects the outputs from `simulink_eval_bbc.py` when benchmarking Simulink-trained agents.
+
+## Running the Simulation
 
 ## Acknowledgements
 
