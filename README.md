@@ -1,6 +1,6 @@
 # Evaluating DRL for control systems
 The project focuses on evaluating:
-- The Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on control systems.
+- The Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on various control systems.
 - Creating simulation environments that will train SB3 models faster but with similar fidelity
 
 ## Authors
@@ -34,16 +34,26 @@ The PID benchmark work is done in `SB3_tests`.
 - **Inverted Pendulum**
 - **Cartpole**
 
-## MATLAB Setup
-
+## MATLAB Dependency Setup
+**This project is done with Matlab 2024b** -before setting up make sure you install MATLAB with the following packages:
+- MATLAB Coder
+- MATLAB Compiler
+- MATLAB Compiler SDK
+- Simulink
+- Simscape
+- Simscape Electrical
+- Simulink Coder
+- Simulink Compiler
+Installation can be done from the official Mathworks website: https://ww2.mathworks.cn/help/install/ug/install-products-with-internet-connection.html
+  
 To get MATLAB dependency installed:
-- Get main folder path in your computer
+- Get the path for the folder you are coding/cloning to on your computer
 - Run PowerShell in admin mode
-- Navigate to where main folder is
+- Navigate to where the main folder is
 - Activate virtual environment
 - Enter the following commands:
    - PS> cd "C:\Program Files\MATLAB\R2024b\extern\engines\python"- where your MATLAB is installed
-   - PS> & "C:\... \MATLAB\venv\Scripts\python.exe" setup.py install 
+   - PS> & "C:\... \MATLAB\venv\Scripts\python.exe" setup.py install - in your venv
 
 
 ## Python Simulation Environments
