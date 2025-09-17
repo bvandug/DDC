@@ -18,6 +18,12 @@ The project focuses on evaluating:
 *WLLNAT033@myuct.ac.za*
 ___
 
+# Project Allocation:
+- **Nathan Wells**:
+- **Ben Ruijsch Van Dugteren**:
+- **Nicholas Cristaudo**:
+
+
 # Full code base:
 - The full code base is available at: https://github.com/bvandug/DDC
 - This includes tuned models, evaluations, databases and tuning and hyperparameter logs.
