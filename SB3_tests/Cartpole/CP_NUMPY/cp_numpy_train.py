@@ -1,4 +1,3 @@
-# ip_numpy_train.py (Training with NumPy env and SB3)
 import os
 import json
 import argparse
@@ -36,6 +35,20 @@ OFF_POLICY_ALGOS = ["td3", "sac", "ddpg"]
 
 class FancyTensorboardCallback(BaseCallback):
     def __init__(self, save_steps, save_path_prefix, log_dir, verbose=0):
+        """ Initialize checkpointing, timing, and TensorBoard logging.
+
+            Parameters
+            ----------
+            save_steps : Iterable[int]
+                Timesteps at which to save model (and replay buffer if supported).
+            save_path_prefix : str
+                Prefix path for checkpoint files (e.g., ".../best_model").
+            log_dir : str
+                Directory for TensorBoard logs.
+            verbose : int, optional
+                Verbosity level passed to `BaseCallback`.
+        """
+
         super().__init__(verbose)
         self.save_steps = sorted(save_steps)
         self.save_path_prefix = save_path_prefix
@@ -46,12 +59,31 @@ class FancyTensorboardCallback(BaseCallback):
         self.pbar = None
 
     def _on_training_start(self) -> None:
+        """ Prepare timers and a progress bar at the start of training.
+
+            Initializes timing references, reads the total timesteps from the model,
+            and creates a tqdm progress bar for live feedback.
+        """
+
         self.start_time = time.time()
         self.last_check_time = self.start_time
         self.total_timesteps = self.model._total_timesteps
         self.pbar = tqdm(total=self.total_timesteps, desc="Training Progress", dynamic_ncols=True)
 
     def _on_step(self) -> bool:
+        """ Run after each environment step: log, checkpoint, and advance pbar.
+
+            - Updates the progress bar by one step.
+            - At configured `save_steps`, saves the model and replay buffer (if
+            available) and records elapsed time since the previous checkpoint.
+            - Logs per-episode reward and length to TensorBoard when present.
+
+            Returns
+            -------
+            bool
+                Always True to continue training.
+            """
+
         current_time = time.time()
         self.pbar.update(1)
 
@@ -70,7 +102,7 @@ class FancyTensorboardCallback(BaseCallback):
             self.timings[self.num_timesteps] = duration
             self.last_check_time = current_time
 
-            print(f"\n📌 Checkpoint at {self.num_timesteps} steps:")
+            print(f"\nCheckpoint at {self.num_timesteps} steps:")
             print(f"    - Model: {model_file}")
             print(f"    - Replay buffer: {buffer_file}")
             print(f"    - Elapsed: {duration:.2f} sec")
@@ -85,9 +117,15 @@ class FancyTensorboardCallback(BaseCallback):
         return True
 
     def _on_training_end(self):
+        """ Print a timing summary and close logging resources at the end.
+
+            Closes the progress bar, prints per-checkpoint durations and total
+            training time, then flushes and closes the TensorBoard writer.
+            """
+
         total_time = time.time() - self.start_time
         self.pbar.close()
-        print("\n🕒 Training Time Summary:")
+        print("\nTraining Time Summary:")
         for step in self.save_steps:
             if step in self.timings:
                 print(f"    {step} steps: {self.timings[step]:.2f} sec")
@@ -97,7 +135,33 @@ class FancyTensorboardCallback(BaseCallback):
 
 
 def load_hyperparameters(algo_name):
-    path = f"jax_hp_results/{algo_name}_best_params.json"
+    """ Load tuned hyperparameters for an algorithm from JSON.
+
+        Reads `numpy_hp_results/{algo_name}_best_params.json` and returns its
+        `"best_params"`. For PPO, if `batch_size` was saved indirectly as an
+        index, reconstruct a valid batch size that evenly divides `n_steps`.
+
+        Parameters
+        ----------
+        algo_name : str
+            One of {"td3","a2c","sac","ddpg","ppo","dqn"}.
+
+        Returns
+        -------
+        dict
+            Hyperparameters suitable for initializing the SB3 model.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the JSON file does not exist.
+        json.JSONDecodeError
+            If the JSON cannot be parsed.
+        KeyError
+            If expected keys are missing.
+    """
+
+    path = f"numpy_hp_results/{algo_name}_best_params.json"
     with open(path, "r") as f:
         params = json.load(f)["best_params"]
 
@@ -111,6 +175,19 @@ def load_hyperparameters(algo_name):
 
 
 def create_policy_kwargs(params):
+    """Construct SB3 `policy_kwargs` (MLP depth/width/activation).
+
+        Parameters
+        ----------
+        params : dict
+            Expected keys: {"layer_size", "n_layers", "activation_fn"}.
+
+        Returns
+        -------
+        dict
+            Keyword arguments for SB3 policy creation.
+    """
+
     return dict(
         net_arch=[params["layer_size"]] * params["n_layers"],
         activation_fn=activation_fn_map[params["activation_fn"].lower()]
@@ -118,6 +195,31 @@ def create_policy_kwargs(params):
 
 
 def main(algo_name="ppo", timesteps=100_000, noise=False, noise_level=0.01):
+    """ Train an SB3 algorithm on the NumPy CartPole and save artifacts.
+
+        Sets seeds for reproducibility, builds the Gym wrapper (optional
+        Gaussian observation noise), wraps with `DiscretizedActionWrapper` for
+        DQN, loads tuned hyperparameters, constructs the selected SB3 algorithm
+        (with action noise for TD3/DDPG), trains with a TensorBoard/Checkpoint
+        callback, saves the final model (and replay buffer for off-policy algos),
+        then closes the environment.
+
+        Parameters
+        ----------
+        algo_name : str, optional
+            One of {"td3","a2c","sac","ddpg","ppo","dqn"}. Default "ppo".
+        timesteps : int, optional
+            Total timesteps to train for. Default 100_000.
+        noise : bool, optional
+            If True, add Gaussian noise to observations. Default False.
+        noise_level : float, optional
+            Standard deviation for observation noise. Default 0.01.
+
+        Returns
+        -------
+        None
+    """
+
     # Set all seeds for reproducibility
     SEED = 42
     np.random.seed(SEED)
@@ -238,19 +340,19 @@ def main(algo_name="ppo", timesteps=100_000, noise=False, noise_level=0.01):
                                        save_path_prefix=model_path,
                                        log_dir=tensorboard_log_dir)
 
-    print(f"🚀 Training {algo_name.upper()} for {timesteps} timesteps...")
+    print(f"Training {algo_name.upper()} for {timesteps} timesteps...")
     model.learn(total_timesteps=timesteps, reset_num_timesteps=False,
                 callback=callback, tb_log_name="run")
 
     # Save final model and buffer
     model.save(model_path)
-    print(f"✅ Final model saved to {model_path}.zip")
+    print(f"Final model saved to {model_path}.zip")
     if algo_name in OFF_POLICY_ALGOS:
         model.save_replay_buffer(replay_buffer_path)
-        print(f"✅ Final replay buffer saved to {replay_buffer_path}.pkl")
+        print(f"Final replay buffer saved to {replay_buffer_path}.pkl")
 
     env.close()
-    print("🏁 Training complete. Environment closed.")
+    print("Training complete. Environment closed.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -273,7 +375,7 @@ if __name__ == "__main__":
         algos_to_run = args.algos
 
     for algo in algos_to_run:
-        print(f"\n🔄 Starting training for {algo.upper()} …")
+        print(f"\n Starting training for {algo.upper()} …")
         main(
             algo_name=algo,
             timesteps=args.timesteps,

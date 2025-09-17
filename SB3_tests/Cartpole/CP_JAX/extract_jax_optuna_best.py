@@ -1,41 +1,58 @@
-#!/usr/bin/env python3
-"""
-Extract the top (best) trial from each Optuna SQLite DB and write per‑algo JSON
-files like:
-{
-    "best_params": {...},
-    "best_value": 498.77,
-    "n_trials": 50
-}
-
-It looks for the 6 algos: a2c, ddpg, dqn, ppo, sac, td3
-DB filename patterns handled (in --db-dir):
-  - ip_jax_optuna_{algo}.db     (as used in ip_jax_hp.py)
-  - jax_optuna_{algo}.db        (as in your screenshot)
-
-Usage:
-  python extract_jax_optuna_best.py --db-dir . --out-dir final_jax_results
-"""
 import argparse
 import json
 import os
 from pathlib import Path
 from typing import Optional, List
-
 import optuna
-
 
 ALGOS = ["a2c", "ddpg", "dqn", "ppo", "sac", "td3"]
 
 
 def storage_url_for_sqlite(path: Path) -> str:
-    # Optuna expects "sqlite:///<abs_path>" with forward slashes
+    """Build an Optuna-compatible SQLite storage URL from a filesystem path.
+
+        Optuna expects a URL of the form ``sqlite:///absolute/path`` with
+        forward slashes, even on Windows. This helper resolves the path and
+        normalizes separators.
+
+        Parameters
+        ----------
+        path : pathlib.Path
+            Path to a ``.db`` file.
+
+        Returns
+        -------
+        str
+            Storage URL suitable for Optuna's ``storage=`` argument.
+    """
+
     abs_path = path.resolve()
     return f"sqlite:///{str(abs_path).replace(os.sep, '/')}"
     
 
 def find_db_for_algo(db_dir: Path, algo: str) -> Optional[Path]:
-    """Return path to DB for the algo, or None if not found."""
+    """Locate an Optuna SQLite DB for a given algorithm under a directory.
+
+        Search order:
+        1) Exact filenames in ``db_dir``:
+        - ``ip_jax_optuna_{algo}.db``
+        - ``jax_optuna_{algo}.db``
+        2) Recursive fallback: any ``*.db`` whose name contains both
+        ``optuna`` and the ``algo`` substring (case-insensitive).
+
+        Parameters
+        ----------
+        db_dir : pathlib.Path
+            Directory to search.
+        algo : str
+            Algorithm key (e.g., ``"ppo"``, ``"sac"``).
+
+        Returns
+        -------
+        pathlib.Path | None
+            Path to the first matching DB, or ``None`` if not found.
+    """
+
     candidates = [
         db_dir / f"ip_jax_optuna_{algo}.db",
         db_dir / f"jax_optuna_{algo}.db",
@@ -44,7 +61,6 @@ def find_db_for_algo(db_dir: Path, algo: str) -> Optional[Path]:
         if c.exists():
             return c
 
-    # Fallback: search recursively for something like "*optuna*{algo}*.db"
     for p in db_dir.rglob("*.db"):
         name = p.name.lower()
         if "optuna" in name and algo in name:
@@ -54,7 +70,28 @@ def find_db_for_algo(db_dir: Path, algo: str) -> Optional[Path]:
 
 
 def choose_study_name(storage_url: str, algo: str) -> Optional[str]:
-    """Pick the most sensible study in this DB for the given algo."""
+    """Choose the most appropriate study name within a storage for an algo.
+
+        Heuristic:
+        1) Prefer exact matches in this order:
+        ``"jax_{algo}_tuning"``, ``"ip_jax_{algo}_tuning"``, ``"{algo}_tuning"``.
+        2) Otherwise, pick the study with the highest ``best_value``. If a
+        study's direction is MINIMIZE, its value is sign-flipped so the
+        comparison remains meaningful.
+
+        Parameters
+        ----------
+        storage_url : str
+            Optuna storage URL (e.g., from ``storage_url_for_sqlite``).
+        algo : str
+            Algorithm key used in preferred-name matching.
+
+        Returns
+        -------
+        str | None
+            Selected study name, or ``None`` if no studies are present.
+    """
+
     summaries: List[optuna.study.StudySummary] = optuna.study.get_all_study_summaries(storage=storage_url)
     if not summaries:
         return None
@@ -65,8 +102,6 @@ def choose_study_name(storage_url: str, algo: str) -> Optional[str]:
             if s.study_name == pref:
                 return s.study_name
 
-    # Otherwise: take the study with the highest best_value (assuming maximize)
-    # Note: some studies may have None best_value if no complete trials.
     def key_fn(s: optuna.study.StudySummary):
         # Fallback to -inf if best_value is None
         val = s.best_value if s.best_value is not None else float("-inf")
@@ -83,7 +118,34 @@ def choose_study_name(storage_url: str, algo: str) -> Optional[str]:
 
 
 def extract_and_write(db_path: Path, algo: str, out_dir: Path) -> Optional[Path]:
-    """Load best trial and write JSON. Returns written file path or None."""
+    """Extract best trial info from a DB and write a per-algo JSON file.
+
+        Loads the best trial from the chosen study, determines the total number
+        of trials (via study summaries when available), and writes a JSON file
+        containing:
+        ``{"best_params": {...}, "best_value": float|None, "n_trials": int}``.
+
+        Parameters
+        ----------
+        db_path : pathlib.Path
+            Path to the Optuna SQLite database.
+        algo : str
+            Algorithm key used to name the output file.
+        out_dir : pathlib.Path
+            Directory where the JSON will be written (created if missing).
+
+        Returns
+        -------
+        pathlib.Path | None
+            The written JSON filepath, or ``None`` if no study could be chosen.
+
+        Raises
+        ------
+        optuna.exceptions.OptunaError
+            If loading the study fails for other reasons.
+    """
+
+    
     storage_url = storage_url_for_sqlite(db_path)
     study_name = choose_study_name(storage_url, algo)
     if study_name is None:
@@ -116,6 +178,23 @@ def extract_and_write(db_path: Path, algo: str, out_dir: Path) -> Optional[Path]
 
 
 def main():
+    """CLI entry point: scan DBs, extract best trials, and write JSON files.
+
+        Parses arguments:
+        - ``--db-dir``: directory containing the ``*.db`` files (default: ``.``).
+        - ``--out-dir``: directory for output JSON files (default: ``final_jax_results``).
+        - ``--algos``: comma-separated list of algorithm keys to process
+        (default: ``a2c,ddpg,dqn,ppo,sac,td3``).
+
+        For each requested algorithm, attempts to locate a matching Optuna DB,
+        loads the most suitable study, and writes ``{algo}_best_params.json``.
+        Prints warnings for missing DBs and a summary at the end.
+
+        Returns
+        -------
+        None
+    """
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--db-dir", type=Path, default=Path("."), help="Directory that contains the *.db files")
     ap.add_argument("--out-dir", type=Path, default=Path("final_jax_results"), help="Where to write JSON files")

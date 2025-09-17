@@ -8,30 +8,50 @@ import json, os, sys, torch
 from torch import nn
 from tqdm import tqdm
 
-# --------------------------------------------------------------------- #
-# CONSTANTS                                                             #
+# CONSTANTS                                                             
 TOTAL_TIMESTEPS   = 50_000      # per trial during HP search
 EVAL_INTERVAL     = 10_000       # evaluate & report every 10 k steps
 N_EVAL_EPISODES   = 10            # quick roll-outs for pruning
 SOLVED_THRESHOLD  = 490           # “good enough” reward, end trial early
-# HARD_FAIL_THRESHOLDS = {10_000: 30, 20_000: 150, 30_000: 200, 40_000: 250}
 HARD_FAIL_THRESHOLDS = {20_000: 20, 30_000: 50}
 
 TB_ROOT = "./hp1_logs"
-# --------------------------------------------------------------------- #
-os.makedirs(TB_ROOT, exist_ok=True)      # <<< 1. always create the folder
-# --------------------------------------------------------------------- #
+os.makedirs(TB_ROOT, exist_ok=True) 
 
 MIN_RESOURCES = 20000  # min. resources for pruning
 REDUCTION_FACTOR = 2  # reduction factor for pruning
 MIN_EARLY_STOPPING_RATE = 0  # min. early stopping rate for pruning
-# --------------------------------------------------------------------- #
 
 def objective(trial, algo_name):
+    """Optuna objective: train/evaluate an SB3 agent and return a score.
+
+        Builds a Simulink-backed CartPole environment, constructs the specified
+        algorithm with hyperparameters sampled from the trial, then trains in
+        chunks of `EVAL_INTERVAL` until `TOTAL_TIMESTEPS`. After each chunk it
+        runs `N_EVAL_EPISODES` deterministic rollouts and computes the **top-8
+        average** episode return as the interim metric. Trials can be **pruned**
+        either by hard thresholds (`HARD_FAIL_THRESHOLDS`) or by Optuna’s
+        Successive Halving pruner via `trial.report(...)` / `trial.should_prune()`.
+
+        Parameters
+        ----------
+        trial : optuna.trial.Trial
+            The current Optuna trial used to sample hyperparameters.
+        algo_name : str
+            One of {"td3", "a2c", "ppo", "ddpg", "sac", "dqn"}.
+
+        Returns
+        -------
+        float
+            The final top-8 average reward for the trial.
+
+        Notes
+        -----
+        - For DQN, the base env is wrapped with `DiscretizedActionWrapper`
+        using 11 evenly spaced forces in [-10, 10].
+        - The Simulink environment is always closed in a `finally` block.
     """
-    One Optuna trial: build the agent, train in chunks, evaluate,
-    report intermediate scores and allow pruning.
-    """
+
     base_env = SimulinkEnv(model_name="PendCart",
                            agent_block="PendCart/RL Agent",
                            dt=0.01)
@@ -40,9 +60,6 @@ def objective(trial, algo_name):
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"[{algo_name.upper()}] Using device: {device}")
 
-        # ================================================================= //
-        # ------------  Build model & hyper-parameter search  ------------- //
-        # ================================================================= #
         if algo_name == "td3":
             params = {
                 "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
@@ -80,7 +97,6 @@ def objective(trial, algo_name):
             )
             env_for_eval = base_env
 
-        # ------------------------------------------------------------------ #
         elif algo_name == "a2c":
             params = {
                 "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
@@ -113,7 +129,6 @@ def objective(trial, algo_name):
             )
             env_for_eval = base_env
 
-        # ------------------------------------------------------------------ #
         elif algo_name == "ppo":
             # Define the allowed options for both parameters (powers of two are recommended)
             possible_n_steps = [64, 128, 256, 512, 1024, 2048]
@@ -159,7 +174,6 @@ def objective(trial, algo_name):
             )
             env_for_eval = base_env
 
-        # ------------------------------------------------------------------ #
         elif algo_name == "ddpg":
             params = {
                 "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
@@ -190,7 +204,6 @@ def objective(trial, algo_name):
             )
             env_for_eval = base_env
 
-        # ------------------------------------------------------------------ #
         elif algo_name == "sac":
             params = {
                 "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
@@ -220,7 +233,6 @@ def objective(trial, algo_name):
             )
             env_for_eval = base_env
 
-        # ------------------------------------------------------------------ #
         elif algo_name == "dqn":
             force_values = np.linspace(-10, 10, 11, dtype=np.float32)
             wrapped_env  = DiscretizedActionWrapper(base_env, force_values)
@@ -262,9 +274,6 @@ def objective(trial, algo_name):
         else:
             raise ValueError(f"Unsupported algorithm: {algo_name}")
 
-        # ================================================================= //
-        # -------------  TRAIN–EVAL LOOP WITH PRUNING  -------------------- //
-        # ================================================================= #
         timesteps = 0
 
         while timesteps < TOTAL_TIMESTEPS:
@@ -296,10 +305,7 @@ def objective(trial, algo_name):
             model.logger.record("eval/top8_avg", mean_reward)
             model.logger.dump(timesteps)
 
-            # >>> THIS LINE IS NEEDED <<<
-            # top8_means.append(mean_reward)
 
-            # ---------- 1) Hard-fail gates ----------
             if timesteps in HARD_FAIL_THRESHOLDS:
                 threshold = HARD_FAIL_THRESHOLDS[timesteps]
                 if mean_reward < threshold:
@@ -308,13 +314,6 @@ def objective(trial, algo_name):
                           f"(reward {mean_reward:.1f})", flush=True)
                     raise optuna.TrialPruned()
 
-            # ---------- 2) Early success ----------
-            # if mean_reward >= SOLVED_THRESHOLD:
-            #     print(f"[{algo_name.upper()}|Trial {trial.number}] ✔ "
-            #         f"Solved at {timesteps} (reward {mean_reward:.1f})", flush=True)
-            #     break
-
-            # ---------- 3) Successive-Halving pruner ----------
             trial.report(mean_reward, step=timesteps)
             if trial.should_prune():
                 print(f"[{algo_name.upper()}|Trial {trial.number}] ✘ "
@@ -327,8 +326,31 @@ def objective(trial, algo_name):
     finally:
         base_env.close()
 
-# --------------------------------------------------------------------------- #
 def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
+    """Run Optuna to tune hyperparameters for a given algorithm.
+
+        Creates/loads a study backed by SQLite (so runs are resumable), using a
+        `SuccessiveHalvingPruner` configured by `MIN_RESOURCES`,
+        `REDUCTION_FACTOR`, and `MIN_EARLY_STOPPING_RATE`. Optimizes the
+        `objective` across `n_trials` (optionally in parallel), shows a tqdm
+        progress bar, and writes the best params/value to
+        `hyperparameter_results_1/{algo_name}_best_params.json`.
+
+        Parameters
+        ----------
+        algo_name : str
+            One of {"td3", "a2c", "ppo", "ddpg", "sac", "dqn"}.
+        n_trials : int, optional
+            Number of trials to run. Default is 50.
+        n_parallel : int, optional
+            Number of parallel workers (`n_jobs`) for Optuna. Default is 6.
+
+        Returns
+        -------
+        dict
+            The best hyperparameter dictionary found by the study.
+    """
+
     print(f"\nTuning {algo_name.upper()} with {n_parallel} parallel workers")
 
     pruner = optuna.pruners.SuccessiveHalvingPruner(
@@ -350,9 +372,9 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
     def _cb(st, tr):
         pbar.update(1)
         try:
-            best_val = st.best_value        # only exists if ≥1 COMPLETE trial
+            best_val = st.best_value       
             pbar.set_postfix(best_val=f"{best_val:.1f}")
-        except ValueError:                  # no completed trials yet
+        except ValueError:                  
             pbar.set_postfix(best_val="–")
 
     study.optimize(lambda t: objective(t, algo_name),
@@ -376,9 +398,8 @@ def tune_hyperparameters(algo_name, n_trials=50, n_parallel=6):
         print(f"  {k}: {v}")
     return study.best_params
 
-# --------------------------------------------------------------------------- #
 if __name__ == "__main__":
-    algorithms = ["ppo"]           # change this list to tune other algos
+    algorithms = ["ppo"]           
     print("Starting hyperparameter tuning …")
     for algo in algorithms:
         print("\n" + "="*60)

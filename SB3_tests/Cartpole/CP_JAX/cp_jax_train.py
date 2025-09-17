@@ -1,4 +1,3 @@
-# ip_jax_train.py (seeded version)
 import os
 import json
 import argparse
@@ -39,6 +38,20 @@ OFF_POLICY_ALGOS = ["td3", "sac", "ddpg"]
 
 class FancyTensorboardCallback(BaseCallback):
     def __init__(self, save_steps, save_path_prefix, log_dir, verbose=0):
+        """Initialize checkpointing, timing, and TensorBoard logging.
+
+            Parameters
+            ----------
+            save_steps : Iterable[int]
+                Timesteps at which to save model (and replay buffer if available).
+            save_path_prefix : str
+                Prefix path for checkpoint files (e.g., ".../jax_models/best_model").
+            log_dir : str
+                TensorBoard log directory.
+            verbose : int, optional
+                Verbosity flag passed to `BaseCallback`.
+        """
+
         super().__init__(verbose)
         self.save_steps = sorted(save_steps)
         self.save_path_prefix = save_path_prefix
@@ -49,12 +62,31 @@ class FancyTensorboardCallback(BaseCallback):
         self.pbar = None
 
     def _on_training_start(self) -> None:
+        """ Set up timers and a progress bar at the start of training.
+
+            Initializes timing references, reads the total timesteps from the model,
+            and creates a tqdm progress bar.
+        """
+
         self.start_time = time.time()
         self.last_check_time = self.start_time
         self.total_timesteps = self.model._total_timesteps
         self.pbar = tqdm(total=self.total_timesteps, desc="Training Progress", dynamic_ncols=True)
 
     def _on_step(self) -> bool:
+        """ Run after each environment step during training.
+
+            - Updates the progress bar.
+            - Saves model (and replay buffer if supported) at configured checkpoints.
+            - Records per-episode reward and length to TensorBoard when available.
+            - Tracks elapsed time between checkpoints.
+
+            Returns
+            -------
+            bool
+                Always True to continue training.
+        """
+
         current_time = time.time()
         self.pbar.update(1)
 
@@ -73,7 +105,7 @@ class FancyTensorboardCallback(BaseCallback):
             self.timings[self.num_timesteps] = duration
             self.last_check_time = current_time
 
-            print(f"\n📌 Checkpoint at {self.num_timesteps} steps:")
+            print(f"\n Checkpoint at {self.num_timesteps} steps:")
             print(f"    - Model: {model_file}")
             print(f"    - Replay buffer: {buffer_file}")
             print(f"    - Elapsed: {duration:.2f} sec")
@@ -88,9 +120,14 @@ class FancyTensorboardCallback(BaseCallback):
         return True
 
     def _on_training_end(self):
+        """Tear down logging and print a timing summary at training end.
+
+            Closes the progress bar, prints per-checkpoint elapsed times and total
+            training time, and flushes/closes the TensorBoard writer.
+        """
         total_time = time.time() - self.start_time
         self.pbar.close()
-        print("\n🕒 Training Time Summary:")
+        print("\n Training Time Summary:")
         for step in self.save_steps:
             if step in self.timings:
                 print(f"    {step} steps: {self.timings[step]:.2f} sec")
@@ -100,6 +137,32 @@ class FancyTensorboardCallback(BaseCallback):
 
 
 def load_hyperparameters(algo_name):
+    """Load best hyperparameters for an algorithm from JSON.
+
+        Reads `jax_hp_results/{algo_name}_best_params.json` and returns
+        `["best_params"]`. For PPO, if `batch_size` is missing, it derives a
+        valid batch size that divides `n_steps`.
+
+        Parameters
+        ----------
+        algo_name : str
+            One of {"td3","a2c","sac","ddpg","ppo","dqn"}.
+
+        Returns
+        -------
+        dict
+            Hyperparameter dictionary suitable for initializing the model.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the JSON file does not exist.
+        json.JSONDecodeError
+            If the JSON cannot be parsed.
+        KeyError
+            If expected keys are missing in the JSON.
+    """
+
     path = f"jax_hp_results/{algo_name}_best_params.json"
     with open(path, "r") as f:
         params = json.load(f)["best_params"]
@@ -114,6 +177,22 @@ def load_hyperparameters(algo_name):
 
 
 def create_policy_kwargs(params):
+    """Build Stable-Baselines3 `policy_kwargs` from tuned params.
+
+        Maps an activation name to `torch.nn` and repeats the layer size
+        `n_layers` times to form a simple MLP architecture.
+
+        Parameters
+        ----------
+        params : dict
+            Expected keys: {"layer_size", "n_layers", "activation_fn"}.
+
+        Returns
+        -------
+        dict
+            Keyword arguments for SB3 policy construction.
+    """
+
     return dict(
         net_arch=[params["layer_size"]] * params["n_layers"],
         activation_fn=activation_fn_map[params["activation_fn"].lower()]
@@ -124,6 +203,29 @@ def main(algo_name="ppo",
          timesteps=100_000,
          noise: bool = False,
          noise_level: float = 0.01):
+    """ Train a selected algorithm on the JAX CartPole with logging/checkpoints.
+
+        Sets seeds, builds the Gym wrapper (optional observation noise), prepares
+        output directories, loads tuned hyperparameters, constructs the selected
+        SB3 algorithm (with action noise for TD3/DDPG), trains with a custom
+        callback, saves the final model (and replay buffer for off-policy algos),
+        and closes the environment.
+
+        Parameters
+        ----------
+        algo_name : str, optional
+            One of {"td3","a2c","sac","ddpg","ppo","dqn"}.
+        timesteps : int, optional
+            Total training timesteps for `model.learn`.
+        noise : bool, optional
+            If True, add Gaussian noise to observations in the env.
+        noise_level : float, optional
+            Standard deviation for observation noise.
+
+        Returns
+        -------
+        None
+    """
     SEED = 42
 
     # Set all seeds
@@ -139,12 +241,11 @@ def main(algo_name="ppo",
         noise_std=noise_level
     )
 
-    # # If using DQN (or similar), wrap with DiscretizedActionWrapper
+    # # If using DQN, wrap with DiscretizedActionWrapper
     # if algo_name == "dqn":
     #     force_values = np.linspace(-10.0, 10.0, 5)
     #     env = DiscretizedActionWrapper(env, force_values=force_values)
 
-       # Determine a canonical tag (always include a noise string)
     noise_str = f"{noise_level:.3f}" if noise else "0.000"
     run_tag = f"{algo_name}_noise_{noise_str}"
 
@@ -155,28 +256,24 @@ def main(algo_name="ppo",
         noise_std=noise_level
     )
 
-    # If using DQN (or similar), wrap with DiscretizedActionWrapper
+    # If using DQN, wrap with DiscretizedActionWrapper
     if algo_name == "dqn":
         force_values = np.linspace(-10.0, 10.0, 41)
         env = DiscretizedActionWrapper(env, force_values=force_values)
 
-    # === Canonical directory layout ===
-    model_base_dir = os.path.join("jax-41", run_tag)                 # e.g., jax/ppo_noise_0.010
-    ckpt_dir       = os.path.join(model_base_dir, "jax_models")   # all checkpoints here
+    model_base_dir = os.path.join("jax-41", run_tag)               
+    ckpt_dir       = os.path.join(model_base_dir, "jax_models")
     os.makedirs(ckpt_dir, exist_ok=True)
 
-    # Final artifacts at root of the run folder
-    model_path = os.path.join(model_base_dir, "best_model")       # -> best_model.zip
+    model_path = os.path.join(model_base_dir, "best_model")
 
-    # Checkpoint prefix inside jax_models/
     ckpt_prefix = os.path.join(ckpt_dir, "best_model")
 
-    # TensorBoard logs grouped by the same tag
     tensorboard_log_dir = os.path.join("jax_logs-41", run_tag)
 
-    print(f"📁 Saving models to: {model_base_dir}")
-    print(f"📦 Checkpoints to:   {ckpt_dir}")
-    print(f"📊 TensorBoard logs: {tensorboard_log_dir}")
+    print(f" Saving models to: {model_base_dir}")
+    print(f" Checkpoints to:   {ckpt_dir}")
+    print(f" TensorBoard logs: {tensorboard_log_dir}")
 
 
     params = load_hyperparameters(algo_name)
@@ -272,25 +369,25 @@ def main(algo_name="ppo",
     checkpoint_steps = {10_000, 25_000, 50_000, 75_000, 125_000,150_000, timesteps}
     callback = FancyTensorboardCallback(
     save_steps=checkpoint_steps,
-    save_path_prefix=ckpt_prefix,   # <-- write checkpoints under jax_models/
+    save_path_prefix=ckpt_prefix,
     log_dir=tensorboard_log_dir
     )
 
 
-    print(f"🚀 Training {algo_name.upper()} for {timesteps} timesteps...")
+    print(f"Training {algo_name.upper()} for {timesteps} timesteps...")
     model.learn(total_timesteps=timesteps, reset_num_timesteps=False,
                 callback=callback, tb_log_name="run")
 
     model.save(model_path)
-    print(f"✅ Final model saved to {model_path}.zip")
+    print(f" Final model saved to {model_path}.zip")
 
     if algo_name in OFF_POLICY_ALGOS:
         final_buf = os.path.join(ckpt_dir, "best_model_replay_buffer.pkl")
         model.save_replay_buffer(final_buf)
-        print(f"✅ Final replay buffer saved to {final_buf}")
+        print(f" Final replay buffer saved to {final_buf}")
 
     env.close()
-    print("🏁 Training complete. Environment closed.")
+    print(" Training complete. Environment closed.")
 
 
 if __name__ == "__main__":
@@ -314,7 +411,7 @@ if __name__ == "__main__":
         algos_to_run = args.algos
 
     for algo in algos_to_run:
-        print(f"\n🔄 Starting training for {algo.upper()} …")
+        print(f"\n Starting training for {algo.upper()} …")
         main(
             algo_name=algo,
             timesteps=args.timesteps,

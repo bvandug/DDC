@@ -21,17 +21,70 @@ MIN_EARLY_STOPPING_RATE = 0
 os.makedirs(TB_ROOT, exist_ok=True)
 
 def set_global_seeds(seed: int = 42):
+    """Seed NumPy, Python `random`, and PyTorch for reproducibility.
+
+        Parameters
+        ----------
+        seed : int, optional
+            Global seed value applied to NumPy, `random`, and Torch.
+    """
+
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
 
 def make_env(algo_name):
+    """Create a vectorized, monitored CartPole environment for SB3.
+
+        Builds a `DummyVecEnv` that wraps a `CartPoleGymWrapper` in a `Monitor`.
+        For DQN, it further wraps the env with a `DiscretizedActionWrapper`
+        mapping a discrete action index to forces `[-10.0, 0.0, 10.0]`.
+
+        Parameters
+        ----------
+        algo_name : str
+            Algorithm name (e.g., "ppo", "a2c", "td3", "ddpg", "sac", "dqn").
+
+        Returns
+        -------
+        DummyVecEnv
+            Vectorized environment compatible with Stable-Baselines3.
+    """
+
     base = CartPoleGymWrapper(seed=42)
     if algo_name == "dqn":
         return DummyVecEnv([lambda: Monitor(DiscretizedActionWrapper(base, [-10.0, 0.0, 10.0]))])
     return DummyVecEnv([lambda: Monitor(base)])
 
 def objective(trial, algo_name):
+    """Optuna objective: train/evaluate an SB3 agent and return a score.
+
+        For a given `algo_name`, this builds a policy with hyperparameters
+        sampled by Optuna, trains in increments of `EVAL_INTERVAL` up to
+        `TOTAL_TIMESTEPS`, and evaluates the policy over `N_EVAL_EPISODES`
+        after each increment. The optimization metric is the **top-K average**
+        of episode returns (`top9_avg` here).
+
+        Pruning
+        -------
+        - **Hard thresholds:** if `top9_avg` falls below a configured value at
+        specific timesteps (see `HARD_FAIL_THRESHOLDS`), the trial is pruned.
+        - **Optuna pruner:** reports `top9_avg` and lets Optuna prune under-
+        performing trials based on its pruner (e.g., SuccessiveHalving).
+
+        Parameters
+        ----------
+        trial : optuna.trial.Trial
+            Current Optuna trial used for sampling hyperparameters.
+        algo_name : str
+            One of {"ppo","a2c","td3","ddpg","sac","dqn"}.
+
+        Returns
+        -------
+        float
+            The final `top9_avg` reward used as the objective value.
+    """
+
     set_global_seeds(42)
     env = make_env(algo_name)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -39,6 +92,21 @@ def objective(trial, algo_name):
     activation_map = {"tanh": nn.Tanh, "relu": nn.ReLU, "leaky_relu": nn.LeakyReLU, "elu": nn.ELU}
 
     def policy_kwargs_from_trial(trial):
+        """Build `policy_kwargs` (MLP size/depth/activation) from a trial.
+
+            Samples an activation function and constructs a repeated `net_arch`
+            based on `layer_size` and `n_layers`.
+
+            Parameters
+            ----------
+            trial : optuna.trial.Trial
+                Trial to sample hyperparameters from.
+
+            Returns
+            -------
+            dict
+                Keyword arguments suitable for SB3 policy construction.
+        """
         return {
             "net_arch": [trial.suggest_int("layer_size", 32, 512)] * trial.suggest_int("n_layers", 1, 4),
             "activation_fn": activation_map[trial.suggest_categorical("activation_fn", list(activation_map.keys()))]
@@ -156,6 +224,28 @@ def objective(trial, algo_name):
     return top_k_avg
 
 def tune_hyperparameters(algo_name, n_trials=50, n_parallel=4):
+    """Run Optuna to tune hyperparameters for a given algorithm.
+
+        Creates/loads a study with a `SuccessiveHalvingPruner`, runs `n_trials`
+        in parallel via `n_jobs=n_parallel`, and persists the best parameters to
+        `jax_hp_results/{algo_name}_best_params.json`. Prints the best value and
+        its parameter set.
+
+        Parameters
+        ----------
+        algo_name : str
+            One of {"ppo","a2c","td3","ddpg","sac","dqn"}.
+        n_trials : int, optional
+            Number of Optuna trials to run.
+        n_parallel : int, optional
+            Number of parallel workers (`n_jobs`) for `study.optimize`.
+
+        Returns
+        -------
+        dict
+            The best hyperparameters found by the study.
+    """
+
     print(f"Tuning {algo_name.upper()} on JAX env with SB3...")
     storage_path = f"sqlite:///jax_optuna_{algo_name}.db"
     study = optuna.create_study(direction="maximize",

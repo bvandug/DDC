@@ -10,21 +10,36 @@ import uuid
 import os
 
 
-# >>> ADDED FOR DQN --------------------------------------------------------------
 class DiscretizedActionWrapper(gym.ActionWrapper):
-    """
-    Wraps a continuous-action env so a discrete index is mapped to a pre-defined
-    force value.  Suitable for running SB3-DQN on SimulinkEnv.
-    """
     def __init__(self, env, force_values):
+        """ Initialize the wrapper with a fixed set of continuous actions.
+
+            Parameters
+            ----------
+            env :
+                The base environment with a continuous action space.
+            force_values :
+                Sequence of scalar control values. Each discrete index maps
+                to one element of this sequence.
+        """
         super().__init__(env)
         self.force_values = np.asarray(force_values, dtype=np.float32)
         self.action_space = spaces.Discrete(len(self.force_values))
 
     def action(self, act_idx):
-        """Convert the integer chosen by DQN into the continuous force."""
+        """ Map a discrete index to its continuous control value.
+
+            Parameters
+            ----------
+            act_idx :
+                Discrete action index chosen by the policy.
+
+            Returns
+            -------
+            np.ndarray
+                A (1,) float32 array containing the selected force value.
+        """
         return np.array([self.force_values[int(act_idx)]], dtype=np.float32)
-# ------------------------------------------------------------------------------
 
 class SimulinkEnv(gym.Env):
     metadata = {"render_modes": []}
@@ -35,21 +50,44 @@ class SimulinkEnv(gym.Env):
     dt: float = 0.01,
     max_episode_time: float = 5,
     angle_threshold: float = np.pi / 2,
-    seed: int = None,  # Add seed parameter
-    eval_obs_noise_std: float = 0.0,   # single scalar σ
+    seed: int = None,
+    eval_obs_noise_std: float = 0.0,
     ):
+        """ Start MATLAB, load a unique model copy, and initialize state.
+
+            Parameters
+            ----------
+            model_name : str, optional
+                Base name of the Simulink model (without the temp suffix).
+            dt : float, optional
+                Simulation step (seconds) advanced on each `step()` call.
+            max_episode_time : float, optional
+                Episode time limit in seconds (simulation time).
+            angle_threshold : float, optional
+                Terminal angle magnitude (radians) for failure.
+            seed : int, optional
+                Seed for both JAX and NumPy RNGs.
+            eval_obs_noise_std : float, optional
+                Std-dev of zero-mean Gaussian noise added to observations.
+
+            Notes
+            -----
+            - A unique `.slx` copy is created in a temp dir to avoid clashes
+            across multiple env instances.
+            - The initial angle is sampled with JAX; if |angle| < 0.05, +0.1
+            is added.
+        """
+
         super().__init__()
 
-         # Add JAX-style seeding to match your JAX implementation exactly
         self.rng = jax.random.PRNGKey(seed if seed is not None else 0)
-        self.obs_noise_std = float(eval_obs_noise_std)        # NEW
-        self.np_rng = np.random.RandomState(int(seed or 0))   # NEW: RNG for noise
+        self.obs_noise_std = float(eval_obs_noise_std)      
+        self.np_rng = np.random.RandomState(int(seed or 0))   
 
-        # 🔄 Instance-specific MATLAB engine
         print("Starting MATLAB engine...")
         self.eng = matlab.engine.start_matlab()
 
-        # 🆕 Create a unique copy of the model file
+        # Create a unique copy of the model file
         unique_id = uuid.uuid4().hex[:8]
         self.model_name = f"{model_name}_{unique_id}"
         self.model_path = os.path.join(tempfile.gettempdir(), f"{self.model_name}.slx")
@@ -59,7 +97,6 @@ class SimulinkEnv(gym.Env):
         self.eng.load_system(self.model_path, nargout=0)
         self.eng.set_param(self.model_name, "FastRestart", "on", nargout=0)
 
-        # self.agent_block = agent_block
         self.dt = dt
         self.current_time = 0.0
         self.max_episode_time = max_episode_time
@@ -73,20 +110,29 @@ class SimulinkEnv(gym.Env):
         high = np.array([np.pi, np.finfo(np.float32).max], np.float32)
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
-        # Generate initial angle using the seeded RNG
         self.rng, subkey = jax.random.split(self.rng)
         initial_angle = float(jax.random.uniform(subkey, minval=-1.0, maxval=1.0))
-        # Match JAX logic exactly: if abs(angle) < 0.05, add 0.1
         initial_angle = (initial_angle + 0.1 if abs(initial_angle) < 0.05 else initial_angle)
         self.eng.set_param(f"{self.model_name}/Pendulum and Cart", "init", str(initial_angle), nargout=0)
 
     def get_data(self):
-        # pull _both_ angle and true angular velocity out of Simulink
+        """ Fetch angle, angular velocity, and time logs from Simulink.
+
+            Returns
+            -------
+            tuple[list[float], list[float], list[float]]
+                Three lists: angles, angular velocities, and time stamps,
+                flattened from MATLAB arrays and ordered by simulation time.
+
+            Notes
+            -----
+            Assumes the model logs `out.angle`, `out.angle_v`, and `out.tout`.
+        """
+
         raw_ang = self.eng.eval("out.angle", nargout=1)
         raw_vel = self.eng.eval("out.angle_v", nargout=1)
         raw_time = self.eng.eval("out.tout", nargout=1)
 
-        # flatten
         ang2d = [[raw_ang]] if isinstance(raw_ang, float) else raw_ang
         vel2d = [[raw_vel]] if isinstance(raw_vel, float) else raw_vel
         t2d = [[raw_time]] if isinstance(raw_time, float) else raw_time
@@ -97,9 +143,29 @@ class SimulinkEnv(gym.Env):
         return angle_lst, vel_lst, time_lst
 
     def reset(self, seed=None, options=None):
+        """ Reset the simulation and return the initial observation.
+
+            Parameters
+            ----------
+            seed : int, optional
+                If provided, reseeds both JAX and NumPy RNGs.
+            options : dict, optional
+                Unused Gymnasium options placeholder.
+
+            Returns
+            -------
+            tuple[np.ndarray, dict]
+                Observation array `[theta, theta_dot]` (float32) and an
+                info dict containing `{"time": <float>}`.
+
+            Notes
+            -----
+            Stops any running sim, clears `xFinal`, sets a new initial angle,
+            runs a short warm-up sim to populate `xFinal`, and applies optional
+            Gaussian obs noise if configured.
+        """
 
         self.current_time = 0.0
-        # Gymnasium: reseed RNGs if a seed is provided
         if seed is not None:
             self.rng = jax.random.PRNGKey(int(seed))
             self.np_rng = np.random.RandomState(int(seed))
@@ -148,6 +214,28 @@ class SimulinkEnv(gym.Env):
         return obs, {"time": float(time_lst[-1])}
     
     def step(self, action):
+        """ Advance the Simulink model by `dt` using the given control.
+
+            Parameters
+            ----------
+            action :
+                Continuous control input; clipped to the action space bounds.
+
+            Returns
+            -------
+            tuple
+                `(obs, reward, done, info)` where:
+                - `obs` is `[theta, theta_dot]` (float32, with optional noise),
+                - `reward` is `cos(theta)` (upright is better),
+                - `done` is True if angle exceeds the threshold or time limit,
+                - `info` contains `{"time": <float>}`.
+
+            Notes
+            -----
+            For compatibility with existing callers, this returns a single
+            `done` flag rather than Gymnasium's `(terminated, truncated)`.
+        """
+
         u = float(np.clip(action, self.action_space.low, self.action_space.high))
 
         self.eng.set_param(f"{self.model_name}/Constant", "Value", str(u), nargout=0)
@@ -177,17 +265,26 @@ class SimulinkEnv(gym.Env):
 
         reward = np.cos(theta)
         done = abs(theta) > self.angle_threshold or t >= self.max_episode_time
-        terminated = bool(abs(theta) > self.angle_threshold)   # Gymnasium
-        truncated  = bool(t >= self.max_episode_time)          # Gymnasium
+        terminated = bool(abs(theta) > self.angle_threshold)
+        truncated  = bool(t >= self.max_episode_time)        
         self.current_time = t
 
         return obs, reward, done, {"time": t}
 
 
     def render(self, mode="human"):
+        """No custom renderer. Integrate Simulink visualization if needed."""
+
         pass
 
     def close(self):
+        """ Shut down MATLAB and delete temporary model artifacts.
+
+            Closes the MATLAB engine, removes the unique temp `.slx` file,
+            cleans any worker-specific `slprj/<model_name>` cache, and deletes
+            related autosave/`.slxc` files. Failures are logged as warnings.
+        """
+
         import os
         import shutil
         import glob
@@ -202,7 +299,6 @@ class SimulinkEnv(gym.Env):
             except Exception as e:
                 print(f"Warning: could not delete model file: {e}")
 
-        # Clean slprj/<model_name> folder (worker-specific)
         slprj_model_dir = os.path.join(os.getcwd(), "slprj", self.model_name)
         if os.path.exists(slprj_model_dir):
             try:

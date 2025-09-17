@@ -11,21 +11,63 @@ def signed_over_from_stepinfo(theta_deg: np.ndarray,
                               setpoint_deg: float,
                               debug: bool = False,
                               exclude_initial_s: float = 0.10) -> tuple[dict, dict]:
-    """
-    Return:
-      (step_info_dict,
-       {
-         'pos_over_setpoint': float,   # max e(t) above 0
-         'neg_under_setpoint': float,  # min e(t) below 0
-         'signed_over_setpoint': float,# Magnitude of the initial swing, where
-                                      # + indicates an overshoot (crossing) and
-                                      # - indicates an undershoot (no crossing)
-         'pos_over_final': float,      # overshoot above final value (>=0)
-         'neg_under_final': float,     # undershoot below final value (<=0)
-         'signed_over_final': float,   # larger-magnitude wrt final (with sign)
-         'y_ss': float                 # estimated final value (deg)
-       })
-    """
+    """ Compute signed over/undershoot metrics from a step response (deg).
+
+            Given angle samples in **degrees** and aligned time stamps (seconds),
+            this function derives a set of over/undershoot metrics relative to a
+            target setpoint (also in degrees). The sign convention encodes the
+            **type** of transient:
+            - **Positive** `signed_over_setpoint` ⇒ the response *crossed* the
+            setpoint (classical overshoot).
+            - **Negative** `signed_over_setpoint` ⇒ the response did *not* cross
+            the setpoint (undershoot).
+
+            Parameters
+            ----------
+            theta_deg : np.ndarray
+                Measured angle trajectory in **degrees**.
+            t : np.ndarray
+                Time stamps (seconds), same length as `theta_deg`.
+            setpoint_deg : float
+                Desired setpoint in **degrees** (commonly 0.0).
+            debug : bool, optional
+                If True, prints intermediate calculations for inspection.
+            exclude_initial_s : float, optional
+                Reserved for future use (currently unused).
+
+            Returns
+            -------
+            tuple[dict, dict]
+                `(S, metrics)` where:
+                - `S` : dict returned by `control.step_info(y, T=t)` if available,
+                else `{}`.
+                - `metrics` : dict with:
+                    * `pos_over_setpoint` : float
+                        Max positive error relative to setpoint.
+                    * `neg_under_setpoint` : float
+                        Min negative error relative to setpoint.
+                    * `signed_over_setpoint` : float
+                        Signed magnitude of the *first* significant peak after
+                        initial crossing decision; positive if crossed setpoint,
+                        negative otherwise.
+                    * `pos_over_final` : float
+                        Overshoot above estimated final value (non-negative).
+                    * `neg_under_final` : float
+                        Undershoot below estimated final value (non-positive).
+                    * `signed_over_final` : float
+                        Larger-magnitude of the two above, with its sign.
+                    * `y_ss` : float
+                        Estimated steady-state value (deg), computed as the mean of
+                        the last ~10% (min 3 samples).
+
+            Notes
+            -----
+            - Crossing detection is based on sign changes of `e(t) = y(t) - setpoint`.
+            - Peaks are located via slope sign changes on the relevant segment.
+            - On invalid inputs (length mismatch or too few samples), zero-like
+            metrics are returned and `y_ss` falls back to the last sample.
+        """
+
     t = np.asarray(t, dtype=float)
     y = np.asarray(theta_deg, dtype=float)
     if len(t) != len(y) or len(y) < 3:
@@ -74,15 +116,12 @@ def signed_over_from_stepinfo(theta_deg: np.ndarray,
             elif minima_idx.size > 0:
                 peak_value = float(e[minima_idx[0]])
 
-    # ========================== FINAL SIGN LOGIC ==========================
-    # Apply the final sign based on whether an overshoot or undershoot occurred.
     if sign_changes.size > 0:
         # It was an OVERSHOOT, so the result must be POSITIVE.
         signed_over_setpoint = abs(peak_value)
     else:
         # It was an UNDERSHOOT, so the result must be NEGATIVE.
         signed_over_setpoint = -abs(peak_value)
-    # ======================================================================
 
     # The rest of the metrics are calculated on the full signal for context.
     de_full = np.diff(e)
@@ -133,46 +172,90 @@ def evaluate_full_metrics(
     n_episodes=5,
     target_value=0.0,
     tolerance=0.1,
-    stable_duration=0.1,  # Now actually used for dwell time
+    stable_duration=0.1,
     sim_timestep=0.01,
     live_plot=False,
     save_plots=True,
     output_dir="plots",
     base_seed = 42,
 ):
-    """
-    Evaluate a control model over multiple episodes and generate metrics, plots, and logs.
+    """ Evaluate a policy across episodes and compute rich control metrics.
 
-    Args:
-        model: Trained control policy.
-        env: Simulation environment.
-        n_episodes: Number of episodes to run.
-        target_value: Desired upright angle (radians).
-        tolerance: Threshold for stability (radians).
-        stable_duration: Not used but reserved for future.
-        sim_timestep: Simulation time step (s).
-        live_plot: If True, shows real-time plots.
-        save_plots: If True, saves episode and summary plots and logs.
-        output_dir: Directory to save outputs.
+        Runs `n_episodes` rollouts, logs trajectories, computes stabilization
+        (time-to-band with a **dwell** requirement), several steady-state
+        statistics, integral metrics, overshoot/undershoot in **degrees**, and
+        (optionally) saves per-episode and summary plots plus a text log.
 
-    Returns:
-        Metrics dict: rewards, stabilisation_times, steady_state_errors,
-        overshoots, total_stable_times, percent_of_max.
+        Parameters
+        ----------
+        model
+            A Stable-Baselines3 policy with `.predict(obs, deterministic=True)`.
+        env
+            Gym/Gymnasium-compatible environment (e.g., `SimulinkEnv`).
+        n_episodes : int, optional
+            Number of episodes to evaluate.
+        target_value : float, optional
+            Target angle in **radians** (commonly 0.0).
+        tolerance : float, optional
+            Stabilization band half-width in **radians**.
+        stable_duration : float, optional
+            Required continuous time (seconds) inside the tolerance band to
+            declare stabilization (dwell time).
+        sim_timestep : float, optional
+            Simulation timestep used for time accumulation (seconds).
+        live_plot : bool, optional
+            If True, show a live Matplotlib plot during each episode.
+        save_plots : bool, optional
+            If True, save per-episode plots, a combined subplot, a theta-only
+            plot with tolerance bands, and a results text log.
+        output_dir : str, optional
+            Directory for figures and logs (created if missing).
+        base_seed : int, optional
+            Base seed; episode `i` uses `base_seed + i` when supported by `env`.
+
+        Returns
+        -------
+        dict
+            Dictionary of episode-level arrays and summary scalars:
+            - `"rewards"` : list[float]
+            - `"stabilisation_times"` : list[float] (seconds; with dwell)
+            - `"steady_state_errors"` : list[float] (deg; **MAE** vs target)
+            - `"overshoots"` : list[float] (deg; signed over/under-setpoint)
+            - `"total_stable_times"` : list[float] (seconds inside band)
+            - `"percent_of_max"` : float (mean reward as % of theoretical max)
+            - `"steady_rmse"` : list[float] (deg; steady-state RMSE)
+            - `"steady_max"` : list[float] (deg; max |steady-state error|)
+            - `"osc_std"` : list[float] (deg; std. dev. of steady-state theta)
+            - `"iae"` : list[float] (deg·s; integral of |error|)
+            - `"u_energy"` : list[float] (∫u² dt; control effort proxy)
+
+        Side Effects
+        ------------
+        - When `save_plots=True`, writes PNGs and a results TXT file under
+        `output_dir/<algo>/<noise_tag>/<run_name>/...`.
+
+        Notes
+        -----
+        - Compatible with both Gymnasium `(obs, info)` reset and legacy Gym.
+        - Stabilization time is the first index for which the in-band dwell
+        persists for `stable_duration`.
+        - Many metrics are computed in **degrees** for interpretability; inputs
+        and control evolve in native units (rad, N) within the env.
     """
+
     if save_plots:
         os.makedirs(output_dir, exist_ok=True)
     log_lines = []
 
     all_rewards = []
-    steady_offset_list = []  # Add this line
+    steady_offset_list = []
     stabilisation_times = []
-    steady_state_errors = []  # Now stores MAE instead of final error
+    steady_state_errors = []
     total_stable_times = []
     all_thetas = []
     all_theta_vs = []
     all_us = []
     overshoots = []
-    # New metrics
     steady_rmse_list = []
     steady_max_list = []
     osc_std_list = []
@@ -181,13 +264,11 @@ def evaluate_full_metrics(
 
     for ep in range(n_episodes):
 
-        # >>> CHANGED: seed via reset(seed=...) and handle Gym/Gymnasium return
         seed_val = int(base_seed + ep) if base_seed is not None else None
         if seed_val is not None:
             try:
-                res = env.reset(seed=seed_val)          # Gymnasium path
+                res = env.reset(seed=seed_val)         
             except TypeError:
-                # Legacy Gym fallback
                 if hasattr(env, "unwrapped") and hasattr(env.unwrapped, "seed"):
                     env.unwrapped.seed(seed_val)
                 elif hasattr(env, "seed"):
@@ -195,16 +276,15 @@ def evaluate_full_metrics(
                 res = env.reset()
         else:
             res = env.reset()
-        obs = res[0] if isinstance(res, tuple) else res     # (obs, info) vs obs
+        obs = res[0] if isinstance(res, tuple) else res 
 
         done = False
         t = 0.0
         ep_reward = 0.0
         total_stable = 0.0
         episode_thetas, episode_theta_vs, episode_us, t_vals = [], [], [], []
-        # CHANGED: New stabilization tracking variables
         in_band_run = 0.0
-        stabilised_idx = None  # Index where continuous dwell is achieved
+        stabilised_idx = None
 
 
         # live plotting setup
@@ -229,13 +309,12 @@ def evaluate_full_metrics(
         # episode loop
         while not done:
             action, _ = model.predict(obs, deterministic=True)
-            # >>> CHANGED: step unpack compatible with Gymnasium and Gym
             out = env.step(action)
             if isinstance(out, tuple) and len(out) == 5:
                 obs, reward, terminated, truncated, _ = out
                 done = bool(terminated or truncated)
             else:
-                obs, reward, done, _ = out  # legacy Gym
+                obs, reward, done, _ = out
 
             action = np.atleast_1d(action)
             ep_reward += reward
@@ -260,16 +339,14 @@ def evaluate_full_metrics(
                 axs_live[3].set_title(f"Angle: {theta_deg:.1f}°")
                 plt.pause(0.001)
 
-            # CHANGED: New stabilization logic with dwell requirement
             err = abs(theta - target_value)
             if err < tolerance:
                 total_stable += sim_timestep
                 in_band_run += sim_timestep
-                # Mark stabilization if dwell requirement is met
                 if stabilised_idx is None and in_band_run >= stable_duration:
-                    stabilised_idx = len(t_vals) - 1  # Current index
+                    stabilised_idx = len(t_vals) - 1
             else:
-                in_band_run = 0.0  # Reset counter if leaves tolerance
+                in_band_run = 0.0
 
             t += sim_timestep
 
@@ -277,17 +354,14 @@ def evaluate_full_metrics(
             plt.ioff()
             plt.close(fig_live)
 
-        # CHANGED: Stabilization time based on dwell requirement
         stab_time = t_vals[stabilised_idx] if stabilised_idx is not None else t
 
-        # CHANGED: Adaptive steady-state window selection
-        tail_len = max(20, int(0.15 * len(episode_thetas)))  # At least 20 samples or 15% of run
+        tail_len = max(20, int(0.15 * len(episode_thetas)))
         if stabilised_idx is not None:
-            ss_start_idx = stabilised_idx  # From stabilization point
+            ss_start_idx = stabilised_idx
         else:
-            ss_start_idx = max(0, len(episode_thetas) - tail_len)  # Fallback to tail
+            ss_start_idx = max(0, len(episode_thetas) - tail_len)
         
-        # CHANGED: Compute new steady-state metrics
         ss_thetas = np.array(episode_thetas[ss_start_idx:])
         ss_err_deg = ss_thetas - np.degrees(target_value)
         steady_offset = np.mean(ss_err_deg)
@@ -296,7 +370,6 @@ def evaluate_full_metrics(
         steady_max = float(np.max(np.abs(ss_err_deg)))
         osc_std = float(np.std(ss_thetas))
 
-        # CHANGED: Overall performance metrics
         all_e_deg = np.array(episode_thetas) - np.degrees(target_value)
         iae = float(np.trapz(np.abs(all_e_deg), t_vals))
         u_energy = float(np.sum(np.square(episode_us)) * sim_timestep)
@@ -307,25 +380,22 @@ def evaluate_full_metrics(
         t_arr = np.asarray(t_vals, dtype=float)
         S, over_dict = signed_over_from_stepinfo(theta_arr, t_arr, setpoint_deg)
         over = over_dict['signed_over_setpoint']
-
-        # CHANGED: Append all metrics (including new ones)
+        
         all_rewards.append(ep_reward)
         stabilisation_times.append(stab_time)
         steady_offset_list.append(steady_offset)
-        steady_state_errors.append(steady_mae)  # Now MAE instead of final error
+        steady_state_errors.append(steady_mae)
         total_stable_times.append(total_stable)
         all_thetas.append((t_vals, episode_thetas))
         all_theta_vs.append((t_vals, episode_theta_vs))
         all_us.append((t_vals, episode_us))
         overshoots.append(over)
-        # New metrics
         steady_rmse_list.append(steady_rmse)
         steady_max_list.append(steady_max)
         osc_std_list.append(osc_std)
         iae_list.append(iae)
         u_energy_list.append(u_energy)
 
-        # CHANGED: Updated logging with new metrics
         lines = [
             f"Episode {ep+1}:",
             f"  Total reward                : {ep_reward:.2f}",
@@ -351,7 +421,6 @@ def evaluate_full_metrics(
             )
             fig_ep, ax_ep = plt.subplots(figsize=(6, 3))
             ax_ep.plot(t_vals, episode_thetas, label=f"Episode {ep+1}")
-            # add tolerance band in degrees
             tol_deg = np.degrees(tolerance)
             ax_ep.axhline(
                 tol_deg, linestyle="--", color="gray", label=f"+{tol_deg:.1f}° tol"
@@ -371,7 +440,6 @@ def evaluate_full_metrics(
             fig_ep.savefig(fname, bbox_inches="tight")
             plt.close(fig_ep)
 
-    # summary
     max_r = env.unwrapped.max_episode_time / sim_timestep
     mean_r, std_r = np.mean(all_rewards), np.std(all_rewards)
     percent_max = 100 * mean_r / max_r
@@ -382,12 +450,12 @@ def evaluate_full_metrics(
         f"Mean Reward: {mean_r:.2f} ± {std_r:.2f} (Max: {max_r:.0f})",
         f"→ {percent_max:.1f}% of theoretical max reward",
         f"Mean Stabilisation Time             : {np.mean(stabilisation_times):.2f} s",
-        f"Mean Steady-state offset            : {np.mean(steady_offset_list):.2f}°",  # CHANGED
+        f"Mean Steady-state offset            : {np.mean(steady_offset_list):.2f}°",
         f"Mean Total Stable Time              : {np.mean(total_stable_times):.2f} s",
         f"Mean Steady-State MAE               : {np.mean(steady_state_errors):.2f}°",
         f"Mean Steady-State RMSE              : {np.mean(steady_rmse_list):.2f}°",
         f"Mean Oscillation (σ)                : {np.mean(osc_std_list):.2f}°",
-        f"Mean |Overshoot/Undershoot|         : {np.mean(np.abs(overshoots)):.2f}°",  # REMOVED DUPLICATE BELOW
+        f"Mean |Overshoot/Undershoot|         : {np.mean(np.abs(overshoots)):.2f}°",
         f"Mean IAE                            : {np.mean(iae_list):.2f}",
         f"Mean Control Energy                 : {np.mean(u_energy_list):.2f}",
     ]
@@ -419,14 +487,11 @@ def evaluate_full_metrics(
         )
         plt.close(fig_all)
 
-        # theta-only final (degrees labeled, legend on right, with tolerance bands)
         tol_deg = np.degrees(tolerance)
         fig_th, ax_th = plt.subplots(figsize=(8, 4))
         for idx, (t_v, th) in enumerate(all_thetas):
             ax_th.plot(t_v, th, label=labels[idx])
-        # zero line
         ax_th.axhline(0, linestyle="--", color="red", label="0°")
-        # tolerance bands
         ax_th.axhline(
             tol_deg, linestyle="--", color="gray", label=f"+{tol_deg:.1f}° tol"
         )
@@ -442,7 +507,6 @@ def evaluate_full_metrics(
         fig_th.savefig(os.path.join(output_dir, "theta_plot.png"), bbox_inches="tight")
         plt.close(fig_th)
 
-        # write results log
         log_file = os.path.join(output_dir, f"{model.__class__.__name__}_results.txt")
         with open(log_file, "w", encoding="utf-8") as f:
             f.write("\n".join(log_lines))
@@ -450,7 +514,7 @@ def evaluate_full_metrics(
     return {
         "rewards": all_rewards,
         "stabilisation_times": stabilisation_times,
-        "steady_state_errors": steady_state_errors,  # Now MAE values
+        "steady_state_errors": steady_state_errors,
         "overshoots": overshoots,
         "total_stable_times": total_stable_times,
         "percent_of_max": percent_max,
@@ -465,6 +529,22 @@ def evaluate_full_metrics(
 ALGOS = {"DQN": DQN, "DDPG": DDPG, "PPO": PPO, "A2C": A2C, "SAC": SAC, "TD3": TD3}
 
 def infer_algo_from_name(folder_name: str) -> str | None:
+    """Infer the algorithm key from a folder name using known tokens.
+
+        Performs a case-insensitive substring check against the known algorithm
+        keys in `ALGOS` (e.g., 'DQN', 'DDPG', 'PPO', 'A2C', 'SAC', 'TD3').
+
+        Parameters
+        ----------
+        folder_name : str
+            Folder name to inspect (e.g., a run directory name).
+
+        Returns
+        -------
+        str | None
+            Matching algorithm key if found, otherwise `None`.
+    """
+
     u = folder_name.upper()
     for k in ALGOS.keys():
         if k in u:
@@ -491,8 +571,8 @@ if __name__ == "__main__":
     if request != "ALL" and request not in ALGOS:
         raise SystemExit(f"Unknown algo: {args.algo}. Choose one of {sorted(ALGOS) + ['ALL']}")
 
-    # Discover runs: each immediate subfolder = one run; best_model.zip must be inside it
-    runs = []  # list of tuples: (algo_key, run_name, zip_path)
+    # Discover runs
+    runs = []
     for name in sorted(os.listdir(args.root)):
         sub = os.path.join(args.root, name)
         if not os.path.isdir(sub):
@@ -503,7 +583,6 @@ if __name__ == "__main__":
             if algo_key != request:
                 continue
         else:
-            # ALL mode: skip folders that don't contain a known algo token
             if algo_key is None:
                 continue
 
@@ -544,7 +623,7 @@ if __name__ == "__main__":
                 f"{algo_key.lower()}_env_noise_{args.env_noise:.3f}",
                 run_name,
             ),
-            base_seed=42,                       # <— NEW: seed to 42
+            base_seed=42,                    
         )
 
 

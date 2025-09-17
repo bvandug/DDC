@@ -2,7 +2,7 @@ import sqlite3
 import pandas as pd
 from tabulate import tabulate
 
-# Path to your Optuna DB
+# Path to Optuna DB
 db_path = "jax_optuna_ppo.db"
 
 # Connect to the database
@@ -41,7 +41,6 @@ full_df.to_csv(csv_path, index=False)
 # full_df.to_excel(excel_path, index=False)
 
 # Print preview
-# print(f"✅ Exported to:\n - {csv_path}\n - {excel_path}")
 print("\n📋 Preview:")
 print(tabulate(full_df.head(5), headers="keys", tablefmt="fancy_grid"))
 
