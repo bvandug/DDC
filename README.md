@@ -190,8 +190,7 @@ The reported buck-boost benchmarks were collected from the Simulink runs; the Nu
 
 ## Acknowledgements
 
-We would like to express our gratitude to our supervisor, K. Prag, for her invaluable guidance and feedback throughout this research project.
+We want to express our gratitude to our supervisor, K. Prag, for her invaluable guidance and feedback throughout this research project.
 
-[text](https://www.ijert.org/research/design-and-analysis-of-buck-converter-IJERTV3IS031844.pdf)
 
   
