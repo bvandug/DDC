@@ -11,27 +11,28 @@ NUM_ENVS = 4
 TOTAL_TIMESTEPS = 500_000
 DRONE_MODEL = DroneModel.CF2X
 PHYSICS = Physics.PYB
-USE_GUI = True
+USE_GUI = False
 SEED = 42
 
 # A2C Hyperparameters tuned for a larger network
-N_STEPS       = 256       # more steps per update for stable gradients
-GAMMA         = 0.995     # high discount for long-horizon hover
-ENT_COEF      = 0.001     # small entropy bonus to aid exploration
-VF_COEF       = 0.5       # balance policy vs value loss
-MAX_GRAD_NORM = 0.5       # tighter gradient clipping for stability
-LEARNING_RATE = 7e-4      # moderate learning rate
+N_STEPS = 155  # more steps per update for stable gradients
+GAMMA = 0.9088  # high discount for long-horizon hover
+ENT_COEF = 0.0049  # small entropy bonus to aid exploration
+VF_COEF = 0.4846  # balance policy vs value loss
+MAX_GRAD_NORM = 1.088  # tighter gradient clipping for stability
+LEARNING_RATE = 7e-5  # moderate learning rate
 
 # Larger network architecture
 # 4 hidden layers: 512 → 512 → 256 → 128, with ReLU activations
 policy_kwargs = dict(
-    net_arch=dict(pi=[512, 512, 256, 128], vf=[512, 512, 256, 128]),
-    activation_fn=nn.ReLU
+    net_arch=dict(pi=[276], vf=[276]),
+    activation_fn=nn.Tanh,
 )
 
 # Logging & save dirs
 TENSORBOARD_LOG = "./tensorboard"
 SAVE_DIR = "./models"
+
 
 # === Environment factory ===
 def make_env(rank: int):
@@ -39,16 +40,17 @@ def make_env(rank: int):
     Creates a Monitor-wrapped HoverAviary environment with a fixed seed.
     Only the first environment opens a GUI.
     """
+
     def _init():
         env = HoverAviary(
-            drone_model=DRONE_MODEL,
-            physics=PHYSICS,
-            gui=(USE_GUI and rank == 0)
+            drone_model=DRONE_MODEL, physics=PHYSICS, gui=(USE_GUI and rank == 0)
         )
         env = Monitor(env)
         env.reset(seed=SEED + rank)
         return env
+
     return _init
+
 
 if __name__ == "__main__":
     # Create vectorized environments
@@ -68,7 +70,7 @@ if __name__ == "__main__":
         policy_kwargs=policy_kwargs,
         verbose=1,
         tensorboard_log=TENSORBOARD_LOG,
-        seed=SEED
+        seed=SEED,
     )
 
     # Train the agent with more frequent logging
