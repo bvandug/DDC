@@ -39,6 +39,7 @@ The PID benchmark work is done in `PID`.
 - [Repository Layout](#repository-layout)
 - [MATLAB Dependency Setup](#matlab-dependency-setup)
 - [Python Simulation Environments](#python-simulation-environments)
+- [DRL Algorithm Characteristics](#drl-algorithm-characteristics)
 - [DRL Algorithm Hyperparameters](#drl-algorithm-hyperparameters)
 - [Running the Inverted Pendulum](#running-the-inverted-pendulum)
 - [Running Cart-Pole](#running-cart-pole)
@@ -105,10 +106,30 @@ To run the Python simulation environments:
 
 PID controllers are optional; you can skip the `PID/` workflows when you only need the DRL agents.
 
+## DRL Algorithm Characteristics
+The following are the characteristics of the DRL algorithms.
+
+### Table 1. Characteristics of On-Policy Methods
+| **Characteristic**   | **A2C**               | **PPO**                 |
+| -------------------- | --------------------- | ----------------------- |
+| **Learning Type**    | On-policy             | On-policy               |
+| **Action Selection** | Stochastic            | Stochastic              |
+| **Exploration**      | Entropy Reg.          | Entropy Reg. & Clipping |
+| **Action Space**     | Discrete & Continuous | Continuous              |
+
+### Table 2. Characteristics of Off-Policy Methods
+| **Characteristic**   | **SAC**               | **TD3**                  | **DDPG**            |
+| -------------------- | --------------------- | ------------------------ | ------------------- |
+| **Learning Type**    | Off-policy            | Off-policy               | Off-policy          |
+| **Policy Type**      | Actor-Critic (Stoch.) | Actor-Critic (Det.)      | Actor-Critic (Det.) |
+| **Action Selection** | Stochastic            | Deterministic            | Deterministic       |
+| **Exploration**      | Max Entropy           | Noise + Target Smoothing | Action Noise        |
+| **Action Space**     | Continuous            | Continuous               | Continuous          |
+
 
 
 ## DRL Algorithm Hyperparameters
-The following are the hyperparameters used for the control systems for A2C, PPO, DDPG, TD3, SAC, and DQN with seed 42 used for reproducibility.
+The following are the hyperparameters used for the control systems for A2C, PPO, DDPG, TD3, SAC, and DQN with a specific seed used for reproducibility.
 
 ### SAC Hyperparameters
 | Hyperparameter           | Inverted Pendulum | Cart-Pole | Buck Converter | Buck-Boost Converter |
@@ -128,6 +149,7 @@ The following are the hyperparameters used for the control systems for A2C, PPO,
 | Neurons per Layer        | 273               | 173       | 105            | 256                  |
 | Activation Function      | ELU               | ELU       | Leaky ReLU     | ReLU                 |
 | Log Std Init             | -2.0              | -2.0      | -2.0           | -1.39                |
+| Seed                     | 42                | 42        | 42             | 42                   |
 
 
 ### A2C Hyperparameters
@@ -151,6 +173,91 @@ The following are the hyperparameters used for the control systems for A2C, PPO,
 | Log Std Init               | 0.0               | 0.0       | 0.0            | -2.32                |
 | Orthogonal Init            | True              | True      | True           | False                |
 | Separate Policy/VF Nets    | False             | False     | False          | False                |
+| Seed                       | 42                | 42        | 42             | 42                   |
+
+### PPO Hyperparameters
+| Hyperparameter               | Inverted Pendulum | Cart-Pole | Buck Converter | Buck-Boost Converter | 
+| ---------------------------- | ----------------- | --------- | -------------- | -------------------- | 
+| **Algorithm Parameters**     |                   |           |                |                      |   
+| Learning Rate (α)            | 7.021e-4          | 8.713e-4  | 1.831e-4       | 7.574e-5             |  
+| Discount Factor (γ)          | 0.9382            | 0.9713    | 0.9764         | 0.9663               | 
+| Steps per Update (n_steps)   | 64                | 256       | 2048           | 2048                 |    
+| Batch Size                   | 64                | 64        | 128            | 256                  |          
+| Epochs per Update (n_epochs) | 10                | 6         | 18             | 15                   |       
+| Clip Range (ε_clip)          | 0.1429            | 0.2148    | 0.2078         | 0.2517               |          
+| Entropy Coefficient          | 3.849e-6          | 8.475e-2  | 2.965e-8       | 4.180e-5             |     
+| Value Function Coefficient   | 0.8506            | 0.8033    | 0.6977         | 0.7528               |         
+| Max Gradient Norm (g_max)    | 0.6500            | 0.3109    | 3.285          | 0.5085               |
+| GAE Lambda (λ_GAE)           | 0.8154            | 0.8563    | 0.9311         | 0.9488               |       
+| **Network Architecture**     |                   |           |                |                      |       
+| Number of Layers             | 4                 | 3         | 3              | 2                    |       
+| Neurons per Layer            | 298               | 128       | 148            | 192                  |          
+| Activation Function          | tanh              | tanh      | tanh           | tanh                 |   
+| Seed                         | 42                | 42        | 42             | 42                   |
+
+
+### TD3 Hyperparameters
+| Hyperparameter            | Inverted Pendulum | Cart-Pole  | Buck Converter | Buck-Boost Converter |
+| ------------------------- | ----------------- | ---------- | -------------- | -------------------- |
+| **Policy Network**        |                   |            |                |                      |
+| Learning Rate             | 0.000025          | 0.000102   | 0.000471       | 0.000285             |
+| Optimizer                 | Adam              | Adam       | Adam           | Adam                 |
+| Layer Size                | 368               | 190        | 154            | 256                  |
+| Number of Layers          | 3                 | 2          | 2              | 3                    |
+| Activation Function       | ReLU              | Leaky ReLU | ELU            | ReLU                 |
+| **Replay Buffer**         |                   |            |                |                      |
+| Buffer Size               | 93,868            | 198,386    | 109,380        | 800,000              |
+| Batch Size                | 329               | 487        | 393            | 512                  |
+| **Algorithm-Specific**    |                   |            |                |                      |
+| Discount Factor (γ)       | 0.9004            | 0.9127     | 0.9643         | 0.9760               |
+| Target Network Update (τ) | 0.0160            | 0.0109     | 0.0098         | 0.0143               |
+| Action Noise (σ)          | 0.4057            | 0.3180     | 0.1737         | 0.0643               |
+| Policy Delay              | 2*                | 2*         | 1              | 3                    |
+| Target Policy Noise       | 0.2*              | 0.2*       | 0.3484         | 0.1465               |
+| Target Noise Clip         | 0.5*              | 0.5*       | 0.6352         | 0.3649               |
+| Seed                      | 42                | 42         | 688,449        | 42                   |
+
+
+### DQN Hyperparameters
+| Hyperparameter            | Inverted Pendulum | Cart-Pole | Buck Converter | Buck-Boost Converter |
+| ------------------------- | ----------------- | --------- | -------------- | -------------------- |
+| **Policy Network**        |                   |           |                |                      |
+| Learning Rate             | 0.000283          | 0.000298  | 0.000181       | 0.000110             |
+| Optimizer                 | Adam*             | Adam*     | Adam*          | Adam*                |
+| Layer Size                | 330               | 113       | 116            | 192                  |
+| Number of Layers          | 4                 | 3         | 3              | 2                    |
+| Activation Function       | Tanh              | Tanh      | ELU            | ELU                  |
+| **Replay Buffer**         |                   |           |                |                      |
+| Buffer Size               | 76,233            | 109,061   | 185,507        | 800,000              |
+| Batch Size                | 320               | 448       | 32             | 256                  |
+| **Algorithm-Specific**    |                   |           |                |                      |
+| Discount Factor (γ)       | 0.9614            | 0.9564    | 0.9551         | 0.9846               |
+| Target Network Update (τ) | 0.0218            | 0.0292    | 0.0159         | 0.0182               |
+| Target Update Interval    | 4,333             | 1,629     | 500            | 3,500                |
+| Training Frequency        | 5                 | 1         | 1              | 1                    |
+| Exploration Fraction      | 0.2231            | 0.3819    | 0.1414         | 0.3239               |
+| Exploration Initial ε     | 1.0*              | 1.0*      | 1.0*           | 0.7672               |
+| Exploration Final ε       | 0.0778            | 0.0206    | 0.0137         | 0.0442               |
+| Gradient Steps            | -                 | -         | 1              | 1                    |
+| Learning Starts           | -                 | -         | 10,000         | 42,713               |
+| Seed                      | 42                | 42        | 17,528         | 42                   |
+
+
+### DDPG Hyperparameters
+| Hyperparameter              | Inverted Pendulum | Cart-Pole | Buck Converter | Buck-Boost Converter |
+| --------------------------- | ----------------- | --------- | -------------- | -------------------- |
+| **Algorithm Parameters**    |                   |           |                |                      |
+| Learning Rate (α)           | 3.684e-4          | 4.115e-5  | 3.985e-5       | 6.013e-5             |
+| Discount Factor (γ)         | 0.9238            | 0.9008    | 0.9683         | 0.9804               |
+| Replay Buffer Size          | 199,778           | 92,220    | 153,741        | 350,000              |
+| Batch Size                  | 386               | 402       | 128            | 192                  |
+| Polyak Factor (τ)           | 0.01636           | 0.01297   | 0.01905        | 0.00735              |
+| Action Noise Std. (σ_noise) | 0.4844            | 0.2107    | 0.1893         | 0.1926               |
+| **Network Architecture**    |                   |           |                |                      |
+| Number of Layers            | 3                 | 4         | 3              | 2                    |
+| Neurons per Layer           | 331               | 425       | 132            | 320                  |
+| Activation Function         | elu               | elu       | tanh           | relu                 |
+| Seed                        | 42                | 42        | 42             | 42                   |
 
 
 
