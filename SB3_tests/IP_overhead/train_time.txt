@@ -1,0 +1,123 @@
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [28:33:39<00:00,  1.57s/it] 
+ Checkpoint at 100000 steps:
+    - Model: models\ppo\best_model_100000.zip
+    - Replay buffer: models\ppo\replay_buffer_100000.pkl
+    - Elapsed: 35655.49 sec
+---------------------------------
+| rollout/           |          |
+|    ep_len_mean     | 210      |
+|    ep_rew_mean     | 201      |
+| time/              |          |
+|    fps             | 0        |
+|    iterations      | 1563     |
+|    time_elapsed    | 102881   |
+|    total_timesteps | 100032   |
+---------------------------------
+Training Progress: 100032it [28:34:29,  1.03s/it]
+
+ Training Time Summary:
+    10000 steps: 3090.73 sec
+    25000 steps: 6999.76 sec
+    50000 steps: 23335.68 sec
+    75000 steps: 33738.18 sec
+    100000 steps: 35655.49 sec
+    Total training time: 102869.98 sec
+[TB→CSV] Wrote scalar logs to: training_timings\tb_scalars_ppo.csv
+Final model saved to models\ppo\best_model.zip
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\pendulum_3dd3e7ec.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\SB3_tests\IP_overhead\pendulum_3dd3e7ec.slxc
+Training complete. Environment closed.
+
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [28:50:35<00:00,  1.34s/it] 
+ Checkpoint at 100000 steps:
+    - Model: models\td3\best_model_100000.zip
+    - Replay buffer: models\td3\replay_buffer_100000.pkl
+    - Elapsed: 35191.45 sec
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [28:50:35<00:00,  1.04s/it]
+
+ Training Time Summary:
+    10000 steps: 3377.57 sec
+    25000 steps: 7374.06 sec
+    50000 steps: 23715.19 sec
+    75000 steps: 34177.12 sec
+    100000 steps: 35191.45 sec
+    Total training time: 103835.49 sec
+[TB→CSV] Wrote scalar logs to: training_timings\tb_scalars_td3.csv
+Final model saved to models\td3\best_model.zip
+Final replay buffer saved to models\td3\best_model_replay_buffer.pkl
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\pendulum_0316328a.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\SB3_tests\IP_overhead\pendulum_0316328a.slxc
+Training complete. Environment closed.
+
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [28:33:34<00:00,  1.58s/it] 
+ Checkpoint at 100000 steps:
+    - Model: models\ddpg\best_model_100000.zip
+    - Replay buffer: models\ddpg\replay_buffer_100000.pkl
+    - Elapsed: 35329.06 sec
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [28:33:34<00:00,  1.03s/it]
+
+ Training Time Summary:
+    10000 steps: 3288.40 sec
+    25000 steps: 7222.82 sec
+    50000 steps: 23338.33 sec
+    75000 steps: 33635.99 sec
+    100000 steps: 35329.06 sec
+    Total training time: 102814.71 sec
+[TB→CSV] Wrote scalar logs to: training_timings\tb_scalars_ddpg.csv
+Final model saved to models\ddpg\best_model.zip
+Final replay buffer saved to models\ddpg\best_model_replay_buffer.pkl
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\pendulum_9f4b0524.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\SB3_tests\IP_overhead\pendulum_9f4b0524.slxc
+Training complete. Environment closed.
+
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [29:04:49<00:00,  1.26s/it] 
+ Checkpoint at 100000 steps:
+    - Model: models\sac\best_model_100000.zip
+    - Replay buffer: models\sac\replay_buffer_100000.pkl
+    - Elapsed: 35559.06 sec
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [29:04:49<00:00,  1.05s/it]
+
+ Training Time Summary:
+    10000 steps: 3439.80 sec
+    25000 steps: 7500.67 sec
+    50000 steps: 23892.64 sec
+    75000 steps: 34297.32 sec
+    100000 steps: 35559.06 sec
+    Total training time: 104689.66 sec
+[TB→CSV] Wrote scalar logs to: training_timings\tb_scalars_sac.csv
+Final model saved to models\sac\best_model.zip
+Final replay buffer saved to models\sac\best_model_replay_buffer.pkl
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\pendulum_d2b4f859.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\SB3_tests\IP_overhead\pendulum_d2b4f859.slxc
+Training complete. Environment closed.
+
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [26:27:49<00:00,  1.64s/it] 
+ Checkpoint at 100000 steps:
+    - Model: models\a2c\best_model_100000.zip
+    - Replay buffer: models\a2c\replay_buffer_100000.pkl
+    - Elapsed: 37306.61 sec
+---------------------------------
+| rollout/           |          |
+|    ep_len_mean     | 500      |
+|    ep_rew_mean     | 491      |
+| time/              |          |
+|    fps             | 1        |
+|    iterations      | 12500    |
+|    time_elapsed    | 95282    |
+|    total_timesteps | 100000   |
+---------------------------------
+Training Progress: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [26:27:49<00:00,  1.05it/s] 
+
+ Training Time Summary:
+    10000 steps: 3008.89 sec
+    25000 steps: 6733.90 sec
+    50000 steps: 19670.49 sec
+    75000 steps: 28549.76 sec
+    100000 steps: 37306.61 sec
+    Total training time: 95269.83 sec
+[TB→CSV] Wrote scalar logs to: training_timings\tb_scalars_a2c.csv
+Final model saved to models\a2c\best_model.zip
+Deleted temporary model file: C:\Users\benva\AppData\Local\Temp\pendulum_ee988f93.slx
+Deleted: C:\Users\benva\OneDrive\Documents\MATLAB\SB3_tests\IP_overhead\pendulum_ee988f93.slxc
+Training complete. Environment closed.
+

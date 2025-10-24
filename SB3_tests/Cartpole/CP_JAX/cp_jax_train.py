@@ -261,7 +261,7 @@ def main(algo_name="ppo",
         force_values = np.linspace(-10.0, 10.0, 41)
         env = DiscretizedActionWrapper(env, force_values=force_values)
 
-    model_base_dir = os.path.join("jax-41", run_tag)               
+    model_base_dir = os.path.join("jax", run_tag)               
     ckpt_dir       = os.path.join(model_base_dir, "jax_models")
     os.makedirs(ckpt_dir, exist_ok=True)
 

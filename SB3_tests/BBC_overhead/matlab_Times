@@ -1,0 +1,97 @@
+Training Progress: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [29:28:11<00:00,  1.38s/it] 
+ Checkpoint at 100000 steps:
+    - Model: matlab_models_30\TD3\td3_noise_0.000\best_model_100000.zip
+    - Replay buffer: matlab_models_30\TD3\td3_noise_0.000\replay_buffer_100000.pkl
+    - Elapsed: 36727.22 sec
+Training Progress: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [29:28:11<00:00,  1.06s/it] 
+
+ Training Time Summary:
+    25000 steps: 15409.18 sec
+    50000 steps: 23032.24 sec
+    75000 steps: 30923.28 sec
+    100000 steps: 36727.22 sec
+    Total training time: 106091.94 sec
+[TB→CSV] Wrote scalar logs to: training_timings_bbc\tb_scalars_td3.csv
+Saved model to matlab_models_30\TD3\td3_noise_0.000\best_model.zip
+Saved VecNormalize stats to matlab_models_30\TD3\td3_noise_0.000\td3_vec_normalize_final.pkl
+Done.
+
+Training Progress: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [29:51:38<00:00,  1.37s/it] 
+ Checkpoint at 100000 steps:
+    - Model: matlab_models_30\SAC\sac_noise_0.000\best_model_100000.zip
+    - Replay buffer: matlab_models_30\SAC\sac_noise_0.000\replay_buffer_100000.pkl
+    - Elapsed: 37400.70 sec
+Training Progress: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [29:51:38<00:00,  1.07s/it]
+
+ Training Time Summary:
+    25000 steps: 15685.27 sec
+    50000 steps: 23318.13 sec
+    75000 steps: 31094.57 sec
+    100000 steps: 37400.70 sec
+    Total training time: 107498.69 sec
+[TB→CSV] Wrote scalar logs to: training_timings_bbc\tb_scalars_sac.csv
+Saved model to matlab_models_30\SAC\sac_noise_0.000\best_model.zip
+Saved VecNormalize stats to matlab_models_30\SAC\sac_noise_0.000\sac_vec_normalize_final.pkl
+Done.
+
+Training Progress: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [29:23:14<00:00,  1.53s/it] 
+ Checkpoint at 100000 steps:
+    - Model: matlab_models_30\DDPG\ddpg_noise_0.000\best_model_100000.zip
+    - Replay buffer: matlab_models_30\DDPG\ddpg_noise_0.000\replay_buffer_100000.pkl
+    - Elapsed: 37285.10 sec
+Training Progress: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [29:23:14<00:00,  1.06s/it]
+
+ Training Time Summary:
+    25000 steps: 15403.43 sec
+    50000 steps: 22693.29 sec
+    75000 steps: 30412.54 sec
+    100000 steps: 37285.10 sec
+    Total training time: 105794.39 sec
+[TB→CSV] Wrote scalar logs to: training_timings_bbc\tb_scalars_ddpg.csv
+Saved model to matlab_models_30\DDPG\ddpg_noise_0.000\best_model.zip
+Saved VecNormalize stats to matlab_models_30\DDPG\ddpg_noise_0.000\ddpg_vec_normalize_final.pkl
+Done.
+
+Training Progress: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [24:07:54<00:00,  1.35s/it] 
+ Checkpoint at 100000 steps:
+    - Model: matlab_models_30\PPO\ppo_noise_0.000\best_model_100000.zip
+    - Replay buffer: matlab_models_30\PPO\ppo_noise_0.000\replay_buffer_100000.pkl
+    - Elapsed: 30498.55 sec
+-------------------------------
+| time/              |        |
+|    fps             | 1      |
+|    iterations      | 49     |
+|    time_elapsed    | 87363  |
+|    total_timesteps | 100352 |
+-------------------------------
+Training Progress: 100352it [24:15:46,  1.15it/s]
+
+ Training Time Summary:
+    25000 steps: 13702.29 sec
+    50000 steps: 18288.38 sec
+    75000 steps: 24385.00 sec
+    100000 steps: 30498.55 sec
+    Total training time: 87346.12 sec
+[TB→CSV] Wrote scalar logs to: training_timings_bbc\tb_scalars_ppo.csv
+Saved model to matlab_models_30\PPO\ppo_noise_0.000\best_model.zip
+Saved VecNormalize stats to matlab_models_30\PPO\ppo_noise_0.000\ppo_vec_normalize_final.pkl
+Done.
+
+Training Progress: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 100000/100000 [27:00:50<00:00,  1.50s/it] 
+ Checkpoint at 100000 steps:
+    - Model: matlab_models_30\A2C\a2c_noise_0.000\best_model_100000.zip
+    - Replay buffer: matlab_models_30\A2C\a2c_noise_0.000\replay_buffer_100000.pkl
+    - Elapsed: 34407.01 sec
+Training Progress: 100032it [27:01:36,  1.03it/s]
+
+ Training Time Summary:
+    25000 steps: 14359.56 sec
+    50000 steps: 20726.25 sec
+    75000 steps: 27757.45 sec
+    100000 steps: 34407.01 sec
+    Total training time: 97296.75 sec
+[TB→CSV] Wrote scalar logs to: training_timings_bbc\tb_scalars_a2c.csv
+Saved model to matlab_models_30\A2C\a2c_noise_0.000\best_model.zip
+Saved VecNormalize stats to matlab_models_30\A2C\a2c_noise_0.000\a2c_vec_normalize_final.pkl
+Done.
+

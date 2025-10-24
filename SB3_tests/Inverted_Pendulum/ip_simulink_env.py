@@ -182,6 +182,7 @@ class SimulinkEnv(gym.Env):
         initial_angle = (
             initial_angle + 0.1 if abs(initial_angle) < 0.05 else initial_angle
         )
+        # initial_angle = float(-0.944298505783081)
 
         print(initial_angle)
 

@@ -5,6 +5,7 @@ from cp_simulink_env import SimulinkEnv, DiscretizedActionWrapper
 from stable_baselines3 import TD3, A2C, SAC, DDPG, PPO, DQN
 import matplotlib.pyplot as plt
 import control as ctrl
+import csv
 
 def signed_over_from_stepinfo(theta_deg: np.ndarray,
                               t: np.ndarray,
@@ -353,6 +354,15 @@ def evaluate_full_metrics(
         if live_plot:
             plt.ioff()
             plt.close(fig_live)
+        
+        csv_file = os.path.join(
+            output_dir, f"{model.__class__.__name__}_episode_{ep+1}_trace.csv"
+        )
+        with open(csv_file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["time_s", "angle_rad"])
+            for ti, th_deg in zip(t_vals, episode_thetas):
+                writer.writerow([ti, np.radians(th_deg)])
 
         stab_time = t_vals[stabilised_idx] if stabilised_idx is not None else t
 

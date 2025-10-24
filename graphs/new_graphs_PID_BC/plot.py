@@ -65,20 +65,32 @@ def detect_voltage_column(df: pd.DataFrame) -> Optional[str]:
 def color_for(label: str):
     u = label.upper()
     if u == "DQN":
-        return "red"
-    if u == "TD3":
         return "blue"
+    if u == "TD3":
+        return "red"
     if u == "PID":
         return "green"
+    if u == "A2C":
+        return "purple" 
+    if u == "PPO":
+        return "orange"
+    if u == "DDPG":
+        return "#FF00DD"
+    if u == "SAC":
+        return "cyan"
     return None
 
 def main():
     FILES: List[Path] = [
+        Path("evaluation_results_30.0_A2C_data.csv"),
+        Path("evaluation_results_30.0_PPO_data.csv"),
+        Path("evaluation_results_30.0_DDPG_data.csv"),
+        Path("evaluation_results_30.0_SAC_data.csv"),
         Path("evaluation_results_30.0_DQN_data.csv"),
         Path("evaluation_results_30.0_TD3_data.csv"),
         Path("PID_plot_data_noise_0.0_episode_1.csv"),
     ]
-    OUTPUT = "buck_voltage_vs_time_final.pdf"
+    OUTPUT = "buck_voltage_vs_time_final.svg"
 
     # Error band settings
     TARGET_V = 30.0
@@ -132,24 +144,33 @@ def main():
             label = "DQN"
         elif "td3" in lname:
             label = "TD3"
+        elif "a2c" in lname:
+            label = "A2C"
+        elif "ppo" in lname:
+            label = "PPO"
+        elif "ddpg" in lname:
+            label = "DDPG"
+        elif "sac" in lname:
+            label = "SAC"
         else:
             label = "PID"
 
         data[p.stem] = {"x": x, "y": y, "label": label}
-        ax.plot(x, y, label=label, color=color_for(label), linewidth=1.6)
+        ax.plot(x, y, label=label, color=color_for(label), linewidth=1.2)
 
     # Dashed error band lines at 30 V ± 0.5 V (single legend entry)
-    ax.axhline(TARGET_V + BAND_V, color="0.3", linestyle="--", linewidth=0.9, zorder=0,
+    ax.axhline(TARGET_V + BAND_V, color="0.3", linestyle="--", linewidth=0.8, zorder=0,
                label=f"{TARGET_V:.0f} V ± {BAND_V:.1f} V error band")
-    ax.axhline(TARGET_V - BAND_V, color="0.3", linestyle="--", linewidth=0.9, zorder=0, label="_nolegend_")
+    ax.axhline(TARGET_V - BAND_V, color="0.3", linestyle="--", linewidth=0.8, zorder=0, label="_nolegend_")
 
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Voltage (V)")
-    ax.grid(True, which="major", color="0.85", linewidth=0.6, alpha=0.6)
+    ax.grid(True, which="major", color="0.85", linewidth=0.5, alpha=0.6)
     ax.legend(loc="upper right")
+    ax.set_xlim(0, 0.05)
 
     # Inset with matching colors + same error band
-    ax_inset = inset_axes(ax, width="40%", height="40%", loc="lower right", borderpad=2.5)
+    ax_inset = inset_axes(ax, width="30%", height="30%", loc="lower center", borderpad=1.5)
     for d in data.values():
         ax_inset.plot(d["x"], d["y"], color=color_for(d["label"]), linewidth=1.2, label=d["label"])
     ax_inset.axhline(TARGET_V + BAND_V, color="0.3", linestyle="--", linewidth=0.8, zorder=0, label="_nolegend_")

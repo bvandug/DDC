@@ -22,11 +22,14 @@ from typing import List, Dict
 
 def main():
     FILES: List[Path] = [
-        Path("dqn_ip_trace.csv"),
+        Path("A2C_episode_1_trace.csv"),
+        Path("PPO_episode_1_trace.csv"),
+        Path("DDPG_episode_1_trace.csv"),
+        Path("SAC_episode_1_trace.csv"),
         Path("td3_ip_trace.csv"),
         Path("IP_PID_time_angle.csv"),
     ]
-    OUTPUT = "angle_vs_time_final.pdf"
+    OUTPUT = "angle_vs_time_final.svg"
 
     # Optional styling
     plt.rcParams.update({
@@ -45,15 +48,24 @@ def main():
     })
 
     # Fixed colors: DQN=red, TD3=blue, PID=orange
+    # Fixed colors: DQN=red, TD3=blue, PID=green (change to "orange" if you prefer)
     def color_for(label: str):
         u = label.upper()
         if u == "DQN":
-            return "red"
-        if u == "TD3":
             return "blue"
+        if u == "TD3":
+            return "red"
         if u == "PID":
             return "green"
-        return None  # others -> default cycle
+        if u == "A2C":
+            return "purple" 
+        if u == "PPO":
+            return "orange"
+        if u == "DDPG":
+            return "#FF00DD"
+        if u == "SAC":
+            return "cyan"
+        return None
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -79,10 +91,16 @@ def main():
             label = "DQN"
         elif "td3" in lname:
             label = "TD3"
-        elif "pid" in lname:
-            label = "PID"
+        elif "ppo" in lname:
+            label = "PPO" 
+        elif "a2c" in lname:
+            label = "A2C"
+        elif "sac" in lname:
+            label = "SAC"
+        elif "ddpg" in lname:
+            label = "DDPG"
         else:
-            label = p.stem
+            label = "PID"
 
         data[label] = {"x": x, "y": y}
         ax.plot(x, y, label=label, color=color_for(label), linewidth=1.6)
@@ -90,7 +108,7 @@ def main():
     # Dashed error band lines at ±0.01 rad with a single legend entry
     ax.axhline(+0.1, color="0.3", linestyle="--", linewidth=0.9, zorder=0, label="±0.01 error band")
     ax.axhline(-0.1, color="0.3", linestyle="--", linewidth=0.9, zorder=0, label="_nolegend_")
-
+    plt.title('Inverted Pendulum DQN vs. TD3 Performance over episode')
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Angle (rad)")
     ax.grid(True, which="major", color="0.85", linewidth=0.6, alpha=0.6)

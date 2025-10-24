@@ -31,6 +31,6 @@ plt.legend()
 plt.grid(True)
 
 # Save the plot
-plt.savefig('CP_dqn_vs_td3_performance.pdf', bbox_inches='tight')
+plt.savefig('CP_dqn_vs_td3_performance.svg', bbox_inches='tight')
 
 print("Plot with larger text saved as dqn_vs_td3_performance.pdf")

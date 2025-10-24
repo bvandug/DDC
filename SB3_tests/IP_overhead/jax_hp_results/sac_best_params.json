@@ -1,0 +1,15 @@
+{
+    "best_params": {
+        "learning_rate": 7.519468391768591e-05,
+        "buffer_size": 109417,
+        "batch_size": 281,
+        "tau": 0.008568783584993144,
+        "gamma": 0.9238847923186063,
+        "ent_coef": 0.1,
+        "layer_size": 273,
+        "n_layers": 4,
+        "activation_fn": "elu"
+    },
+    "best_value": 499.75762939453125,
+    "n_trials": 50
+}

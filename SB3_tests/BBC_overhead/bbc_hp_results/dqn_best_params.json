@@ -1,0 +1,21 @@
+{
+  "best_params": {
+    "n_layers": 2,
+    "layer_size": 192,
+    "activation_fn": "elu",
+    "learning_rate": 0.00011,
+    "buffer_size": 800000,
+    "batch_size": 256,
+    "gamma": 0.985,
+    "tau": 0.018,
+    "train_freq_k": 1,
+    "gradient_steps": 1,
+    "learning_starts_frac": 0.053,
+    "exploration_initial_eps": 0.77,
+    "exploration_fraction": 0.32,
+    "exploration_final_eps": 0.044,
+    "target_update_interval": 3500
+  },
+  "best_value": 4360.42,
+  "n_trials": 50
+}

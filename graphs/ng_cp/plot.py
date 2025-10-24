@@ -6,58 +6,75 @@ Assumes EVERY CSV has the exact columns:
     time_s,angle_rad
 
 Files (expected in the current folder):
+ - PPO_episode_1_trace.csv
+ - A2C_episode_1_trace.csv
+ - SAC_episode_1_trace.csv
+ - DDPG_episode_1_trace.csv
  - dqn_cartpole_trace.csv
  - td3_cartpole_trace.csv
  - PID_clamped_angle.csv
 
 Output:
- - angle_vs_time_final.pdf
+ - angle_vs_time_final.svg
 """
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple, Union
 
 def main():
     FILES: List[Path] = [
+        Path("A2C_episode_1_trace.csv"),
+        Path("PPO_episode_1_trace.csv"),
+        Path("SAC_episode_1_trace.csv"),
+        Path("DDPG_episode_1_trace.csv"),
         Path("dqn_cartpole_trace.csv"),
         Path("td3_cartpole_trace.csv"),
         Path("PID_clamped_angle.csv"),
     ]
-    OUTPUT = "angle_vs_time_final.pdf"
+    OUTPUT = "angle_vs_time_final.svg"
 
-    # Optional styling
+    # Publication styling
     plt.rcParams.update({
-        'font.family': 'Times New Roman',
-        'font.size': 16,
-        'axes.titlesize': 18,
-        'axes.labelsize': 18,
-        'legend.fontsize': 16,
-        'axes.titleweight': 'bold',
-        'text.color': 'black',
-        'axes.labelcolor': 'black',
-        'xtick.color': 'black',
-        'ytick.color': 'black',
-        'axes.edgecolor': 'black',
-        'legend.labelcolor': 'black',
+        "font.family": "Times New Roman",
+        "font.size": 16,
+        "axes.titlesize": 18,
+        "axes.labelsize": 18,
+        "legend.fontsize": 14,
+        "axes.titleweight": "bold",
+        "text.color": "black",
+        "axes.labelcolor": "black",
+        "xtick.color": "black",
+        "ytick.color": "black",
+        "axes.edgecolor": "black",
+        "legend.labelcolor": "black",
     })
 
-    # Fixed colors: DQN=red, TD3=blue, PID=orange
-    def color_for(label: str):
-        u = label.upper()
-        if u == "DQN":
-            return "red"
-        if u == "TD3":
-            return "blue"
-        if u == "PID":
-            return "green"
-        return None  # others -> default cycle
+    # Color + style map (colorblind-friendly)
+    STYLE_MAP: Dict[str, Tuple[str, Union[str, Tuple[int, Tuple[int, ...]]]]] = {
+        "DQN":  ("#005485", "-"),                 # blue, solid
+        "TD3":  ("#D55E00", "--"),                # red, dashed
+        "PPO":  ("#CC79A7", "-."),                # orange, dash-dot
+        "A2C":  ("#9467BD", ":"),                 # purple, dotted
+        "SAC":  ("#E69F00", (0, (3, 1, 1, 1))),   # cyan, dot-dash
+        "DDPG": ("#009E0D", (0, (5, 2))),         # pink-magenta, long dash
+        "PID":  ("#000000", "-"),                 # dark grey, solid
+    }
+
+    def infer_label_from_name(fname: str) -> str:
+        f = fname.lower()
+        if "dqn" in f:  return "DQN"
+        if "td3" in f:  return "TD3"
+        if "ppo" in f:  return "PPO"
+        if "a2c" in f:  return "A2C"
+        if "sac" in f:  return "SAC"
+        if "ddpg" in f: return "DDPG"
+        return "PID"
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
-    data: Dict[str, Dict[str, np.ndarray]] = {}
     for p in FILES:
         if not p.exists():
             print(f"[WARN] Missing file: {p}")
@@ -67,34 +84,37 @@ def main():
         x = pd.to_numeric(df["time_s"], errors="coerce").to_numpy()
         y = pd.to_numeric(df["angle_rad"], errors="coerce").to_numpy()
 
-        # Clean/sort
+        # Clean and sort
         m = np.isfinite(x) & np.isfinite(y)
         x, y = x[m], y[m]
         order = np.argsort(x)
         x, y = x[order], y[order]
 
-        # Label from filename
-        lname = p.name.lower()
-        if "dqn" in lname:
-            label = "DQN"
-        elif "td3" in lname:
-            label = "TD3"
-        elif "pid" in lname:
-            label = "PID"
-        else:
-            label = p.stem
+        label = infer_label_from_name(p.name)
+        color, linestyle = STYLE_MAP.get(label, ("black", "-"))
+        ax.plot(x, y, label=label, color=color, linestyle=linestyle, linewidth=1.8)
 
-        data[label] = {"x": x, "y": y}
-        ax.plot(x, y, label=label, color=color_for(label), linewidth=1.6)
+    # ±0.1 rad error band
+    ax.axhline(+0.1, color="0.4", linestyle="-", linewidth=0.9, zorder=0, label="±0.1 error band")
+    ax.axhline(-0.1, color="0.4", linestyle="-", linewidth=0.9, zorder=0, label="_nolegend_")
+    ax.axhline(0, color="0.4", linestyle="-", linewidth=0.9, zorder=0, label="_nolegend_")
 
-    # Dashed error band lines at ±0.01 rad with a single legend entry
-    ax.axhline(+0.1, color="0.3", linestyle="--", linewidth=0.9, zorder=0, label="±0.01 error band")
-    ax.axhline(-0.1, color="0.3", linestyle="--", linewidth=0.9, zorder=0, label="_nolegend_")
+    ax.fill_between(
+    x=[0, 5],              # match your x-axis range
+    y1=-0.1, y2=+0.1,      
+    color="grey", 
+    alpha=0.15,             # transparency for subtle shading
+    zorder=0
+    )
 
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Angle (rad)")
+    ax.set_xlim(0,5)
     ax.grid(True, which="major", color="0.85", linewidth=0.6, alpha=0.6)
-    ax.legend(loc="upper right")
+
+    leg = ax.legend(loc="lower right", frameon=True, framealpha=0.9, borderpad=0.6)
+    for lh in leg.legend_handles:
+        lh.set_linewidth(2.2)
 
     plt.savefig(OUTPUT, bbox_inches="tight")
     plt.close()

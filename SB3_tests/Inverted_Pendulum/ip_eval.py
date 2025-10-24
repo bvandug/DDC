@@ -5,7 +5,7 @@ environment, computes detailed performance metrics (stabilisation
 time, steady-state error, overshoot, IAE, control energy), and
 saves per-episode plots and summary statistics.
 """
-
+import csv
 import os
 import argparse
 import numpy as np
@@ -146,7 +146,7 @@ def evaluate_full_metrics(
     sim_timestep=0.01,
     live_plot=False,
     save_plots=True,
-    output_dir="plots",
+    output_dir="plots_csv",
     base_seed = 42,
 ):
     """Evaluate a trained model over multiple episodes and log metrics.
@@ -291,6 +291,15 @@ def evaluate_full_metrics(
             plt.ioff()
             plt.close(fig_live)
 
+        csv_file = os.path.join(
+            output_dir, f"{model.__class__.__name__}_episode_{ep+1}_trace.csv"
+        )
+        with open(csv_file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["time_s", "theta_rad"])
+            for ti, th_deg, thv_deg, ui in zip(t_vals, episode_thetas, episode_theta_vs, episode_us):
+                writer.writerow([ti, np.radians(th_deg), np.radians(thv_deg), ui])
+
         # Stabilization time based on dwell requirement
         stab_time = t_vals[stabilised_idx] if stabilised_idx is not None else t
 
@@ -384,6 +393,8 @@ def evaluate_full_metrics(
             fig_ep.tight_layout()
             fig_ep.savefig(fname, bbox_inches="tight")
             plt.close(fig_ep)
+        
+        
 
     # summary
     max_r = env.unwrapped.max_episode_time / sim_timestep
@@ -508,7 +519,7 @@ if __name__ == "__main__":
                         help="Algorithm to eval (dqn, ddpg, ppo, a2c, sac, td3, or all)")
     parser.add_argument("--root", default=os.path.join("ip_jax", "jax_models"),
                         help="Folder with per-run subfolders (default: ip_jax/jax_models)")
-    parser.add_argument("--episodes", type=int, default=5)
+    parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--no-save-plots", dest="no_save_plots", action="store_true")
     parser.add_argument("--env-noise", type=float, default=0.0,
                     help="Evaluation-time observation noise sigma (radians)")
@@ -576,7 +587,7 @@ if __name__ == "__main__":
             live_plot=False,
             save_plots=not args.no_save_plots,
             output_dir=os.path.join(
-                "plots",
+                "plots_csv_1",
                 algo_key,
                 f"{algo_key.lower()}_env_noise_{args.env_noise:.3f}",
                 run_name,

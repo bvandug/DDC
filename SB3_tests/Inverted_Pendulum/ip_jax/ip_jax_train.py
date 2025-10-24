@@ -353,12 +353,12 @@ if __name__ == "__main__":
         "--algos",
         nargs="+",
         choices=list(algo_map.keys()) + ["all"],
-        default=["ppo"],
+        default=["a2c"],
         help="Which algorithm(s) to train; use 'all' to run every algo in sequence.",
     )
     parser.add_argument("--timesteps",    type=int,   default=100_000)
     parser.add_argument("--noise",        action="store_true", help="…")
-    parser.add_argument("--noise-level",  type=float, default=0.01,    help="…")
+    parser.add_argument("--noise-level",  type=float, default=0.0,    help="…")
     args = parser.parse_args()
 
     # Expand "all" into the full list
