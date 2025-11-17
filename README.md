@@ -18,17 +18,6 @@ The project focuses on evaluating:
 *WLLNAT033@myuct.ac.za*
 ___
 
-# Project Allocation:
-- Although one person was responsible for setting up each system, the plug-and-play nature of SB3 required all team members to collaborate across all systems. This collective approach ensured algorithm compatibility, particularly during hyperparameter tuning and agent training.
-- **Nathan Wells**: Cartpole
-- **Ben Ruijsch Van Dugteren**: Buck-Boost Converter, Inverted Pendulum
-- **Nicholas Cristaudo**: Buck-Converter
-
-
-# Full code base:
-- The full code base is available at: https://github.com/bvandug/DDC
-- This includes tuned models, evaluations, databases and tuning and hyperparameter logs.
-
 # Structure for DRL Methods Explained
 
 To explore the current DRL work, browse the `SB3_tests` folder in this repository. 
