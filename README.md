@@ -1,6 +1,7 @@
 # Evaluating DRL for control systems
-The project focuses on evaluating:
-- The Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on various control systems against a PID baseline.
+This repository focuses on:
+- Creating a Stablebaselines3 wrapper class for MATLAB/Simulink.
+- Evaluating the Stablebaselines3 DRL algorithms (PPO, A2C, DQN, DDPG, TD3, SAC) on various control systems against a PID baseline.
 - Creating simulation environments that will train SB3 models faster but with similar fidelity.
 
 ## Authors
